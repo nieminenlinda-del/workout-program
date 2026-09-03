@@ -2,7 +2,7 @@
 
 Mobile-first PWA for gym-phone session logging. Phase 1 is **today’s workout only**: readiness, static A–D templates, per-set weight/reps/RPE, rest timer, save to IndexedDB.
 
-Phase 2 (auto-progression toward a **2026-11-21** test) is typed and documented in [ARCHITECTURE.md](./ARCHITECTURE.md) — the engine is not implemented.
+Phase 2 (auto-progression toward a **2026-11-21** test, including PowerCombo `hypertrophy` / `strength_peak` mode) is typed and documented in [ARCHITECTURE.md](./ARCHITECTURE.md) — the engines are not implemented.
 
 ## Quick start
 

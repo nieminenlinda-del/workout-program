@@ -1,10 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-
-function formatTime(total: number): string {
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
+import { displaySeconds, formatClock, progressRatio } from '../domain/countdown';
+import { unlockTimerAudio } from '../domain/timerCue';
+import { useCountdown } from '../hooks/useCountdown';
 
 export function RestTimer({
   seconds,
@@ -15,36 +11,34 @@ export function RestTimer({
   exerciseName: string;
   onDone: () => void;
 }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const [target, setTarget] = useState(seconds);
+  const { state, pause, resume, extend, skip } = useCountdown(seconds);
+  const remaining = displaySeconds(state);
+  const done = state.finished;
+  const pct = progressRatio(state);
+  const circumference = 2 * Math.PI * 52;
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          window.clearInterval(id);
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [target]);
-
-  useEffect(() => {
-    if (remaining === 0) {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(200);
-    }
-  }, [remaining]);
-
-  const pct = useMemo(() => (target <= 0 ? 1 : remaining / target), [remaining, target]);
-  const done = remaining === 0;
+  const finish = () => {
+    unlockTimerAudio();
+    onDone();
+  };
 
   return (
-    <div className="rest-overlay" role="dialog" aria-label="Rest timer">
-      <div className="rest-card">
-        <p className="rest-kicker">{done ? 'Rest done' : 'Rest'}</p>
+    <div
+      className="rest-overlay"
+      role="dialog"
+      aria-label="Rest timer"
+      onClick={() => {
+        skip();
+        finish();
+      }}
+    >
+      <div
+        className="rest-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="rest-kicker">{done ? 'Rest done' : state.running ? 'Rest' : 'Paused'}</p>
         <h2 className="rest-title">{exerciseName}</h2>
+        <p className="muted rest-hint">{seconds}s default · tap outside or skip to log</p>
         <div className="rest-ring-wrap">
           <svg className="rest-ring" viewBox="0 0 120 120" aria-hidden="true">
             <circle cx="60" cy="60" r="52" className="rest-ring-bg" />
@@ -53,26 +47,46 @@ export function RestTimer({
               cy="60"
               r="52"
               className="rest-ring-fg"
-              strokeDasharray={`${2 * Math.PI * 52}`}
-              strokeDashoffset={`${2 * Math.PI * 52 * (1 - pct)}`}
+              strokeDasharray={`${circumference}`}
+              strokeDashoffset={`${circumference * (1 - pct)}`}
             />
           </svg>
-          <div className="rest-time">{done ? 'GO' : formatTime(remaining)}</div>
+          <div className="rest-time">{done ? 'GO' : formatClock(remaining)}</div>
         </div>
-        <div className="rest-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              setRemaining((r) => r + 30);
-              setTarget((t) => t + 30);
-            }}
-          >
+        <div className="rest-extend">
+          <button type="button" className="btn btn-ghost" onClick={() => extend(15)}>
+            +15s
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => extend(30)}>
             +30s
           </button>
-          <button type="button" className="btn btn-primary" onClick={onDone}>
-            {done ? 'Next set' : 'Skip rest'}
-          </button>
+        </div>
+        <div className={`rest-actions ${done ? 'single' : ''}`}>
+          {done ? (
+            <button type="button" className="btn btn-primary btn-block" onClick={finish}>
+              Next set
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={state.running ? pause : resume}
+              >
+                {state.running ? 'Pause' : 'Resume'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  skip();
+                  finish();
+                }}
+              >
+                Skip rest
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

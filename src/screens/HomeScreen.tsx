@@ -15,6 +15,7 @@ export function HomeScreen({
   onStart,
   onResume,
   onHistory,
+  onInterval,
 }: {
   date: string;
   templateDay: CanonicalTemplateDay;
@@ -24,6 +25,7 @@ export function HomeScreen({
   onStart: () => void;
   onResume: () => void;
   onHistory: () => void;
+  onInterval: () => void;
 }) {
   const template = DAY_TEMPLATES[templateDay];
   const meso = getMesocycleContext(date);
@@ -99,6 +101,9 @@ export function HomeScreen({
 
       <button type="button" className="btn btn-ghost btn-block" onClick={onHistory}>
         Session log{historyCount ? ` (${historyCount})` : ''}
+      </button>
+      <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>
+        Interval timer
       </button>
     </main>
   );

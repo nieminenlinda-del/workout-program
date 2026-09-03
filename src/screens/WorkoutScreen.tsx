@@ -7,6 +7,7 @@ import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
 import { SetLogger } from '../components/SetLogger';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
+import { unlockTimerAudio } from '../domain/timerCue';
 
 interface ActiveSet {
   liftIndex: number;
@@ -42,6 +43,7 @@ export function WorkoutScreen({
     });
     onChange({ ...draft, lifts, updated_at: new Date().toISOString() });
     setActive(null);
+    unlockTimerAudio();
     const restSec =
       slotForLift(template, draft.lifts[liftIndex])?.sets[setIndex]?.rest_sec ?? 90;
     setRest({ seconds: restSec, name: draft.lifts[liftIndex]?.name ?? 'Lift' });

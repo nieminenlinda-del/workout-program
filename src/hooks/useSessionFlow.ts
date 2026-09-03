@@ -12,7 +12,8 @@ export type AppView =
   | 'workout'
   | 'save'
   | 'history'
-  | 'detail';
+  | 'detail'
+  | 'interval';
 
 export function useRepository(): SessionRepository {
   return useMemo(() => createIndexedDbRepository(), []);

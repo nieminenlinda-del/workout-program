@@ -4,6 +4,7 @@ import { ReadinessScreen } from './screens/ReadinessScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
 import { SaveScreen } from './screens/SaveScreen';
 import { DetailScreen, HistoryScreen } from './screens/HistoryScreen';
+import { IntervalTimerScreen } from './screens/IntervalTimerScreen';
 import { useRepository, useSessionFlow } from './hooks/useSessionFlow';
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
 import { canonicalTemplateDay, todayIsoDate } from './domain/templateDay';
@@ -46,6 +47,7 @@ export default function App() {
             flow.resumeSession();
           }}
           onHistory={() => flow.setView('history')}
+          onInterval={() => flow.setView('interval')}
         />
       ) : null}
 
@@ -87,6 +89,10 @@ export default function App() {
 
       {flow.view === 'detail' && flow.detail ? (
         <DetailScreen session={flow.detail} onBack={() => flow.setView('history')} />
+      ) : null}
+
+      {flow.view === 'interval' ? (
+        <IntervalTimerScreen onBack={() => flow.setView('home')} />
       ) : null}
     </div>
   );

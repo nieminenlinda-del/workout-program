@@ -514,7 +514,7 @@ button {
 }
 
 .rest-overlay {
-  align-items: center;
+  align-items: flex-end;
 }
 
 .sheet,
@@ -592,6 +592,54 @@ button {
   display: grid;
   grid-template-columns: 1fr 1.4fr;
   gap: 8px;
+  width: 100%;
+}
+
+.rest-actions.single {
+  grid-template-columns: 1fr;
+}
+
+.rest-extend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.rest-hint {
+  font-size: 13px;
+}
+
+.interval-card {
+  align-items: center;
+  text-align: center;
+}
+
+.interval-card .rest-ring-wrap {
+  margin: 0 auto;
+}
+
+.interval-phase {
+  font-size: 48px;
+  margin: 0;
+}
+
+.interval-phase.phase-work,
+.interval-card.phase-work .interval-phase {
+  color: var(--amber);
+}
+
+.interval-phase.phase-rest,
+.interval-card.phase-rest .interval-phase {
+  color: var(--green);
+}
+
+.ring-work {
+  stroke: var(--amber);
+}
+
+.ring-rest {
+  stroke: var(--green);
 }
 
 .rest-ring-wrap {

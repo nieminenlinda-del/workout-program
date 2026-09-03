@@ -6,9 +6,9 @@ Linda Lift is a client-only PWA. The UI never talks to a server. Persistence is 
 src/
   types/          SessionLog, exercise IDs, Phase 2 placeholders
   data/templates  Static A–D seed (no engine)
-  domain/         Readiness light, draft factory, calendar hook
+  domain/         Readiness light, draft factory, calendar hook, countdown + interval timers
   db/             SessionRepository + IndexedDB + in-memory (tests)
-  screens/        Readiness → workout → set log → rest → save
+  screens/        Readiness → workout → set log → rest → save; interval timer
 ```
 
 ## Persistence contract
@@ -137,6 +137,14 @@ const proposed = engine.proposeNext({
 ```
 
 Keep `SessionLog` field names stable. Additive fields are fine; renames break the engine.
+
+## Timers (UX only — not SessionLog)
+
+`src/domain/countdown.ts` is a wall-clock countdown (`endsAtMs`). Pause/resume/extend/skip are pure functions so lock-screen and background recovery do not depend on a JS interval staying alive. `src/domain/intervalTimer.ts` layers rounds + WORK/REST on top (last work has no trailing rest).
+
+The rest overlay reads `rest_sec` from the seed template slot after each completed set. The interval screen is a separate view (`AppView: "interval"`) and does not write `SessionLog` or Phase 2 types.
+
+Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
 
 ## Exercise IDs
 

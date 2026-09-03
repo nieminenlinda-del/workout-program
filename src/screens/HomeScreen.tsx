@@ -59,7 +59,7 @@ export function HomeScreen({
               Resume
             </button>
             <button type="button" className="btn btn-ghost" onClick={onStart}>
-              Start {template.weekday} instead
+              New {template.weekday} session
             </button>
           </div>
         </section>

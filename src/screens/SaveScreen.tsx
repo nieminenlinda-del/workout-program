@@ -67,7 +67,7 @@ export function SaveScreen({
         id="session-notes"
         className="notes"
         rows={4}
-        placeholder="Bar speed, depth, pain location, anything for Phase 2…"
+        placeholder="Bar speed, depth, pain, anything for later…"
         value={draft.notes}
         onChange={(e) =>
           onChange({ ...draft, notes: e.target.value, updated_at: new Date().toISOString() })

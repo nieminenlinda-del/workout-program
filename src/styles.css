@@ -158,8 +158,8 @@ button {
   gap: 12px;
 }
 
-.resume-card {
-  border-color: var(--amber-dim);
+.resume-card h2 {
+  font-size: 26px;
 }
 
 .btn {
@@ -169,6 +169,8 @@ button {
   padding: 0 16px;
   font-weight: 650;
   letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -184,6 +186,7 @@ button {
 
 .btn-block {
   width: 100%;
+  white-space: normal;
 }
 
 .btn-slim {
@@ -447,6 +450,7 @@ button {
   border: 1px solid var(--line);
   background: var(--bg-elev);
   color: var(--text);
+  overflow: hidden;
 }
 
 .chip.selected,

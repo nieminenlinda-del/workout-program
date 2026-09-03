@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getMesocycleContext, resolveTrainingMode } from './phase2Calendar';
 import {
+  CURRENT_CYCLE,
   HYPERTROPHY_PROGRESSION_HOOK,
   Phase2NotImplementedError,
   SEED_TRAINING_MAXES,
@@ -10,28 +11,19 @@ import {
   TEST_LIFT_ORDER,
   programModeFrom,
   progressionEngineStub,
+  progressionRulesFor,
 } from '../types/phase2';
 
 describe('phase 2 calendar hook', () => {
-  it('maps accumulate / intensify / peak windows', () => {
-    expect(getMesocycleContext('2026-09-08')).toMatchObject({
-      block: 'A',
-      phase: 'accumulate',
-      freezeProgression: false,
-      training_mode: 'hypertrophy',
-      program_mode: 'hypertrophy',
-    });
-    expect(getMesocycleContext('2026-10-20')).toMatchObject({
-      block: 'B',
-      phase: 'intensify',
-      training_mode: 'hypertrophy',
-    });
-    expect(getMesocycleContext('2026-11-10')).toMatchObject({
-      block: 'C',
-      phase: 'peak_overreach',
-      freezeProgression: false,
-      training_mode: 'strength_peak',
-      program_mode: 'peak',
+  it('defaults to hypertrophy between meets; strength_peak only in the peaking window', () => {
+    expect(getMesocycleContext('2026-09-03').training_mode).toBe('hypertrophy');
+    expect(getMesocycleContext('2026-09-08').training_mode).toBe('hypertrophy');
+    expect(getMesocycleContext('2026-10-20').training_mode).toBe('hypertrophy');
+    expect(getMesocycleContext('2026-11-10').training_mode).toBe('strength_peak');
+    expect(CURRENT_CYCLE).toEqual({
+      target_test_date: '2026-11-21',
+      peak_training_mode: 'strength_peak',
+      post_test_training_mode: 'hypertrophy',
     });
   });
 
@@ -64,7 +56,15 @@ describe('phase 2 calendar hook', () => {
       tm_bump_pct_after_green_block: 2.5,
       freeze_on: ['peak_taper', 'test'],
     });
-    expect(HYPERTROPHY_PROGRESSION_HOOK.progress).toBe('reps_before_load');
+    expect(HYPERTROPHY_PROGRESSION_HOOK).toEqual({
+      progress: 'reps_before_load',
+      hypertrophy_rep_range: [6, 12],
+      tm_recalc_every_weeks: [8, 12],
+      tm_recalc_after_test: true,
+      deload_every_weeks: [4, 6],
+    });
+    expect(progressionRulesFor('strength_peak').rules).toBe(STRENGTH_PEAK_PROGRESSION_HOOK);
+    expect(progressionRulesFor('hypertrophy').rules).toBe(HYPERTROPHY_PROGRESSION_HOOK);
     expect(programModeFrom('strength_peak')).toBe('peak');
     expect(getMesocycleContext('2026-11-21').program_mode).toBe('peak');
     expect(() =>

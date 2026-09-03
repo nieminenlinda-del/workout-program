@@ -106,6 +106,28 @@ export const HYPERTROPHY_PROGRESSION_HOOK: HypertrophyProgressionHook = {
 };
 
 /**
+ * This cycle: strength_peak through 2026-11-21, then hypertrophy
+ * unless a later `target_test_date` is supplied to the calendar hook.
+ */
+export const CURRENT_CYCLE = {
+  target_test_date: TARGET_TEST_DATE,
+  peak_training_mode: 'strength_peak' as const,
+  post_test_training_mode: 'hypertrophy' as const,
+};
+
+export type PowerComboProgressionRules =
+  | { training_mode: 'strength_peak'; rules: StrengthPeakProgressionHook }
+  | { training_mode: 'hypertrophy'; rules: HypertrophyProgressionHook };
+
+/** Lookup only — does not compute next-session loads. */
+export function progressionRulesFor(training_mode: TrainingMode): PowerComboProgressionRules {
+  if (training_mode === 'strength_peak') {
+    return { training_mode, rules: STRENGTH_PEAK_PROGRESSION_HOOK };
+  }
+  return { training_mode, rules: HYPERTROPHY_PROGRESSION_HOOK };
+}
+
+/**
  * Calendar windows for the 2026 test cycle.
  * Block A ~8 Sep–5 Oct · B ~6 Oct–2 Nov · C ~3–21 Nov.
  */
@@ -154,7 +176,8 @@ export interface MesocycleContext {
  * - consume persisted SessionLog rows
  * - freeze prescription changes when freezeProgression is true
  * - on TEST_DAY prescribe squat → bench → deadlift, nothing else
- * - branch on program_mode (hypertrophy vs peak)
+ * - pick rules via progressionRulesFor(training_mode) — do not invent a third mode
+ * - freeze TM/load bumps when freezeProgression is true (taper + test)
  *
  * Phase 1 must not call this. A stub throws so the surface is typed and unused.
  */

@@ -26,6 +26,7 @@ export type {
   MesocycleBlock,
   MesocycleContext,
   MesocycleWindow,
+  PowerComboProgressionRules,
   ProgramMode,
   ProgressionEngine,
   StrengthPeakProgressionHook,
@@ -34,6 +35,7 @@ export type {
   TrainingMode,
 } from './phase2';
 export {
+  CURRENT_CYCLE,
   HYPERTROPHY_PROGRESSION_HOOK,
   MESOCYCLE_WINDOWS,
   PEAKING_PHASES,
@@ -45,5 +47,6 @@ export {
   TEST_LIFT_ORDER,
   programModeFrom,
   progressionEngineStub,
+  progressionRulesFor,
   trainingModeFrom,
 } from './phase2';

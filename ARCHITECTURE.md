@@ -58,46 +58,38 @@ Block C refinements already encoded in the hook:
 
 `BlockPhase`: `accumulate | intensify | peak_overreach | peak_taper | test`.
 
-### PowerCombo `program_mode` (hook only)
+### PowerCombo `training_mode` (hook only — engines not implemented)
 
-Linda’s Phase 2 engine will be Juggernaut **PowerCombo**: hypertrophy work when not peaking; peak/strength work when preparing for a test or meet.
+Linda’s Phase 2 engines will be Juggernaut **PowerCombo**. Types: `src/types/phase2.ts`. Calendar resolver: `resolveTrainingMode` / `getMesocycleContext`. Phase 1 logging does not read these fields.
 
 ```ts
-type ProgramMode = 'hypertrophy' | 'peak';
+type TrainingMode = 'hypertrophy' | 'strength_peak';
+type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_peak
 ```
 
-`program_mode` is the product switch. Do not add it to `SessionLog` or the Phase 1 logging UI. The engine reads it from `getMesocycleContext(asOf).program_mode`.
+**Mode rules**
 
-| Field | Values | Role |
-| --- | --- | --- |
-| `program_mode` | `hypertrophy` \| `peak` | Product / engine switch |
-| `training_mode` | `hypertrophy` \| `strength_peak` | Same switch (`peak` === `strength_peak`) |
+- Default **`hypertrophy`** between meets (accumulate, intensify, off-block, or no `target_test_date`).
+- **`strength_peak` only** while `target_test_date` is in the peaking window (`peak_overreach`, `peak_taper`, `test`).
+- **After the test date** → auto **`hypertrophy`**, unless a later `target_test_date` is set.
+- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Peak mode is `strength_peak` through that date; from 2026-11-22 the hook returns `hypertrophy`.
 
-This cycle peaks toward **2026-11-21** (`TARGET_TEST_DATE`). Until that date, Block C resolves to `program_mode: "peak"`; from 2026-11-22 it returns to `"hypertrophy"` unless a next test date is set.
-
-Resolver (`resolveTrainingMode` in `src/domain/phase2Calendar.ts`):
-
-- Default **hypertrophy** between meets (accumulate / intensify, and any day without a target test).
-- **strength_peak** only while `target_test_date` is in the peaking window (`peak_overreach`, `peak_taper`, `test`).
-- **After the test date** → auto **hypertrophy** unless a next `target_test_date` is set.
-- This cycle: `TARGET_TEST_DATE = 2026-11-21`. So Block C is `strength_peak`; from 2026-11-22 the hook returns hypertrophy.
-
-These constants are documentation for two future engines (do not run them in Phase 1):
-
-**strength_peak auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`)
+**Strength auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`, used when `training_mode === "strength_peak"`)
 
 - T1 load jumps of **+2.5 kg**
 - Optional AMRAP
 - TM **+2.5%** after a green block
-- Freeze on `peak_taper` and `test`
+- **Freeze** on `peak_taper` and `test` (`freeze_on`)
 
-**hypertrophy auto-prog** (`HYPERTROPHY_PROGRESSION_HOOK`)
+**Hypertrophy auto-prog** (`HYPERTROPHY_PROGRESSION_HOOK`, used when `training_mode === "hypertrophy"`)
 
 - Progress **reps before load** in the **6–12** range
 - Recalc TM every **8–12 weeks** or after a test
 - Deload every **4–6 weeks**
 
-Phase 1 session logging UI does not read these hooks for weights, reps, or RPE.
+`progressionRulesFor(training_mode)` returns the matching constants. It does **not** compute next-session weights. `progressionEngineStub.proposeNext` still throws `Phase2NotImplementedError`.
+
+Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-logging UI.
 
 ### Freeze rules (must implement in Phase 2)
 

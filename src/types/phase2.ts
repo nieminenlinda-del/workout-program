@@ -43,16 +43,19 @@ export const TEST_LIFT_ORDER = ['squat', 'bench', 'deadlift'] as const;
 export type TestLift = (typeof TEST_LIFT_ORDER)[number];
 
 /**
- * Juggernaut PowerCombo training mode (Phase 2 engine input).
- * Hypertrophy between meets; strength_peak only inside the peaking window for `target_test_date`.
- */
-export type TrainingMode = 'hypertrophy' | 'strength_peak';
-
-/**
- * Product alias for the same switch: `peak` === `strength_peak`.
- * Prefer `TrainingMode` in engine code.
+ * Juggernaut PowerCombo program switch for the Phase 2 engine.
+ * Hypertrophy when not peaking; peak when preparing for a test/meet
+ * (this cycle: toward TARGET_TEST_DATE / 2026-11-21).
+ *
+ * Phase 1 session logging must not read or persist this field.
  */
 export type ProgramMode = 'hypertrophy' | 'peak';
+
+/**
+ * Engine-facing synonym of ProgramMode (`strength_peak` === `peak`).
+ * Hypertrophy between meets; strength_peak only inside the peaking window.
+ */
+export type TrainingMode = 'hypertrophy' | 'strength_peak';
 
 export function programModeFrom(training: TrainingMode): ProgramMode {
   return training === 'strength_peak' ? 'peak' : 'hypertrophy';
@@ -140,9 +143,10 @@ export interface MesocycleContext {
   freezeProgression: boolean;
   testLiftOrder: readonly TestLift[];
   target_test_date: string | null;
-  training_mode: TrainingMode;
-  /** Alias of training_mode (`peak` === `strength_peak`). */
+  /** Product switch: hypertrophy | peak. */
   program_mode: ProgramMode;
+  /** Synonym of program_mode (`strength_peak` === `peak`). */
+  training_mode: TrainingMode;
 }
 
 /**
@@ -150,6 +154,7 @@ export interface MesocycleContext {
  * - consume persisted SessionLog rows
  * - freeze prescription changes when freezeProgression is true
  * - on TEST_DAY prescribe squat → bench → deadlift, nothing else
+ * - branch on program_mode (hypertrophy vs peak)
  *
  * Phase 1 must not call this. A stub throws so the surface is typed and unused.
  */
@@ -158,12 +163,14 @@ export interface ProgressionEngine {
     logs: SessionLog[];
     trainingMaxes: TrainingMaxes;
     asOf: string;
+    program_mode: ProgramMode;
     training_mode: TrainingMode;
     target_test_date: string | null;
   }): {
     template_day: SessionLog['template_day'];
     lifts: SessionLog['lifts'];
     freezeProgression: boolean;
+    program_mode: ProgramMode;
     training_mode: TrainingMode;
   };
 }

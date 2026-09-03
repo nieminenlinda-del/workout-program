@@ -66,11 +66,13 @@ describe('phase 2 calendar hook', () => {
     });
     expect(HYPERTROPHY_PROGRESSION_HOOK.progress).toBe('reps_before_load');
     expect(programModeFrom('strength_peak')).toBe('peak');
+    expect(getMesocycleContext('2026-11-21').program_mode).toBe('peak');
     expect(() =>
       progressionEngineStub.proposeNext({
         logs: [],
         trainingMaxes: SEED_TRAINING_MAXES,
         asOf: '2026-09-03',
+        program_mode: 'hypertrophy',
         training_mode: 'hypertrophy',
         target_test_date: TARGET_TEST_DATE,
       }),

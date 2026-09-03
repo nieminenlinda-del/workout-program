@@ -58,14 +58,22 @@ Block C refinements already encoded in the hook:
 
 `BlockPhase`: `accumulate | intensify | peak_overreach | peak_taper | test`.
 
-### PowerCombo training mode (hook only)
+### PowerCombo `program_mode` (hook only)
 
-Juggernaut **PowerCombo**: hypertrophy work when not peaking; strength/peak work when preparing for a test.
+Linda’s Phase 2 engine will be Juggernaut **PowerCombo**: hypertrophy work when not peaking; peak/strength work when preparing for a test or meet.
 
-| Field | Values | Rule |
+```ts
+type ProgramMode = 'hypertrophy' | 'peak';
+```
+
+`program_mode` is the product switch. Do not add it to `SessionLog` or the Phase 1 logging UI. The engine reads it from `getMesocycleContext(asOf).program_mode`.
+
+| Field | Values | Role |
 | --- | --- | --- |
-| `training_mode` | `hypertrophy` \| `strength_peak` | Canonical engine input |
-| `program_mode` | `hypertrophy` \| `peak` | Alias (`peak` === `strength_peak`) |
+| `program_mode` | `hypertrophy` \| `peak` | Product / engine switch |
+| `training_mode` | `hypertrophy` \| `strength_peak` | Same switch (`peak` === `strength_peak`) |
+
+This cycle peaks toward **2026-11-21** (`TARGET_TEST_DATE`). Until that date, Block C resolves to `program_mode: "peak"`; from 2026-11-22 it returns to `"hypertrophy"` unless a next test date is set.
 
 Resolver (`resolveTrainingMode` in `src/domain/phase2Calendar.ts`):
 
@@ -130,6 +138,7 @@ const proposed = engine.proposeNext({
   logs,
   trainingMaxes,
   asOf: date,
+  program_mode: ctx.program_mode,
   training_mode: ctx.training_mode,
   target_test_date: ctx.target_test_date,
 });

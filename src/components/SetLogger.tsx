@@ -47,10 +47,10 @@ export function SetLogger({
           suffix="kg"
         />
         <div className="micro-steps">
-          <button type="button" className="chip" onClick={() => setWeight((w) => Math.max(0, w - 1.25))}>
+          <button type="button" className="chip" onClick={() => setWeight((w) => Math.max(0, Math.round((w - 1.25) * 100) / 100))}>
             −1.25
           </button>
-          <button type="button" className="chip" onClick={() => setWeight((w) => w + 1.25)}>
+          <button type="button" className="chip" onClick={() => setWeight((w) => Math.round((w + 1.25) * 100) / 100)}>
             +1.25
           </button>
         </div>

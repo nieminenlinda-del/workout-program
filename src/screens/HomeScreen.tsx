@@ -3,6 +3,7 @@ import { DAY_TEMPLATES, exerciseName } from '../data/templates';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
 import type { CanonicalTemplateDay, SessionDraft } from '../types/session';
+import type { ExerciseId } from '../types/exercises';
 import { SEED_TRAINING_MAXES } from '../types/phase2';
 
 export function HomeScreen({
@@ -75,10 +76,10 @@ export function HomeScreen({
               <span className={`role-tag role-${slot.role}`}>{slot.role}</span>
               <span>
                 {exerciseName(slot.exercise_id)}
-                {slot.alternatives.length > 0 ? (
+                {uniqueAltNames(slot.exercise_id, slot.alternatives).length > 0 ? (
                   <em className="alt">
                     {' '}
-                    or {slot.alternatives.map(exerciseName).join(' / ')}
+                    or {uniqueAltNames(slot.exercise_id, slot.alternatives).join(' / ')}
                   </em>
                 ) : null}
                 {slot.optional ? <em className="alt"> (optional)</em> : null}
@@ -101,6 +102,11 @@ export function HomeScreen({
       </button>
     </main>
   );
+}
+
+function uniqueAltNames(primary: ExerciseId, alternatives: ExerciseId[]): string[] {
+  const primaryName = exerciseName(primary);
+  return [...new Set(alternatives.map(exerciseName).filter((name) => name !== primaryName))];
 }
 
 function templateDayForDraft(draft: SessionDraft): CanonicalTemplateDay {

@@ -1,3 +1,11 @@
+function formatNumber(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  if (Number.isInteger(rounded)) return String(rounded);
+  const tenths = Math.round(rounded * 10) / 10;
+  if (tenths === rounded) return rounded.toFixed(1);
+  return rounded.toFixed(2);
+}
+
 export function NumberStepper({
   label,
   value,
@@ -18,11 +26,11 @@ export function NumberStepper({
   large?: boolean;
 }) {
   const bump = (dir: number) => {
-    const next = Math.round((value + dir * step) * 1000) / 1000;
+    const next = Math.round((value + dir * step) * 100) / 100;
     onChange(Math.min(max, Math.max(min, next)));
   };
 
-  const display = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  const display = formatNumber(value);
 
   return (
     <div className={`stepper ${large ? 'stepper-lg' : ''}`}>

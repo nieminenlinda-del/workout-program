@@ -36,8 +36,71 @@ export interface MesocycleWindow {
 
 export const TEST_DAY = '2026-11-21';
 
+/** Active meet/test target for this cycle. After this date, mode returns to hypertrophy unless a new date is set. */
+export const TARGET_TEST_DATE = TEST_DAY;
+
 export const TEST_LIFT_ORDER = ['squat', 'bench', 'deadlift'] as const;
 export type TestLift = (typeof TEST_LIFT_ORDER)[number];
+
+/**
+ * Juggernaut PowerCombo training mode (Phase 2 engine input).
+ * Hypertrophy between meets; strength_peak only inside the peaking window for `target_test_date`.
+ */
+export type TrainingMode = 'hypertrophy' | 'strength_peak';
+
+/**
+ * Product alias for the same switch: `peak` === `strength_peak`.
+ * Prefer `TrainingMode` in engine code.
+ */
+export type ProgramMode = 'hypertrophy' | 'peak';
+
+export function programModeFrom(training: TrainingMode): ProgramMode {
+  return training === 'strength_peak' ? 'peak' : 'hypertrophy';
+}
+
+export function trainingModeFrom(program: ProgramMode): TrainingMode {
+  return program === 'peak' ? 'strength_peak' : 'hypertrophy';
+}
+
+export const PEAKING_PHASES: readonly BlockPhase[] = [
+  'peak_overreach',
+  'peak_taper',
+  'test',
+];
+
+/**
+ * Documented auto-progression hooks. Phase 2 engines must read these;
+ * Phase 1 does not apply them to prescribed loads.
+ */
+export interface StrengthPeakProgressionHook {
+  t1_load_increment_kg: 2.5;
+  optional_amrap: true;
+  tm_bump_pct_after_green_block: 2.5;
+  freeze_on: readonly ('peak_taper' | 'test')[];
+}
+
+export interface HypertrophyProgressionHook {
+  progress: 'reps_before_load';
+  hypertrophy_rep_range: readonly [6, 12];
+  tm_recalc_every_weeks: readonly [8, 12];
+  tm_recalc_after_test: true;
+  deload_every_weeks: readonly [4, 6];
+}
+
+export const STRENGTH_PEAK_PROGRESSION_HOOK: StrengthPeakProgressionHook = {
+  t1_load_increment_kg: 2.5,
+  optional_amrap: true,
+  tm_bump_pct_after_green_block: 2.5,
+  freeze_on: ['peak_taper', 'test'],
+};
+
+export const HYPERTROPHY_PROGRESSION_HOOK: HypertrophyProgressionHook = {
+  progress: 'reps_before_load',
+  hypertrophy_rep_range: [6, 12],
+  tm_recalc_every_weeks: [8, 12],
+  tm_recalc_after_test: true,
+  deload_every_weeks: [4, 6],
+};
 
 /**
  * Calendar windows for the 2026 test cycle.
@@ -76,6 +139,10 @@ export interface MesocycleContext {
   /** When true, Phase 2 must not mutate loads (taper + test). */
   freezeProgression: boolean;
   testLiftOrder: readonly TestLift[];
+  target_test_date: string | null;
+  training_mode: TrainingMode;
+  /** Alias of training_mode (`peak` === `strength_peak`). */
+  program_mode: ProgramMode;
 }
 
 /**
@@ -91,10 +158,13 @@ export interface ProgressionEngine {
     logs: SessionLog[];
     trainingMaxes: TrainingMaxes;
     asOf: string;
+    training_mode: TrainingMode;
+    target_test_date: string | null;
   }): {
     template_day: SessionLog['template_day'];
     lifts: SessionLog['lifts'];
     freezeProgression: boolean;
+    training_mode: TrainingMode;
   };
 }
 

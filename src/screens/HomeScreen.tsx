@@ -35,11 +35,14 @@ export function HomeScreen({
         <p className="muted">{formatDisplayDate(date)}</p>
         {meso.block && meso.phase ? (
           <p className="phase-chip" title="Phase 2 calendar hook — engine not implemented">
-            Block {meso.block} · {meso.phase.replace('_', ' ')}
+            Block {meso.block} · {meso.phase.replaceAll('_', ' ')} ·{' '}
+            {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>
         ) : (
-          <p className="phase-chip dim">Off-block · Phase 2 calendar hook</p>
+          <p className="phase-chip dim" title="Phase 2 calendar hook — engine not implemented">
+            Off-block · {meso.training_mode.replaceAll('_', ' ')}
+          </p>
         )}
       </header>
 

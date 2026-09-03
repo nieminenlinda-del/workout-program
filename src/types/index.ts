@@ -22,18 +22,28 @@ export { DEFAULT_READINESS } from './session';
 
 export type {
   BlockPhase,
+  HypertrophyProgressionHook,
   MesocycleBlock,
   MesocycleContext,
   MesocycleWindow,
+  ProgramMode,
   ProgressionEngine,
+  StrengthPeakProgressionHook,
   TestLift,
   TrainingMaxes,
+  TrainingMode,
 } from './phase2';
 export {
+  HYPERTROPHY_PROGRESSION_HOOK,
   MESOCYCLE_WINDOWS,
+  PEAKING_PHASES,
   Phase2NotImplementedError,
   SEED_TRAINING_MAXES,
+  STRENGTH_PEAK_PROGRESSION_HOOK,
+  TARGET_TEST_DATE,
   TEST_DAY,
   TEST_LIFT_ORDER,
+  programModeFrom,
   progressionEngineStub,
+  trainingModeFrom,
 } from './phase2';

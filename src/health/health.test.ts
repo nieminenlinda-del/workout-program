@@ -28,7 +28,7 @@ describe('Apple Health XML parser', () => {
 
   it('ingests priority records from a synthetic export.xml and skips steps', () => {
     const { samples, exportDate } = parseHealthXmlString(fixtureXml);
-    expect(exportDate).toBe(new Date('2026-09-11T21:00:00+03:00').toISOString());
+    expect(exportDate).toBe(new Date('2026-09-04T21:00:00+03:00').toISOString());
     expect(samples.some((s) => s.type.includes('StepCount'))).toBe(false);
     expect(countsByType(samples)).toMatchObject({
       [SAMPLE_TYPE.ActiveEnergyBurned]: 4,
@@ -69,15 +69,15 @@ describe('daily active energy rollup', () => {
     const unique = dedupeSamples(samples);
     const days = Object.fromEntries(rollupDays(unique).map((row) => [row.date, row]));
 
-    expect(days['2026-09-07']?.active_kcal).toBe(450);
-    expect(days['2026-09-07']?.sources).toEqual(expect.arrayContaining(['ActivitySummary', 'Apple Watch']));
-    expect(days['2026-09-08']?.active_kcal).toBe(210);
-    expect(days['2026-09-09']?.active_kcal).toBe(55);
-    expect(days['2026-09-10']).toBeUndefined();
+    expect(days['2026-08-31']?.active_kcal).toBe(450);
+    expect(days['2026-08-31']?.sources).toEqual(expect.arrayContaining(['ActivitySummary', 'Apple Watch']));
+    expect(days['2026-09-01']?.active_kcal).toBe(210);
+    expect(days['2026-09-02']?.active_kcal).toBe(55);
+    expect(days['2026-09-03']).toBeUndefined();
 
-    const mondaySamples = unique.filter((s) => s.day === '2026-09-07');
+    const mondaySamples = unique.filter((s) => s.day === '2026-08-31');
     expect(mondaySamples.some((s) => s.type === SAMPLE_TYPE.Workout)).toBe(true);
-    expect(rollupDay('2026-09-07', mondaySamples).active_kcal).toBe(450);
+    expect(rollupDay('2026-08-31', mondaySamples).active_kcal).toBe(450);
   });
 
   it('converts kJ ActiveEnergyBurned when no ActivitySummary exists', () => {
@@ -111,16 +111,16 @@ describe('training-day join', () => {
   it('joins last N days of active energy with training vs rest labels', () => {
     const { samples } = parseHealthXmlString(fixtureXml);
     const daily = rollupDays(dedupeSamples(samples));
-    const rows = lastNTrainingDays(daily, 5, '2026-09-11');
+    const rows = lastNTrainingDays(daily, 5, '2026-09-04');
     expect(rows.map((row) => ({ date: row.date, day: row.template_day, kcal: row.active_kcal }))).toEqual([
-      { date: '2026-09-11', day: 'D', kcal: 0 },
-      { date: '2026-09-10', day: 'C', kcal: 0 },
-      { date: '2026-09-09', day: 'rest', kcal: 55 },
-      { date: '2026-09-08', day: 'B', kcal: 210 },
-      { date: '2026-09-07', day: 'A', kcal: 450 },
+      { date: '2026-09-04', day: 'D', kcal: 0 },
+      { date: '2026-09-03', day: 'C', kcal: 0 },
+      { date: '2026-09-02', day: 'rest', kcal: 55 },
+      { date: '2026-09-01', day: 'B', kcal: 210 },
+      { date: '2026-08-31', day: 'A', kcal: 450 },
     ]);
-    expect(joinTrainingDay('2026-09-07', daily.find((d) => d.date === '2026-09-07'))).toEqual({
-      date: '2026-09-07',
+    expect(joinTrainingDay('2026-08-31', daily.find((d) => d.date === '2026-08-31'))).toEqual({
+      date: '2026-08-31',
       template_day: 'A',
       active_kcal: 450,
     });
@@ -137,15 +137,15 @@ describe('health import pipeline', () => {
     const repo = createMemoryHealthRepository();
     const meta = await runHealthImport(file, repo, {
       fileName: 'export.zip',
-      now: new Date('2026-09-11T18:00:00.000Z'),
+      now: new Date('2026-09-04T18:00:00.000Z'),
     });
 
-    expect(meta.exportDate).toBe(new Date('2026-09-11T21:00:00+03:00').toISOString());
+    expect(meta.exportDate).toBe(new Date('2026-09-04T21:00:00+03:00').toISOString());
     expect(meta.sampleCount).toBe(9);
     expect(meta.newSamples).toBe(9);
     expect(meta.duplicateSamples).toBe(1);
-    expect(await repo.getDaily('2026-09-07')).toMatchObject({ active_kcal: 450 });
-    expect(await repo.getDaily('2026-09-09')).toMatchObject({ active_kcal: 55 });
+    expect(await repo.getDaily('2026-08-31')).toMatchObject({ active_kcal: 450 });
+    expect(await repo.getDaily('2026-09-02')).toMatchObject({ active_kcal: 55 });
 
     const again = await runHealthImport(file, repo, { fileName: 'export.zip' });
     expect(again.sampleCount).toBe(9);
@@ -165,9 +165,9 @@ describe('linda-health IndexedDB', () => {
     const xmlFile = new File([fixtureXml], 'export.xml', { type: 'text/xml' });
     const meta = await runHealthImport(xmlFile, repo, { fileName: 'export.xml' });
     expect(meta.sampleCount).toBe(9);
-    expect(await repo.getDaily('2026-09-08')).toMatchObject({ date: '2026-09-08', active_kcal: 210 });
-    const range = await repo.listDailyRange('2026-09-07', '2026-09-11');
-    expect(range.map((row) => row.date)).toEqual(['2026-09-09', '2026-09-08', '2026-09-07']);
+    expect(await repo.getDaily('2026-09-01')).toMatchObject({ date: '2026-09-01', active_kcal: 210 });
+    const range = await repo.listDailyRange('2026-08-31', '2026-09-04');
+    expect(range.map((row) => row.date)).toEqual(['2026-09-02', '2026-09-01', '2026-08-31']);
     expect((await repo.getMeta())?.fileName).toBe('export.xml');
   });
 });

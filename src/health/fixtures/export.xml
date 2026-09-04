@@ -3,19 +3,19 @@
 <!-- HealthKit Export Version: 13 -->
 ]>
 <HealthData locale="en_FI">
-  <ExportDate value="2026-09-11 21:00:00 +0300"/>
+  <ExportDate value="2026-09-04 21:00:00 +0300"/>
   <Me HKCharacteristicTypeIdentifierBiologicalSex="HKBiologicalSexFemale"/>
-  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="12.5" startDate="2026-09-07 08:00:00 +0300" endDate="2026-09-07 08:10:00 +0300"/>
-  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="12.5" startDate="2026-09-07 08:00:00 +0300" endDate="2026-09-07 08:10:00 +0300"/>
-  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="30" startDate="2026-09-07 18:00:00 +0300" endDate="2026-09-07 18:20:00 +0300"/>
-  <Record type="HKQuantityTypeIdentifierBasalEnergyBurned" sourceName="Apple Watch" unit="kcal" value="70" startDate="2026-09-07 08:00:00 +0300" endDate="2026-09-07 09:00:00 +0300"/>
-  <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" unit="count/min" value="118" startDate="2026-09-07 08:05:00 +0300" endDate="2026-09-07 08:05:00 +0300"/>
-  <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="1000" startDate="2026-09-07 08:00:00 +0300" endDate="2026-09-07 09:00:00 +0300"/>
-  <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" duration="45" durationUnit="min" totalEnergyBurned="280" totalEnergyBurnedUnit="kcal" sourceName="Apple Watch" startDate="2026-09-07 17:30:00 +0300" endDate="2026-09-07 18:15:00 +0300">
+  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="12.5" startDate="2026-08-31 08:00:00 +0300" endDate="2026-08-31 08:10:00 +0300"/>
+  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="12.5" startDate="2026-08-31 08:00:00 +0300" endDate="2026-08-31 08:10:00 +0300"/>
+  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="30" startDate="2026-08-31 18:00:00 +0300" endDate="2026-08-31 18:20:00 +0300"/>
+  <Record type="HKQuantityTypeIdentifierBasalEnergyBurned" sourceName="Apple Watch" unit="kcal" value="70" startDate="2026-08-31 08:00:00 +0300" endDate="2026-08-31 09:00:00 +0300"/>
+  <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" unit="count/min" value="118" startDate="2026-08-31 08:05:00 +0300" endDate="2026-08-31 08:05:00 +0300"/>
+  <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="1000" startDate="2026-08-31 08:00:00 +0300" endDate="2026-08-31 09:00:00 +0300"/>
+  <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" duration="45" durationUnit="min" totalEnergyBurned="280" totalEnergyBurnedUnit="kcal" sourceName="Apple Watch" startDate="2026-08-31 17:30:00 +0300" endDate="2026-08-31 18:15:00 +0300">
     <MetadataEntry key="HKIndoorWorkout" value="1"/>
   </Workout>
-  <ActivitySummary dateComponents="2026-09-07" activeEnergyBurned="450" activeEnergyBurnedGoal="500" activeEnergyBurnedUnit="kcal" appleExerciseTime="40" appleExerciseTimeGoal="30" appleStandHours="10" appleStandHoursGoal="12"/>
-  <ActivitySummary dateComponents="2026-09-08" activeEnergyBurned="210" activeEnergyBurnedGoal="500" activeEnergyBurnedUnit="kcal"/>
-  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="55" startDate="2026-09-09 09:00:00 +0300" endDate="2026-09-09 09:30:00 +0300"/>
-  <Workout workoutActivityType="HKWorkoutActivityTypeYoga" duration="20" durationUnit="min" totalEnergyBurned="90" totalEnergyBurnedUnit="kcal" sourceName="Apple Watch" startDate="2026-09-10 07:00:00 +0300" endDate="2026-09-10 07:20:00 +0300"/>
+  <ActivitySummary dateComponents="2026-08-31" activeEnergyBurned="450" activeEnergyBurnedGoal="500" activeEnergyBurnedUnit="kcal" appleExerciseTime="40" appleExerciseTimeGoal="30" appleStandHours="10" appleStandHoursGoal="12"/>
+  <ActivitySummary dateComponents="2026-09-01" activeEnergyBurned="210" activeEnergyBurnedGoal="500" activeEnergyBurnedUnit="kcal"/>
+  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kcal" value="55" startDate="2026-09-02 09:00:00 +0300" endDate="2026-09-02 09:30:00 +0300"/>
+  <Workout workoutActivityType="HKWorkoutActivityTypeYoga" duration="20" durationUnit="min" totalEnergyBurned="90" totalEnergyBurnedUnit="kcal" sourceName="Apple Watch" startDate="2026-09-03 07:00:00 +0300" endDate="2026-09-03 07:20:00 +0300"/>
 </HealthData>

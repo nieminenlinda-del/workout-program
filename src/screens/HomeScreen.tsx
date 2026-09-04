@@ -1,9 +1,7 @@
-import { TemplatePicker } from '../components/TemplatePicker';
-import { DAY_TEMPLATES, exerciseName } from '../data/templates';
+import { PlannedSessionCard } from '../components/PlannedSessionCard';
 import { getMesocycleContext } from '../domain/phase2Calendar';
-import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
+import { formatDisplayDate, TEMPLATE_DAY_LABELS, WEEKDAY_BY_LETTER } from '../domain/templateDay';
 import type { CanonicalTemplateDay, SessionDraft } from '../types/session';
-import type { ExerciseId } from '../types/exercises';
 import { SEED_TRAINING_MAXES } from '../types/phase2';
 
 export function HomeScreen({
@@ -29,7 +27,6 @@ export function HomeScreen({
   onInterval: () => void;
   onHealth: () => void;
 }) {
-  const template = DAY_TEMPLATES[templateDay];
   const meso = getMesocycleContext(date);
 
   return (
@@ -63,38 +60,18 @@ export function HomeScreen({
               Resume
             </button>
             <button type="button" className="btn btn-ghost" onClick={onStart}>
-              New {template.weekday} session
+              New {WEEKDAY_BY_LETTER[templateDay]} session
             </button>
           </div>
         </section>
       ) : null}
 
-      <section className="card">
-        <p className="kicker">Template day</p>
-        <TemplatePicker value={templateDay} onChange={onTemplateDay} />
-        <h2 className="template-heading">{template.title}</h2>
-        <p className="muted">{template.focus}</p>
-        <ol className="lift-preview">
-          {template.slots.map((slot) => (
-            <li key={slot.slot_id}>
-              <span className={`role-tag role-${slot.role}`}>{slot.role}</span>
-              <span>
-                {exerciseName(slot.exercise_id)}
-                {uniqueAltNames(slot.exercise_id, slot.alternatives).length > 0 ? (
-                  <em className="alt">
-                    {' '}
-                    or {uniqueAltNames(slot.exercise_id, slot.alternatives).join(' / ')}
-                  </em>
-                ) : null}
-                {slot.optional ? <em className="alt"> (optional)</em> : null}
-              </span>
-            </li>
-          ))}
-        </ol>
-        <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
-          {draft ? 'Replace draft & start' : 'Start session'}
-        </button>
-      </section>
+      <PlannedSessionCard
+        templateDay={templateDay}
+        onTemplateDay={onTemplateDay}
+        draft={draft}
+        onStart={onStart}
+      />
 
       <p className="tm-note">
         Training maxes (docs only): squat {SEED_TRAINING_MAXES.squat_kg} · bench{' '}
@@ -112,11 +89,6 @@ export function HomeScreen({
       </button>
     </main>
   );
-}
-
-function uniqueAltNames(primary: ExerciseId, alternatives: ExerciseId[]): string[] {
-  const primaryName = exerciseName(primary);
-  return [...new Set(alternatives.map(exerciseName).filter((name) => name !== primaryName))];
 }
 
 function templateDayForDraft(draft: SessionDraft): CanonicalTemplateDay {

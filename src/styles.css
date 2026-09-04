@@ -245,7 +245,9 @@ button {
   font-size: 28px;
 }
 
-.lift-preview {
+.lift-preview,
+.workout-preview,
+.preview-sets {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -254,11 +256,73 @@ button {
   gap: 10px;
 }
 
-.lift-preview li {
+.lift-preview li,
+.preview-lift {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.preview-lift-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: flex-start;
-  font-size: 15px;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  padding: 6px 0;
+  min-height: 56px;
+}
+
+.preview-lift-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preview-lift-copy strong {
+  font-weight: 650;
+}
+
+.preview-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.preview-chevron {
+  color: var(--amber);
+  font-size: 16px;
+  padding-top: 4px;
+}
+
+.preview-set {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--bg-elev);
+}
+
+.preview-rest {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.preview-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .alt {

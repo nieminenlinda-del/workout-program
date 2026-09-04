@@ -8,12 +8,22 @@ export interface ImportShortcutOptions {
   now?: Date;
 }
 
+function readBlobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read Shortcuts JSON'));
+    reader.readAsText(blob);
+  });
+}
+
 export async function importShortcutJson(
   file: Blob,
   repo: HealthRepository,
   options: ImportShortcutOptions = {},
 ): Promise<ShortcutImportResult> {
-  const text = await file.text();
+  const text = await readBlobText(file);
   const parsed = parseShortcutJsonText(text);
   await repo.putDaily(parsed.days);
 

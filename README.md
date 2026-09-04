@@ -14,7 +14,13 @@ Phase 2 (auto-progression toward a **2026-11-21** test, including PowerCombo `hy
 
 The home-screen icon opens Linda Lift full-screen. Logs stay on the phone (IndexedDB) and work offline after the first visit.
 
-If the page 404s after a new deploy, GitHub Pages may still need **Settings → Pages → Source = GitHub Actions** (one-time).
+### One-time GitHub Pages setup
+
+The first deploy fails until Pages is enabled (this cannot be done from the deploy token):
+
+1. Open [Settings → Pages](https://github.com/nieminenlinda-del/workout-program/settings/pages).
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. Re-run the failed **Deploy to GitHub Pages** workflow (Actions → the failed run → **Re-run jobs**), or push another commit to `main`.
 
 ## Quick start
 

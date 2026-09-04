@@ -8,7 +8,8 @@ src/
   data/templates  Static A–D seed (no engine)
   domain/         Readiness light, draft factory, calendar hook, countdown + interval timers
   db/             SessionRepository + IndexedDB + in-memory (tests)
-  screens/        Readiness → workout → set log → rest → save; interval timer
+  health/         Shared linda-health store, Apple export parser, training-day join
+  screens/        Readiness → workout → set log → rest → save; interval timer; Health import
 ```
 
 ## Persistence contract
@@ -23,6 +24,37 @@ src/
 IndexedDB database: `linda-lift` (v1). Stores: `sessions` (key `session_id`, index `by-date`), `drafts` (key `current`).
 
 Swap the backend by implementing `SessionRepository`. Do not import `idb` from screens.
+
+## Shared Apple Health store (`linda-health`)
+
+Apple Health export ingest is a **separate** IndexedDB, name exactly `linda-health` (v1). It is not mixed into `linda-lift`, so session logging / timers / Phase 2 hooks stay untouched.
+
+Ravinto (calorie-tracker) is deployed on the **same origin** (`https://nieminenlinda-del.github.io/calorie-tracker/`). IndexedDB is origin-scoped, so both PWAs can open `linda-health` if they use this name and schema. This repo is the source of truth for the store; calorie-tracker should not bump `HEALTH_DB_VERSION` without coordinating.
+
+```
+src/health/
+  constants.ts     HEALTH_DB_NAME = 'linda-health', Europe/Helsinki
+  types.ts         HealthSample, DailyActiveEnergy, ImportMeta
+  parse/           fflate unzip + saxes (Web Worker) — never DOMParser a giant string
+  rollup.ts        daily active kcal from ActiveEnergyBurned / ActivitySummary
+  trainingDayJoin  date → { template_day A|B|C|D|rest, active_kcal }
+```
+
+Stores:
+
+| Store | Key | Shape |
+| --- | --- | --- |
+| `health_samples` | `id` | `{ id, type, sourceName, unit, value, startDate, endDate, workoutId? }` plus derived `day` (Helsinki) for indexes |
+| `daily_active_energy` | `date` | `{ date, active_kcal, sources[] }` |
+| `import_meta` | `current` | last import time, export date if present, sample counts |
+
+`id` is the dedupe key `(type, sourceName, startDate, endDate, value)`. Re-importing the same export is idempotent.
+
+Day buckets and the last-N-days view use **Europe/Helsinki**, not the device locale.
+
+Ingested types: `ActiveEnergyBurned`, `BasalEnergyBurned`, `HKWorkout` (opening-tag `totalEnergyBurned` or nested `WorkoutStatistics`), `ActivitySummary.activeEnergyBurned`, `HeartRate` (stored, not used in the daily active rollup). Daily `active_kcal` prefers ActivitySummary for that Helsinki date, else sums ActiveEnergyBurned samples. Workout kcal is stored but not added on top. v1 skips `workout-routes/*.gpx`. Polar Beat is ingested only as Health `Workout` records already on the phone.
+
+The UI file picker posts the `File` to `src/health/parse/worker.ts`, which stream-unzips and SAX-parses. Full exports can be hundreds of MB of XML and must never be `DOMParser`’d as one string. Tests use tiny fixtures that match real attribute shapes (`+0300`, curly apostrophe in `Linda’s Apple Watch`, multi-line Polar `Workout` tags).
 
 ## Phase 2 plug-in: progression engine
 

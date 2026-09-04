@@ -16,6 +16,7 @@ export function HomeScreen({
   onResume,
   onHistory,
   onInterval,
+  onHealth,
 }: {
   date: string;
   templateDay: CanonicalTemplateDay;
@@ -26,6 +27,7 @@ export function HomeScreen({
   onResume: () => void;
   onHistory: () => void;
   onInterval: () => void;
+  onHealth: () => void;
 }) {
   const template = DAY_TEMPLATES[templateDay];
   const meso = getMesocycleContext(date);
@@ -104,6 +106,9 @@ export function HomeScreen({
       </button>
       <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>
         Interval timer
+      </button>
+      <button type="button" className="btn btn-ghost btn-block" onClick={onHealth}>
+        Apple Health
       </button>
     </main>
   );

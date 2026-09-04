@@ -81,7 +81,8 @@ export function HealthScreen({ onBack }: { onBack: () => void }) {
         <p className="kicker">Export file</p>
         <p className="muted">
           Health app → profile photo → Export All Health Data. Pick the <code>.zip</code> (or{' '}
-          <code>export.xml</code>). Parsing runs in a background worker.
+          <code>export.xml</code>). Full exports can be hundreds of MB — parsing streams in a
+          background worker. GPS workout routes are skipped.
         </p>
         <input
           ref={inputRef}

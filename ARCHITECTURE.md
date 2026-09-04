@@ -52,9 +52,9 @@ Stores:
 
 Day buckets and the last-N-days view use **Europe/Helsinki**, not the device locale.
 
-Ingested types: `ActiveEnergyBurned`, `BasalEnergyBurned`, `HKWorkout` (with `totalEnergyBurned`), `ActivitySummary.activeEnergyBurned`, `HeartRate` (stored, not used in the daily active rollup). Daily `active_kcal` prefers ActivitySummary for that date, else sums ActiveEnergyBurned samples. Workout kcal is stored but not added on top.
+Ingested types: `ActiveEnergyBurned`, `BasalEnergyBurned`, `HKWorkout` (opening-tag `totalEnergyBurned` or nested `WorkoutStatistics`), `ActivitySummary.activeEnergyBurned`, `HeartRate` (stored, not used in the daily active rollup). Daily `active_kcal` prefers ActivitySummary for that Helsinki date, else sums ActiveEnergyBurned samples. Workout kcal is stored but not added on top. v1 skips `workout-routes/*.gpx`. Polar Beat is ingested only as Health `Workout` records already on the phone.
 
-The UI file picker posts the `File` to `src/health/parse/worker.ts`, which stream-unzips and SAX-parses. Tests call the same parser/ingest functions with a tiny synthetic `export.xml` (no real Health dump is in the repo).
+The UI file picker posts the `File` to `src/health/parse/worker.ts`, which stream-unzips and SAX-parses. Full exports can be hundreds of MB of XML and must never be `DOMParser`’d as one string. Tests use tiny fixtures that match real attribute shapes (`+0300`, curly apostrophe in `Linda’s Apple Watch`, multi-line Polar `Workout` tags).
 
 ## Phase 2 plug-in: progression engine
 

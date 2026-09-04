@@ -23,8 +23,12 @@ function basename(path: string): string {
   return normalized.split('/').pop() ?? normalized;
 }
 
-function isExportXmlName(path: string): boolean {
-  return basename(path) === 'export.xml';
+/** v1: only apple_health_export/export.xml. Skip CDA, GPX routes, ECG, etc. */
+export function shouldInflateHealthZipEntry(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/');
+  if (/(^|\/)workout-routes\//i.test(normalized)) return false;
+  if (normalized.toLowerCase().endsWith('.gpx')) return false;
+  return basename(normalized) === 'export.xml';
 }
 
 async function sniffKind(file: Blob): Promise<'zip' | 'xml'> {
@@ -111,8 +115,9 @@ function streamXmlFromZip(
     };
 
     uz.onfile = (zfile) => {
-      const wanted = isExportXmlName(zfile.name);
-      if (wanted) found = true;
+      const wanted = shouldInflateHealthZipEntry(zfile.name);
+      if (!wanted) return;
+      found = true;
       zfile.ondata = (err, data, final) => {
         if (err) {
           fail(err);

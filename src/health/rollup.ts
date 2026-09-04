@@ -10,7 +10,7 @@ export function toKcal(value: number, unit: string): number {
 }
 
 export function roundKcal(value: number): number {
-  return Math.round(value * 10) / 10;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function unique(values: string[]): string[] {

@@ -73,13 +73,15 @@ Drafts are stored separately so a mid-session refresh on the gym floor does not 
 
 ## Apple Health import
 
-On iPhone: **Health → profile photo → Export All Health Data**. Save the zip, open Linda Lift, **Apple Health**, and pick the file. Parsing runs in a Web Worker (stream unzip + SAX). Nothing is uploaded.
+On iPhone: **Health → profile photo → Export All Health Data**. Save the zip, open Linda Lift, **Apple Health**, and pick the file. Nothing is uploaded.
+
+A real export is often tens of MB (`export.zip` ~45MB) with `apple_health_export/export.xml` **hundreds of MB uncompressed** (~675MB). The importer **must stream-unzip and SAX-parse** in a Web Worker — do not open that XML in a text editor or feed it to `DOMParser`. `workout-routes/*.gpx` files are skipped in v1. Polar Beat sessions already written into Health are read from the same `export.xml` (not Polar AccessLink).
 
 Data is written to IndexedDB **`linda-health`** (not the session log database). Ravinto at [https://nieminenlinda-del.github.io/calorie-tracker/](https://nieminenlinda-del.github.io/calorie-tracker/) shares this origin, so it can read the same store. Schema: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-The last 14 days of **active energy** are shown with Linda’s training-day map: Mon=A, Tue=B, Thu=C, Fri=D, other days rest. Timezone for day buckets is **Europe/Helsinki**.
+The last 14 days of **active energy** are shown with Linda’s training-day map: Mon=A, Tue=B, Thu=C, Fri=D, other days rest. Timezone for day buckets is **Europe/Helsinki**. Daily totals prefer `ActivitySummary.activeEnergyBurned` for that date; if none, they sum `ActiveEnergyBurned` samples.
 
-No sample export is shipped in the app. Parser tests use a tiny synthetic `export.xml`.
+Parser tests use tiny synthetic fixtures that copy real attribute shapes (`+0300` timestamps, `Linda’s Apple Watch`, Polar Beat multi-line `Workout` tags). No full dump is shipped in the app.
 
 ## Seed templates (static)
 

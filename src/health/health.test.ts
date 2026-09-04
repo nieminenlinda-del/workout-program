@@ -1,16 +1,20 @@
 import { zipSync, strToU8 } from 'fflate';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SAMPLE_TYPE } from './constants';
-import { addCalendarDays, helsinkiDay, startOfHelsinkiDay } from './dates';
+import { addCalendarDays, helsinkiDay, parseHealthDate, startOfHelsinkiDay } from './dates';
 import { dedupeSamples } from './dedupe';
 import { createHealthIndexedDbRepository, resetHealthDbConnection } from './indexedDbRepository';
 import { createMemoryHealthRepository } from './memoryRepository';
 import { runHealthImport } from './parse/ingest';
 import { parseHealthXmlChunks, parseHealthXmlString } from './parse/saxParser';
 import { stripMalformedDoctype } from './parse/stripDoctype';
+import { shouldInflateHealthZipEntry } from './parse/unzipExport';
 import { rollupDay, rollupDays } from './rollup';
 import { joinTrainingDay, lastNTrainingDays, templateDayForDate } from './trainingDayJoin';
 import fixtureXml from './fixtures/export.xml?raw';
+import realSnippetsXml from './fixtures/real-snippets.xml?raw';
+
+const LINDA_WATCH = 'Linda\u2019s Apple Watch';
 
 function countsByType(samples: { type: string }[]): Record<string, number> {
   const counts: Record<string, number> = {};
@@ -40,6 +44,11 @@ describe('Apple Health XML parser', () => {
     expect(samples.filter((s) => s.type === SAMPLE_TYPE.ActiveEnergyBurned).map((s) => s.value)).toEqual([
       12.5, 12.5, 30, 55,
     ]);
+    expect(samples.every((s) => s.type !== SAMPLE_TYPE.ActiveEnergyBurned || s.sourceName === LINDA_WATCH)).toBe(
+      true,
+    );
+    const polar = samples.find((s) => s.type === SAMPLE_TYPE.Workout && s.sourceName === 'Polar Beat');
+    expect(polar?.value).toBe(12.4);
   });
 
   it('parses the same fixture when fed in tiny SAX chunks', () => {
@@ -70,7 +79,7 @@ describe('daily active energy rollup', () => {
     const days = Object.fromEntries(rollupDays(unique).map((row) => [row.date, row]));
 
     expect(days['2026-08-31']?.active_kcal).toBe(450);
-    expect(days['2026-08-31']?.sources).toEqual(expect.arrayContaining(['ActivitySummary', 'Apple Watch']));
+    expect(days['2026-08-31']?.sources).toEqual(expect.arrayContaining(['ActivitySummary', LINDA_WATCH]));
     expect(days['2026-09-01']?.active_kcal).toBe(210);
     expect(days['2026-09-02']?.active_kcal).toBe(55);
     expect(days['2026-09-03']).toBeUndefined();
@@ -131,6 +140,9 @@ describe('health import pipeline', () => {
   it('unzips apple_health_export/export.xml, writes samples, and rolls up days', async () => {
     const zipped = zipSync({
       'apple_health_export/export_cda.xml': strToU8('<ClinicalDocument/>'),
+      'apple_health_export/workout-routes/route_2026-09-03.gpx': strToU8(
+        '<gpx><trk><name>skip me</name></trk></gpx>',
+      ),
       'apple_health_export/export.xml': strToU8(fixtureXml),
     });
     const file = new File([zipped], 'export.zip', { type: 'application/zip' });
@@ -176,5 +188,65 @@ describe('calendar helper', () => {
   it('walks civil dates without shifting across months', () => {
     expect(addCalendarDays('2026-09-01', -1)).toBe('2026-08-31');
     expect(addCalendarDays('2026-08-31', 1)).toBe('2026-09-01');
+  });
+});
+
+describe('real Health export attribute shapes', () => {
+  it('keeps the curly apostrophe in Linda’s Apple Watch and +0300 timestamps', () => {
+    expect(fixtureXml).toContain(LINDA_WATCH);
+    expect(realSnippetsXml).toContain(
+      'sourceName="Linda\u2019s Apple Watch" sourceVersion="26.5" unit="kcal" creationDate="2026-06-01 00:16:59 +0300" startDate="2026-05-31 23:14:03 +0300" endDate="2026-05-31 23:19:30 +0300" value="1.215"',
+    );
+    expect(realSnippetsXml).toContain(
+      'dateComponents="2026-06-01" activeEnergyBurned="455.96" activeEnergyBurnedGoal="500" activeEnergyBurnedUnit="kcal" appleExerciseTime="74" appleExerciseTimeGoal="30" appleStandHours="11" appleStandHoursGoal="6"',
+    );
+    expect(realSnippetsXml).toContain(
+      'workoutActivityType="HKWorkoutActivityTypeRowing" duration="6.05" durationUnit="min" sourceName="Polar Beat" sourceVersion="450" creationDate="2026-06-01 16:00:07 +0300" startDate="2026-06-01 15:54:00 +0300" endDate="2026-06-01 16:00:03 +0300"',
+    );
+
+    const { samples } = parseHealthXmlString(realSnippetsXml);
+    const active = samples.find((s) => s.type === SAMPLE_TYPE.ActiveEnergyBurned);
+    expect(active?.sourceName).toBe(LINDA_WATCH);
+    expect(active?.value).toBe(1.215);
+    expect(active?.day).toBe('2026-05-31');
+    expect(parseHealthDate('2026-05-31 23:14:03 +0300').toISOString()).toBe('2026-05-31T20:14:03.000Z');
+    expect(helsinkiDay(parseHealthDate('2026-05-31 23:14:03 +0300'))).toBe('2026-05-31');
+  });
+
+  it('reads Polar Beat multi-line workouts from nested WorkoutStatistics, not the opening tag', () => {
+    const { samples } = parseHealthXmlString(realSnippetsXml);
+    const rowing = samples.find((s) => s.type === SAMPLE_TYPE.Workout);
+    expect(rowing).toMatchObject({
+      sourceName: 'Polar Beat',
+      unit: 'kcal',
+      value: 12.408,
+    });
+  });
+
+  it('parses a Polar Workout whose opening tag is split across SAX chunks', () => {
+    const chunks: string[] = [];
+    for (let i = 0; i < realSnippetsXml.length; i += 17) chunks.push(realSnippetsXml.slice(i, i + 17));
+    const streamed = parseHealthXmlChunks(chunks);
+    const whole = parseHealthXmlString(realSnippetsXml);
+    expect(streamed.samples).toEqual(whole.samples);
+    expect(streamed.samples.find((s) => s.sourceName === 'Polar Beat')?.value).toBe(12.408);
+  });
+
+  it('prefers ActivitySummary.activeEnergyBurned for that Helsinki date over sample sums', () => {
+    const { samples } = parseHealthXmlString(realSnippetsXml);
+    const days = Object.fromEntries(rollupDays(samples).map((row) => [row.date, row]));
+    expect(days['2026-05-31']?.active_kcal).toBe(1.22);
+    expect(days['2026-05-31']?.sources).toEqual([LINDA_WATCH]);
+    expect(days['2026-06-01']?.active_kcal).toBe(455.96);
+    expect(days['2026-06-01']?.sources).toContain('ActivitySummary');
+  });
+});
+
+describe('health zip entry filter', () => {
+  it('inflates only export.xml and skips workout-routes GPX', () => {
+    expect(shouldInflateHealthZipEntry('apple_health_export/export.xml')).toBe(true);
+    expect(shouldInflateHealthZipEntry('apple_health_export/export_cda.xml')).toBe(false);
+    expect(shouldInflateHealthZipEntry('apple_health_export/workout-routes/route.gpx')).toBe(false);
+    expect(shouldInflateHealthZipEntry('route.gpx')).toBe(false);
   });
 });

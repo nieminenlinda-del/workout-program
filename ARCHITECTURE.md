@@ -33,9 +33,10 @@ Ravinto (calorie-tracker) is deployed on the **same origin** (`https://nieminenl
 
 ```
 src/health/
-  constants.ts     HEALTH_DB_NAME = 'linda-health', Europe/Helsinki
-  types.ts         HealthSample, DailyActiveEnergy, ImportMeta
+  constants.ts     HEALTH_DB_NAME = 'linda-health', Europe/Helsinki, Shortcuts schema id
+  types.ts         HealthSample, DailyActiveEnergy, ImportMeta, ShortcutPayload
   parse/           fflate unzip + saxes (Web Worker) — never DOMParser a giant string
+  parse/shortcutJson.ts  iCloud Drive JSON handoff (`linda-health-shortcut`)
   rollup.ts        daily active kcal from ActiveEnergyBurned / ActivitySummary
   trainingDayJoin  date → { template_day A|B|C|D|rest, active_kcal }
 ```
@@ -54,7 +55,7 @@ Day buckets and the last-N-days view use **Europe/Helsinki**, not the device loc
 
 Ingested types: `ActiveEnergyBurned`, `BasalEnergyBurned`, `HKWorkout` (opening-tag `totalEnergyBurned` or nested `WorkoutStatistics`), `ActivitySummary.activeEnergyBurned`, `HeartRate` (stored, not used in the daily active rollup). Daily `active_kcal` prefers ActivitySummary for that Helsinki date, else sums ActiveEnergyBurned samples. Workout kcal is stored but not added on top. v1 skips `workout-routes/*.gpx`. Polar Beat is ingested only as Health `Workout` records already on the phone.
 
-The UI file picker posts the `File` to `src/health/parse/worker.ts`, which stream-unzips and SAX-parses. Full exports can be hundreds of MB of XML and must never be `DOMParser`’d as one string. Tests use tiny fixtures that match real attribute shapes (`+0300`, curly apostrophe in `Linda’s Apple Watch`, multi-line Polar `Workout` tags).
+The UI file picker posts zip/xml to `src/health/parse/worker.ts`, which stream-unzips and SAX-parses. Full exports can be hundreds of MB of XML and must never be `DOMParser`’d as one string. `.json` files are the iOS Shortcuts iCloud Drive handoff (`linda-health-shortcut`); they upsert `daily_active_energy` on the main thread via `putDaily` (tiny payload). Tests use tiny fixtures that match real attribute shapes (`+0300`, curly apostrophe in `Linda’s Apple Watch`, multi-line Polar `Workout` tags) plus the canonical Shortcuts JSON.
 
 ## Phase 2 plug-in: progression engine
 

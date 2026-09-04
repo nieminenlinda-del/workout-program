@@ -55,3 +55,32 @@ export interface ImportProgress {
   newSamples: number;
   duplicates: number;
 }
+
+/** Canonical iOS Shortcuts payload (identical JSON in Ravinto). */
+export interface ShortcutActivitySummary {
+  activeEnergyBurned: number;
+  unit: string;
+}
+
+export interface ShortcutDay {
+  date: string;
+  active_kcal?: number;
+  sources?: string[];
+  activity_summary?: ShortcutActivitySummary;
+  workouts?: unknown[];
+}
+
+export interface ShortcutPayload {
+  schema: 'linda-health-shortcut';
+  schema_version: 1;
+  exported_at?: string;
+  timezone?: string;
+  source?: string;
+  days: ShortcutDay[];
+}
+
+export interface ShortcutImportResult {
+  daysWritten: number;
+  dates: string[];
+  meta: ImportMeta;
+}

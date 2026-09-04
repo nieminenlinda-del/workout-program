@@ -21,3 +21,8 @@ export const INGEST_RECORD_TYPES = new Set<string>([
 
 export const HEALTH_LOOKBACK_DAYS = 14;
 export const SAMPLE_WRITE_BATCH = 250;
+
+/** Canonical iOS Shortcuts JSON handoff — identical in Ravinto (calorie-tracker). */
+export const SHORTCUT_SCHEMA = 'linda-health-shortcut';
+export const SHORTCUT_SCHEMA_VERSION = 1;
+export const SHORTCUT_FILE_NAME = 'linda-health-shortcut.json';

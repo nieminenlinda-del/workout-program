@@ -1,6 +1,8 @@
 import { HEALTH_LOOKBACK_DAYS } from '../health/constants';
 import { addCalendarDays, helsinkiToday } from '../health/dates';
 import { createHealthIndexedDbRepository } from '../health/indexedDbRepository';
+import { importShortcutJson } from '../health/parse/importShortcut';
+import { looksLikeShortcutJsonFile } from '../health/parse/shortcutJson';
 import { importHealthFileInWorker } from '../health/parse/workerClient';
 import { lastNTrainingDays } from '../health/trainingDayJoin';
 import type { ImportMeta, ImportProgress, TrainingDayEnergy } from '../health/types';
@@ -49,12 +51,16 @@ export function HealthScreen({ onBack }: { onBack: () => void }) {
     if (!file) return;
     setBusy(true);
     setError(null);
-    setProgress({ phase: 'unzip', parsed: 0, written: 0, newSamples: 0, duplicates: 0 });
     try {
-      await importHealthFileInWorker(file, setProgress);
+      if (looksLikeShortcutJsonFile(file)) {
+        await importShortcutJson(file, repo, { fileName: file.name });
+      } else {
+        setProgress({ phase: 'unzip', parsed: 0, written: 0, newSamples: 0, duplicates: 0 });
+        await importHealthFileInWorker(file, setProgress);
+      }
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not import this Health export');
+      setError(err instanceof Error ? err.message : 'Could not import this Health file');
     } finally {
       setBusy(false);
       setProgress(null);
@@ -73,22 +79,28 @@ export function HealthScreen({ onBack }: { onBack: () => void }) {
       </header>
 
       <p className="lede">
-        Import an Apple Health export on this phone. Samples land in the shared{' '}
-        <code>linda-health</code> store so Ravinto can read the same active energy.
+        Import daily active energy on this phone into the shared <code>linda-health</code> store so
+        Ravinto can read the same numbers. Prefer the iOS Shortcuts JSON from iCloud Drive; a full
+        Health export still works.
       </p>
 
       <section className="card">
-        <p className="kicker">Export file</p>
+        <p className="kicker">Import file</p>
         <p className="muted">
-          Health app → profile photo → Export All Health Data. Pick the <code>.zip</code> (or{' '}
-          <code>export.xml</code>). Full exports can be hundreds of MB — parsing streams in a
-          background worker. GPS workout routes are skipped.
+          Daily path: run the <strong>Linda Health Sync</strong> Shortcut, then pick{' '}
+          <code>linda-health-shortcut.json</code> from iCloud Drive (Linda Health folder). Same
+          file also works in Ravinto.
+        </p>
+        <p className="muted">
+          Occasional full dump: Health app → profile photo → Export All Health Data. Pick the{' '}
+          <code>.zip</code> (or <code>export.xml</code>). Full exports can be hundreds of MB —
+          parsing streams in a background worker. GPS workout routes are skipped.
         </p>
         <input
           ref={inputRef}
           className="file-input"
           type="file"
-          accept=".zip,.xml,application/zip,text/xml,application/xml"
+          accept=".zip,.xml,.json,application/zip,text/xml,application/xml,application/json"
           disabled={busy}
           onChange={(event) => void onPick(event.target.files)}
         />
@@ -98,7 +110,7 @@ export function HealthScreen({ onBack }: { onBack: () => void }) {
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
-          {busy ? 'Importing…' : 'Choose Health export'}
+          {busy ? 'Importing…' : 'Import Health file'}
         </button>
         {busy && progress ? (
           <p className="muted">
@@ -121,11 +133,15 @@ export function HealthScreen({ onBack }: { onBack: () => void }) {
             </p>
             <p className="muted">
               {meta.exportDate ? `Export date ${formatStamp(meta.exportDate)} · ` : null}
-              {meta.sampleCount.toLocaleString()} samples stored
+              {meta.fileName?.toLowerCase().endsWith('.json')
+                ? `${(meta.newSamples ?? 0).toLocaleString()} day${meta.newSamples === 1 ? '' : 's'} from Shortcuts`
+                : `${meta.sampleCount.toLocaleString()} samples stored`}
             </p>
           </>
         ) : (
-          <p className="muted">Nothing imported yet. No sample file is bundled with the app.</p>
+          <p className="muted">
+            Nothing imported yet. Import <code>linda-health-shortcut.json</code> or a Health export.
+          </p>
         )}
       </section>
 

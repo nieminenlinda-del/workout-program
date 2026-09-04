@@ -245,6 +245,17 @@ button {
   font-size: 28px;
 }
 
+.preview-lede {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.workout-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .lift-preview {
   list-style: none;
   margin: 0;
@@ -256,9 +267,81 @@ button {
 
 .lift-preview li {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.preview-lift {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: flex-start;
-  font-size: 15px;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elev);
+  color: inherit;
+  text-align: left;
+}
+
+.preview-open .preview-lift {
+  border-color: var(--amber);
+  background: rgba(232, 160, 74, 0.08);
+}
+
+.preview-lift-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.preview-lift-copy strong {
+  font-weight: 650;
+}
+
+.preview-scheme {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.preview-toggle {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.preview-sets {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preview-set {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+
+.preview-rest {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .alt {

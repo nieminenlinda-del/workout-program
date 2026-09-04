@@ -13,7 +13,8 @@ export type AppView =
   | 'save'
   | 'history'
   | 'detail'
-  | 'interval';
+  | 'interval'
+  | 'health';
 
 export function useRepository(): SessionRepository {
   return useMemo(() => createIndexedDbRepository(), []);

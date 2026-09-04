@@ -34,7 +34,7 @@ Open the printed local URL on your phone (same Wi-Fi) or in a mobile viewport. `
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Vite dev server |
-| `npm test` | Vitest (schema, templates, repository) |
+| `npm test` | Vitest (schema, templates, repository, Health parser) |
 | `npm run build` | Typecheck + production PWA build (service worker) |
 | `npm run preview` | Serve the production build |
 
@@ -55,7 +55,8 @@ Pushes to `main` deploy via [`.github/workflows/deploy-pages.yml`](./.github/wor
 3. **Workout** — seed lifts, swap listed alternatives, log each set (`weight_kg`, `reps`, `rpe`, `completed`, optional `amrap`).
 4. **Rest timer** — starts after a completed set using that set’s `rest_sec` (T1 longer, accessory/core shorter). Pause/resume, +15s / +30s, or skip to log the next set. Recovers from lock/background via wall-clock; buzzes + beeps when time is up (vibration does not need audio).
 5. **Interval timer** — separate screen from Today for circuits (rounds × work / rest). Same cues at phase changes.
-6. **Save** — notes, persist `SessionLog` in IndexedDB behind a repository interface.
+6. **Apple Health** — pick a Health export `.zip` or `export.xml`. Active energy is stored on-device and labeled by training day (A–D) vs rest.
+7. **Save** — notes, persist `SessionLog` in IndexedDB behind a repository interface.
 
 ## SessionLog (persisted)
 
@@ -69,6 +70,16 @@ Pushes to `main` deploy via [`.github/workflows/deploy-pages.yml`](./.github/wor
 ```
 
 Drafts are stored separately so a mid-session refresh on the gym floor does not lose the log.
+
+## Apple Health import
+
+On iPhone: **Health → profile photo → Export All Health Data**. Save the zip, open Linda Lift, **Apple Health**, and pick the file. Parsing runs in a Web Worker (stream unzip + SAX). Nothing is uploaded.
+
+Data is written to IndexedDB **`linda-health`** (not the session log database). Ravinto at [https://nieminenlinda-del.github.io/calorie-tracker/](https://nieminenlinda-del.github.io/calorie-tracker/) shares this origin, so it can read the same store. Schema: [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+The last 14 days of **active energy** are shown with Linda’s training-day map: Mon=A, Tue=B, Thu=C, Fri=D, other days rest. Timezone for day buckets is **Europe/Helsinki**.
+
+No sample export is shipped in the app. Parser tests use a tiny synthetic `export.xml`.
 
 ## Seed templates (static)
 

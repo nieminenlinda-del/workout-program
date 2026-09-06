@@ -49,6 +49,7 @@ export function WorkoutPreview({
                   ) : null}
                   {lift.optional ? <em className="alt"> (optional)</em> : null}
                   <span className="preview-scheme">
+                    {lift.warmupLabel ? `${lift.warmupLabel} · ` : ''}
                     {lift.scheme}
                     {lift.restLabel ? ` · ${lift.restLabel}` : ''}
                   </span>
@@ -59,8 +60,8 @@ export function WorkoutPreview({
               {expanded ? (
                 <ol className="preview-sets">
                   {lift.sets.map((set) => (
-                    <li key={set.setNumber} className="preview-set">
-                      <span className="set-num">{set.setNumber}</span>
+                    <li key={set.setNumber} className={`preview-set ${set.warmup ? 'warmup' : ''}`}>
+                      <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>{set.label}</span>
                       <span className="set-main">
                         {formatLoad(set.weight_kg)} × {set.reps}
                         {set.amrap ? '+' : ''}

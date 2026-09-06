@@ -1,14 +1,17 @@
 import { exerciseName, type SeedSet, type TemplateSlot } from '../data/templates';
 import type { ExerciseId } from '../types/exercises';
 import { formatClock } from './countdown';
+import { isWarmupSet, setDisplayLabel, workSets } from './sets';
 
 export interface PlannedSetLine {
   setNumber: number;
+  label: string;
   weight_kg: number;
   reps: number;
   rpe: number;
   amrap: boolean;
   rest_sec: number;
+  warmup: boolean;
 }
 
 export interface PlannedLiftSummary {
@@ -18,6 +21,7 @@ export interface PlannedLiftSummary {
   alternatives: string[];
   optional: boolean;
   scheme: string;
+  warmupLabel: string | null;
   restLabel: string | null;
   sets: PlannedSetLine[];
 }
@@ -32,18 +36,19 @@ export function formatLoad(weightKg: number): string {
   return weightKg > 0 ? `${weightKg} kg` : 'BW';
 }
 
-/** Compact sets × reps, e.g. `4 × 5+` or `3 × 8, 2 × 6`. */
+/** Compact work-set scheme, e.g. `4 × 5+` or `3 × 8, 2 × 6`. Warmups omitted. */
 export function formatSetScheme(sets: SeedSet[]): string {
-  if (sets.length === 0) return '';
-  const reps = sets.map((s) => s.reps);
+  const work = workSets(sets);
+  if (work.length === 0) return '';
+  const reps = work.map((s) => s.reps);
   const allSameReps = reps.every((r) => r === reps[0]);
-  const anyAmrap = sets.some((s) => s.amrap);
+  const anyAmrap = work.some((s) => s.amrap);
   if (allSameReps) {
-    return `${sets.length} × ${reps[0]}${anyAmrap ? '+' : ''}`;
+    return `${work.length} × ${reps[0]}${anyAmrap ? '+' : ''}`;
   }
 
   const groups: { reps: number; count: number; amrap: boolean }[] = [];
-  for (const set of sets) {
+  for (const set of work) {
     const amrap = Boolean(set.amrap);
     const last = groups[groups.length - 1];
     if (last && last.reps === set.reps && last.amrap === amrap) {
@@ -62,10 +67,18 @@ export function formatRestLabel(restSec: number): string {
 }
 
 export function uniformRestSeconds(sets: SeedSet[]): number | null {
-  if (sets.length === 0) return null;
-  const first = sets[0].rest_sec;
-  if (sets.some((s) => s.rest_sec !== first)) return null;
+  const work = workSets(sets);
+  if (work.length === 0) return null;
+  const first = work[0].rest_sec;
+  if (work.some((s) => s.rest_sec !== first)) return null;
   return first;
+}
+
+export function formatWarmupLabel(sets: SeedSet[]): string | null {
+  const warm = sets.filter(isWarmupSet);
+  if (warm.length === 0) return null;
+  const kg = warm.map((s) => formatLoad(s.weight_kg));
+  return `W ${kg.join(' → ')}`;
 }
 
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
@@ -77,14 +90,17 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
     scheme: formatSetScheme(slot.sets),
+    warmupLabel: formatWarmupLabel(slot.sets),
     restLabel: restSec != null ? formatRestLabel(restSec) : null,
     sets: slot.sets.map((set, index) => ({
       setNumber: index + 1,
+      label: setDisplayLabel(slot.sets, index),
       weight_kg: set.weight_kg,
       reps: set.reps,
       rpe: set.rpe,
       amrap: Boolean(set.amrap),
       rest_sec: set.rest_sec,
+      warmup: isWarmupSet(set),
     })),
   };
 }

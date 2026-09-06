@@ -1,4 +1,5 @@
 import type { LoggedSet, SessionDraft } from '../types/session';
+import { isWarmupSet } from './sets';
 
 function clampWeightKg(weightKg: number): number {
   if (!Number.isFinite(weightKg)) return 0;
@@ -11,7 +12,7 @@ function clampWeightKg(weightKg: number): number {
  *
  * - Always updates `setIndex`.
  * - When `applyToRemaining` is true, copies the same kg onto later **unlogged**
- *   sets of that lift. Already-completed sets stay as logged.
+ *   sets of the **same kind** (warmup→warmup, work→work). Completed sets stay.
  */
 export function overrideSetWeight(
   draft: SessionDraft,
@@ -21,13 +22,19 @@ export function overrideSetWeight(
   applyToRemaining = false,
 ): SessionDraft {
   const nextKg = clampWeightKg(weightKg);
+  const sourceWarmup = isWarmupSet(draft.lifts[liftIndex]?.sets[setIndex]);
   const lifts = draft.lifts.map((lift, li) => {
     if (li !== liftIndex) return lift;
     return {
       ...lift,
       sets: lift.sets.map((set, si) => {
         if (si === setIndex) return { ...set, weight_kg: nextKg };
-        if (applyToRemaining && si > setIndex && !set.completed) {
+        if (
+          applyToRemaining &&
+          si > setIndex &&
+          !set.completed &&
+          isWarmupSet(set) === sourceWarmup
+        ) {
           return { ...set, weight_kg: nextKg };
         }
         return set;
@@ -37,7 +44,7 @@ export function overrideSetWeight(
   return { ...draft, lifts, updated_at: new Date().toISOString() };
 }
 
-/** Apply one kg value to every unlogged set on a lift. Logged sets are untouched. */
+/** Apply one kg value to every unlogged **work** set. Warmups and logged sets stay. */
 export function overrideUnloggedLiftWeight(
   draft: SessionDraft,
   liftIndex: number,
@@ -48,7 +55,9 @@ export function overrideUnloggedLiftWeight(
     if (li !== liftIndex) return lift;
     return {
       ...lift,
-      sets: lift.sets.map((set) => (set.completed ? set : { ...set, weight_kg: nextKg })),
+      sets: lift.sets.map((set) =>
+        set.completed || isWarmupSet(set) ? set : { ...set, weight_kg: nextKg },
+      ),
     };
   });
   return { ...draft, lifts, updated_at: new Date().toISOString() };
@@ -67,7 +76,9 @@ export function logSetOnDraft(
       if (li !== liftIndex) return lift;
       return {
         ...lift,
-        sets: lift.sets.map((set, si) => (si === setIndex ? logged : set)),
+        sets: lift.sets.map((set, si) =>
+          si === setIndex ? { ...logged, warmup: set.warmup } : set,
+        ),
       };
     }),
     updated_at: new Date().toISOString(),

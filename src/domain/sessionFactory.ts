@@ -31,6 +31,7 @@ export function liftsFromTemplate(day: CanonicalTemplateDay): LoggedLift[] {
         rpe: s.rpe,
         completed: false,
         amrap: s.amrap,
+        warmup: s.warmup,
       })),
     };
   });

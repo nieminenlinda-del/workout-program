@@ -4,22 +4,24 @@ import { NumberStepper } from './NumberStepper';
 import { LastPerformanceHint } from './LastPerformanceHint';
 import type { LastPerformance } from '../domain/lastPerformance';
 
-const RPE_OPTIONS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+const RPE_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
 export function SetLogger({
   exerciseName,
-  setNumber,
+  setLabel,
   setCount,
   initial,
   lastPerformance,
+  hasLaterSameKind,
   onCancel,
   onComplete,
 }: {
   exerciseName: string;
-  setNumber: number;
+  setLabel: string;
   setCount: number;
   initial: LoggedSet;
   lastPerformance?: LastPerformance | null;
+  hasLaterSameKind: boolean;
   onCancel: () => void;
   onComplete: (set: LoggedSet, applyWeightToRemaining: boolean) => void;
 }) {
@@ -29,7 +31,7 @@ export function SetLogger({
   const [amrap, setAmrap] = useState(Boolean(initial.amrap));
   const [applyRemaining, setApplyRemaining] = useState(true);
   const overridden = weight !== initial.weight_kg;
-  const hasLaterSets = setNumber < setCount;
+  const warmup = Boolean(initial.warmup);
 
   return (
     <div className="sheet-backdrop" role="presentation" onClick={onCancel}>
@@ -41,7 +43,7 @@ export function SetLogger({
       >
         <div className="sheet-handle" />
         <p className="sheet-kicker">
-          Set {setNumber} / {setCount}
+          {warmup ? `Warmup ${setLabel}` : `Set ${setLabel}`} / {setCount}
           {amrap ? ' · AMRAP' : ''}
         </p>
         <h2 className="sheet-title">{exerciseName}</h2>
@@ -92,13 +94,17 @@ export function SetLogger({
           AMRAP set
         </button>
 
-        {hasLaterSets ? (
+        {hasLaterSameKind ? (
           <button
             type="button"
             className={`toggle ${applyRemaining ? 'on apply-on' : ''}`}
             onClick={() => setApplyRemaining((v) => !v)}
           >
-            {applyRemaining ? 'Also apply kg to leftover sets' : 'This set only'}
+            {applyRemaining
+              ? warmup
+                ? 'Also apply kg to leftover warmups'
+                : 'Also apply kg to leftover work sets'
+              : 'This set only'}
           </button>
         ) : null}
 
@@ -117,6 +123,7 @@ export function SetLogger({
                   rpe,
                   completed: true,
                   amrap,
+                  warmup,
                 },
                 applyRemaining,
               )

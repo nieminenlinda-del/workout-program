@@ -29,6 +29,21 @@ function completeSession(
 }
 
 describe('last matching performance', () => {
+  it('ignores warmup sets even when they are heavier or first', () => {
+    expect(
+      topWorkSet([
+        { weight_kg: 20, reps: 8, rpe: 5, completed: true, warmup: true },
+        { weight_kg: 40, reps: 3, rpe: 5, completed: true, warmup: true },
+        { weight_kg: 47.5, reps: 5, rpe: 8, completed: true },
+        { weight_kg: 50, reps: 3, rpe: 8, completed: true },
+      ]),
+    ).toMatchObject({ weight_kg: 50, reps: 3 });
+    expect(topWorkSet([
+      { weight_kg: 40, reps: 3, rpe: 5, completed: true, warmup: true },
+      { weight_kg: 47.5, reps: 5, rpe: 8, completed: true },
+    ])?.warmup).toBeFalsy();
+  });
+
   it('uses the top work set (heaviest completed; tie → most reps, then last)', () => {
     expect(
       topWorkSet([

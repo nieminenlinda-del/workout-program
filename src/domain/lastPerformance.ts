@@ -7,6 +7,7 @@ import type {
   TemplateDay,
 } from '../types/session';
 import { formatLoad } from './workoutPreview';
+import { isWarmupSet } from './sets';
 import { canonicalTemplateDay } from './templateDay';
 
 /**
@@ -14,8 +15,8 @@ import { canonicalTemplateDay } from './templateDay';
  *
  * **Top work set rule:** among completed sets of the matching lift, pick the
  * highest `weight_kg`; ties go to highest `reps`; still tied → last such set
- * in session order. Warm-up-looking zeros still count if they were logged
- * (bodyweight work is `0 kg` / BW).
+ * in session order. Sets flagged `warmup` are ignored (empty-bar ladders must
+ * not become “last week”). Bodyweight work is `0 kg` / BW and still counts.
  *
  * **Session match:** most recent completed log with `date < asOf` that contains
  * the same `exercise_id`. Prefer the same canonical template day (A–D) —
@@ -33,7 +34,7 @@ export interface LastPerformance {
 export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
   let best: LoggedSet | null = null;
   for (const set of sets) {
-    if (!set.completed) continue;
+    if (!set.completed || isWarmupSet(set)) continue;
     if (!best) {
       best = set;
       continue;

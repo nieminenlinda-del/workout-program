@@ -2,6 +2,7 @@ import type { SessionDraft } from '../types/session';
 import { LightBadge } from '../components/LightBadge';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 import { completedSetCount } from '../domain/sessionFactory';
+import { setDisplayLabel } from '../domain/sets';
 
 export function HistoryScreen({
   sessions,
@@ -79,7 +80,7 @@ export function DetailScreen({
           <ul className="detail-sets">
             {lift.sets.map((set, i) => (
               <li key={i} className={set.completed ? '' : 'dim'}>
-                {i + 1}. {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
+                {setDisplayLabel(lift.sets, i)}. {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
                 {set.amrap ? ' AMRAP' : ''} @ {set.rpe} RPE
                 {set.completed ? '' : ' (not logged)'}
               </li>

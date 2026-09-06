@@ -130,7 +130,7 @@ Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-l
 
 **Match:** same `exercise_id`, prefer the same canonical template day (A–D) — that is the previous occurrence of this day, usually ~7 days earlier. If that day has never been logged, fall back to the same exercise on any day. Only sessions with `date < asOf` count.
 
-**Top work set:** among completed sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
+**Top work set:** among completed **work** sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Sets with `warmup: true` are excluded. Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
 
 Shown on the Today preview, each in-session lift card, and the set logger.
 
@@ -138,8 +138,12 @@ Shown on the Today preview, each in-session lift card, and the set logger.
 
 Seed kg is a starting prescription, not a lock. Mid-session edits write onto the draft (`src/domain/weightOverride.ts`) so Linda does not restart the session.
 
-- **Working weight** stepper on an expanded lift updates every **unlogged** set of that lift immediately.
-- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default **Also apply kg to leftover sets** copies that kg onto later unlogged sets of the same lift; already-logged sets stay as written.
+- **Working weight** stepper on an expanded lift updates every **unlogged work** set. Warmup ladder kg is left alone.
+- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default apply-forward copies kg onto later unlogged sets of the **same kind** (warmup→warmup, work→work).
+
+## Warmup sets (Phase 1)
+
+T1 squat / bench / deadlift and Day D bench volume seed a warmup ladder **before** work sets (`warmup: true` on `SeedSet` / `LoggedSet`). Placeholders: empty bar → light → ~30 → ~40 → first work (bench: empty → ~20 → ~30 → work). UI labels **W1, W2…** then work **1, 2…**. Warmups are logged like any set but do **not** count as work sets for last-week lookup or Phase 2 progression. Accessories stay warmup-free. Start is unchanged.
 
 ### Freeze rules (must implement in Phase 2)
 

@@ -29,7 +29,7 @@ export function useSessionFlow(repo: SessionRepository) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const refreshHistory = useCallback(async () => {
-    const rows = await repo.listComplete(30);
+    const rows = await repo.listComplete(60);
     setHistory(rows);
   }, [repo]);
 

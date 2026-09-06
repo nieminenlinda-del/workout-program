@@ -102,10 +102,10 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 
 **Mode rules**
 
-- Default **`hypertrophy`** between meets (accumulate, intensify, off-block, or no `target_test_date`).
-- **`strength_peak` only** while `target_test_date` is in the peaking window (`peak_overreach`, `peak_taper`, `test`).
+- **No `target_test_date`** → **`hypertrophy`**.
+- **While a test date is set and `asOf <= target_test_date`** → **`strength_peak`**. That includes accumulate, intensify, and off-block dates before the test — not only `peak_overreach` / `peak_taper` / `test`.
 - **After the test date** → auto **`hypertrophy`**, unless a later `target_test_date` is set.
-- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Peak mode is `strength_peak` through that date; from 2026-11-22 the hook returns `hypertrophy`.
+- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. The Home chip shows **strength peak** through that date (e.g. Block A accumulate on 2026-09-08); from 2026-11-22 the hook returns `hypertrophy`.
 
 **Strength auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`, used when `training_mode === "strength_peak"`)
 
@@ -123,6 +123,23 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 `progressionRulesFor(training_mode)` returns the matching constants. It does **not** compute next-session weights. `progressionEngineStub.proposeNext` still throws `Phase2NotImplementedError`.
 
 Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-logging UI.
+
+## Last-week performance (Phase 1 read of SessionLog)
+
+`src/domain/lastPerformance.ts` reads completed IndexedDB sessions (`repo.listComplete()`). No backend.
+
+**Match:** same `exercise_id`, prefer the same canonical template day (A–D) — that is the previous occurrence of this day, usually ~7 days earlier. If that day has never been logged, fall back to the same exercise on any day. Only sessions with `date < asOf` count.
+
+**Top work set:** among completed sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
+
+Shown on the Today preview, each in-session lift card, and the set logger.
+
+## Manual weight override (Phase 1)
+
+Seed kg is a starting prescription, not a lock. Mid-session edits write onto the draft (`src/domain/weightOverride.ts`) so Linda does not restart the session.
+
+- **Working weight** stepper on an expanded lift updates every **unlogged** set of that lift immediately.
+- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default **Also apply kg to leftover sets** copies that kg onto later unlogged sets of the same lift; already-logged sets stay as written.
 
 ### Freeze rules (must implement in Phase 2)
 

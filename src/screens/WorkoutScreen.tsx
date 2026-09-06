@@ -1,12 +1,16 @@
-import { useState } from 'react';
-import type { LoggedLift, LoggedSet, SessionDraft } from '../types/session';
+import { useMemo, useState } from 'react';
+import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
 import type { ExerciseId } from '../types/exercises';
 import { DAY_TEMPLATES, exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
+import { lastMatchingPerformance } from '../domain/lastPerformance';
+import { logSetOnDraft, overrideUnloggedLiftWeight } from '../domain/weightOverride';
 import { SetLogger } from '../components/SetLogger';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
+import { NumberStepper } from '../components/NumberStepper';
+import { LastPerformanceHint } from '../components/LastPerformanceHint';
 import { unlockTimerAudio } from '../domain/timerCue';
 
 interface ActiveSet {
@@ -16,11 +20,13 @@ interface ActiveSet {
 
 export function WorkoutScreen({
   draft,
+  history = [],
   onChange,
   onBack,
   onFinish,
 }: {
   draft: SessionDraft;
+  history?: readonly SessionLog[];
   onChange: (next: SessionDraft) => void;
   onBack: () => void;
   onFinish: () => void;
@@ -33,15 +39,18 @@ export function WorkoutScreen({
   const template = DAY_TEMPLATES[day];
   const progress = completedSetCount(draft);
 
-  const completeSet = (liftIndex: number, setIndex: number, logged: LoggedSet) => {
-    const lifts = draft.lifts.map((lift, li) => {
-      if (li !== liftIndex) return lift;
-      return {
-        ...lift,
-        sets: lift.sets.map((s, si) => (si === setIndex ? logged : s)),
-      };
-    });
-    onChange({ ...draft, lifts, updated_at: new Date().toISOString() });
+  const lastByExercise = useMemo(() => {
+    const ids = draft.lifts.map((lift) => lift.exercise_id);
+    const map = new Map<ExerciseId, ReturnType<typeof lastMatchingPerformance>>();
+    for (const id of ids) {
+      map.set(id, lastMatchingPerformance(history, id, day, draft.date));
+    }
+    return map;
+  }, [history, day, draft.date, draft.lifts]);
+
+  const completeSet = (liftIndex: number, setIndex: number, logged: Parameters<typeof logSetOnDraft>[3], applyRemaining: boolean) => {
+    const next = logSetOnDraft(draft, liftIndex, setIndex, logged, applyRemaining);
+    onChange(next);
     setActive(null);
     unlockTimerAudio();
     const restSec =
@@ -76,6 +85,9 @@ export function WorkoutScreen({
         const slot = slotForLift(template, lift) ?? template.slots[liftIndex];
         const done = lift.sets.filter((s) => s.completed).length;
         const expanded = openLift === liftIndex;
+        const last = lastByExercise.get(lift.exercise_id) ?? null;
+        const unlogged = lift.sets.filter((s) => !s.completed);
+        const workingKg = unlogged[0]?.weight_kg ?? lift.sets[lift.sets.length - 1]?.weight_kg ?? 0;
         return (
           <section key={`${lift.exercise_id}-${liftIndex}`} className={`card lift-card ${expanded ? 'open' : ''}`}>
             <button
@@ -86,6 +98,7 @@ export function WorkoutScreen({
               <div>
                 <p className="kicker">{slot?.role ?? 'lift'}</p>
                 <h2>{lift.name}</h2>
+                <LastPerformanceHint performance={last} />
               </div>
               <span className="lift-count">
                 {done}/{lift.sets.length}
@@ -111,6 +124,17 @@ export function WorkoutScreen({
               <button type="button" className="btn btn-ghost btn-slim" onClick={() => skipOptional(liftIndex)}>
                 Skip optional
               </button>
+            ) : null}
+
+            {expanded && unlogged.length > 0 ? (
+              <NumberStepper
+                label="Working weight"
+                value={workingKg}
+                onChange={(kg) => onChange(overrideUnloggedLiftWeight(draft, liftIndex, kg))}
+                step={2.5}
+                suffix="kg"
+                hint="Edits leftover sets now. Logged sets stay as written."
+              />
             ) : null}
 
             {expanded
@@ -145,8 +169,11 @@ export function WorkoutScreen({
           setNumber={active.setIndex + 1}
           setCount={draft.lifts[active.liftIndex]?.sets.length ?? 0}
           initial={draft.lifts[active.liftIndex].sets[active.setIndex]}
+          lastPerformance={lastByExercise.get(draft.lifts[active.liftIndex].exercise_id) ?? null}
           onCancel={() => setActive(null)}
-          onComplete={(logged) => completeSet(active.liftIndex, active.setIndex, logged)}
+          onComplete={(logged, applyRemaining) =>
+            completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)
+          }
         />
       ) : null}
 

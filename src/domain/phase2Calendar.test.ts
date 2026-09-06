@@ -15,11 +15,16 @@ import {
 } from '../types/phase2';
 
 describe('phase 2 calendar hook', () => {
-  it('defaults to hypertrophy between meets; strength_peak only in the peaking window', () => {
-    expect(getMesocycleContext('2026-09-03').training_mode).toBe('hypertrophy');
-    expect(getMesocycleContext('2026-09-08').training_mode).toBe('hypertrophy');
-    expect(getMesocycleContext('2026-10-20').training_mode).toBe('hypertrophy');
+  it('is strength_peak whenever a test date is set and asOf is on or before it', () => {
+    expect(getMesocycleContext('2026-09-03').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext('2026-09-08').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext('2026-09-08').phase).toBe('accumulate');
+    expect(getMesocycleContext('2026-10-20').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext('2026-10-20').phase).toBe('intensify');
     expect(getMesocycleContext('2026-11-10').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext(TARGET_TEST_DATE).training_mode).toBe('strength_peak');
+    expect(resolveTrainingMode('2026-09-06', 'accumulate', TARGET_TEST_DATE)).toBe('strength_peak');
+    expect(resolveTrainingMode('2026-09-06', null, null)).toBe('hypertrophy');
     expect(CURRENT_CYCLE).toEqual({
       target_test_date: '2026-11-21',
       peak_training_mode: 'strength_peak',

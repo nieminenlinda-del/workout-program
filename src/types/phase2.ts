@@ -44,8 +44,8 @@ export type TestLift = (typeof TEST_LIFT_ORDER)[number];
 
 /**
  * Juggernaut PowerCombo program switch for the Phase 2 engine.
- * Hypertrophy when not peaking; peak when preparing for a test/meet
- * (this cycle: toward TARGET_TEST_DATE / 2026-11-21).
+ * Hypertrophy when no test is on the calendar; peak (`strength_peak`) while
+ * preparing for a test/meet (this cycle: toward TARGET_TEST_DATE / 2026-11-21).
  *
  * Phase 1 session logging must not read or persist this field.
  */
@@ -53,7 +53,9 @@ export type ProgramMode = 'hypertrophy' | 'peak';
 
 /**
  * Engine-facing synonym of ProgramMode (`strength_peak` === `peak`).
- * Hypertrophy between meets; strength_peak only inside the peaking window.
+ * While `target_test_date` is set and asOf is on or before that date,
+ * mode is strength_peak (including accumulate / intensify). After the date,
+ * auto hypertrophy.
  */
 export type TrainingMode = 'hypertrophy' | 'strength_peak';
 

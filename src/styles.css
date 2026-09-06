@@ -148,6 +148,11 @@ button {
   color: var(--muted);
 }
 
+.phase-chip.peak {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -305,6 +310,19 @@ button {
 .preview-scheme {
   color: var(--muted);
   font-size: 13px;
+}
+
+.last-log {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.last-log.dim {
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .preview-toggle {
@@ -471,6 +489,12 @@ button {
   border-color: var(--red);
   color: var(--text);
   background: rgba(232, 93, 76, 0.12);
+}
+
+.toggle.on.apply-on {
+  border-color: var(--amber);
+  color: var(--text);
+  background: rgba(232, 160, 74, 0.12);
 }
 
 .progress-line {
@@ -668,6 +692,39 @@ button {
 .stepper-value span {
   color: var(--muted);
   font-size: 13px;
+}
+
+.stepper-edit {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  min-height: 44px;
+}
+
+.stepper-input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid var(--amber);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.stepper-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .sheet-actions,

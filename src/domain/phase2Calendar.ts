@@ -1,7 +1,6 @@
 import type { BlockPhase, MesocycleContext, ProgramMode, TrainingMode } from '../types/phase2';
 import {
   MESOCYCLE_WINDOWS,
-  PEAKING_PHASES,
   TARGET_TEST_DATE,
   TEST_DAY,
   TEST_LIFT_ORDER,
@@ -13,24 +12,25 @@ function isoDate(value: string | Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-function isPeakingPhase(phase: BlockPhase | null): boolean {
-  return phase !== null && (PEAKING_PHASES as readonly string[]).includes(phase);
-}
-
 /**
  * PowerCombo mode switch (calendar only — not load selection).
- * Hypertrophy between meets; strength_peak only while `target_test_date` is in the peaking window.
- * After the test date, auto-return to hypertrophy unless a new test date is supplied.
+ *
+ * This cycle’s product rule: while `target_test_date` is set and
+ * `asOf <= target_test_date`, mode is **strength_peak** (accumulate / intensify
+ * included — not only the late peaking window). After the test date, auto
+ * hypertrophy unless a later test date is supplied. No target → hypertrophy.
+ *
+ * `_phase` is kept so existing callers do not change; block phase still comes
+ * from `getMesocycleContext` and does not gate the mode chip.
  */
 export function resolveTrainingMode(
   asOf: string,
-  phase: BlockPhase | null,
+  _phase: BlockPhase | null,
   targetTestDate: string | null = TARGET_TEST_DATE,
 ): TrainingMode {
   if (!targetTestDate) return 'hypertrophy';
   if (asOf > targetTestDate) return 'hypertrophy';
-  if (isPeakingPhase(phase)) return 'strength_peak';
-  return 'hypertrophy';
+  return 'strength_peak';
 }
 
 /**

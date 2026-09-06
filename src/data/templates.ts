@@ -30,43 +30,8 @@ export interface DayTemplate {
 const T1_REST = 180;
 const ACC_REST = 90;
 const CORE_REST = 60;
-const WARM_REST = 60;
-const WARM_REST_LAST = 90;
 
-/**
- * Placeholder warmup ladder (Kraft numbers can replace these later).
- * Heavy T1: empty bar → light → ~30 → ~40 → first work.
- * Bench: empty → ~20 → ~30 → first work (shorter; volume bench skips the 30 if work is 30).
- */
-function warmupLadder(steps: readonly { weight_kg: number; reps: number }[]): SeedSet[] {
-  return steps.map((step, index) => ({
-    weight_kg: step.weight_kg,
-    reps: step.reps,
-    rpe: 5,
-    warmup: true,
-    rest_sec: index === steps.length - 1 ? WARM_REST_LAST : WARM_REST,
-  }));
-}
-
-const SQUAT_DEADLIFT_WARMUPS = warmupLadder([
-  { weight_kg: 20, reps: 8 },
-  { weight_kg: 25, reps: 5 },
-  { weight_kg: 30, reps: 5 },
-  { weight_kg: 40, reps: 3 },
-]);
-
-const BENCH_T1_WARMUPS = warmupLadder([
-  { weight_kg: 20, reps: 8 },
-  { weight_kg: 25, reps: 5 },
-  { weight_kg: 30, reps: 3 },
-]);
-
-const BENCH_VOLUME_WARMUPS = warmupLadder([
-  { weight_kg: 20, reps: 8 },
-  { weight_kg: 25, reps: 5 },
-]);
-
-/** Static 4-day seed. Phase 2 will replace weights via the progression engine. */
+/** Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder). */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
   A: {
     id: 'A',
@@ -80,7 +45,6 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'squat_low_bar',
         alternatives: [],
         sets: [
-          ...SQUAT_DEADLIFT_WARMUPS,
           { weight_kg: 45, reps: 5, rpe: 6.5, rest_sec: T1_REST },
           { weight_kg: 47.5, reps: 5, rpe: 7, rest_sec: T1_REST },
           { weight_kg: 47.5, reps: 5, rpe: 7.5, rest_sec: T1_REST },
@@ -134,7 +98,6 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'bench_regular',
         alternatives: [],
         sets: [
-          ...BENCH_T1_WARMUPS,
           { weight_kg: 32.5, reps: 5, rpe: 6.5, rest_sec: T1_REST },
           { weight_kg: 35, reps: 5, rpe: 7, rest_sec: T1_REST },
           { weight_kg: 35, reps: 5, rpe: 7.5, rest_sec: T1_REST },
@@ -188,7 +151,6 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'deadlift_conventional',
         alternatives: [],
         sets: [
-          ...SQUAT_DEADLIFT_WARMUPS,
           { weight_kg: 60, reps: 4, rpe: 6.5, rest_sec: T1_REST },
           { weight_kg: 65, reps: 4, rpe: 7, rest_sec: T1_REST },
           { weight_kg: 67.5, reps: 4, rpe: 7.5, rest_sec: T1_REST },
@@ -242,7 +204,6 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'bench_regular_volume',
         alternatives: [],
         sets: [
-          ...BENCH_VOLUME_WARMUPS,
           { weight_kg: 30, reps: 8, rpe: 7, rest_sec: 120 },
           { weight_kg: 30, reps: 8, rpe: 7, rest_sec: 120 },
           { weight_kg: 30, reps: 8, rpe: 7, rest_sec: 120 },

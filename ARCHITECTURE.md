@@ -138,12 +138,19 @@ Shown on the Today preview, each in-session lift card, and the set logger.
 
 Seed kg is a starting prescription, not a lock. Mid-session edits write onto the draft (`src/domain/weightOverride.ts`) so Linda does not restart the session.
 
-- **Working weight** stepper on an expanded lift updates every **unlogged work** set. Warmup ladder kg is left alone.
+- **Working weight** stepper on an expanded lift updates every **unlogged work** set. The warmup ladder is then recomputed from the new W unless a warmup is already logged.
 - **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default apply-forward copies kg onto later unlogged sets of the **same kind** (warmup→warmup, work→work).
 
 ## Warmup sets (Phase 1)
 
-T1 squat / bench / deadlift and Day D bench volume seed a warmup ladder **before** work sets (`warmup: true` on `SeedSet` / `LoggedSet`). Placeholders: empty bar → light → ~30 → ~40 → first work (bench: empty → ~20 → ~30 → work). UI labels **W1, W2…** then work **1, 2…**. Warmups are logged like any set but do **not** count as work sets for last-week lookup or Phase 2 progression. Accessories stay warmup-free. Start is unchanged.
+T1 squat / bench / deadlift and Day D bench volume get a Kraft ladder **before** work sets (`src/domain/warmupLadder.ts`). W is the most common non-AMRAP work kg (else first work set). Round every warmup to 2.5; skip a step within 2.5 kg of the previous step or of W; never warmup ≥ W.
+
+1. Bar **20 × 5–8** (skip if W ≤ 25; 8 reps when W < 40)
+2. **~50% W × 5** (ceil to 10 kg; deadlift first plate at least 40 if 20/30 is pointless)
+3. **~70% W × 3**
+4. **~85% W × 1–2** (drop the single if W − this ≤ 5 kg)
+
+Week 1: squat 47.5 → 20×5 / 30×5 / 40×3; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
 
 ### Freeze rules (must implement in Phase 2)
 

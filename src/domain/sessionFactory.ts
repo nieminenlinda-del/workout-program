@@ -9,6 +9,7 @@ import { DEFAULT_READINESS } from '../types/session';
 import { DAY_TEMPLATES } from '../data/templates';
 import { canonicalTemplateDay, todayIsoDate } from './templateDay';
 import { withComputedLight } from './readiness';
+import { attachWarmups, warmupKindFor } from './warmupLadder';
 
 export function newSessionId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -25,14 +26,17 @@ export function liftsFromTemplate(day: CanonicalTemplateDay): LoggedLift[] {
       name: meta.name,
       style: meta.style,
       exercise_id: slot.exercise_id,
-      sets: slot.sets.map((s) => ({
-        weight_kg: s.weight_kg,
-        reps: s.reps,
-        rpe: s.rpe,
-        completed: false,
-        amrap: s.amrap,
-        warmup: s.warmup,
-      })),
+      sets: attachWarmups(
+        slot.sets.map((s) => ({
+          weight_kg: s.weight_kg,
+          reps: s.reps,
+          rpe: s.rpe,
+          completed: false,
+          amrap: s.amrap,
+          warmup: s.warmup,
+        })),
+        warmupKindFor(slot.exercise_id),
+      ),
     };
   });
 }

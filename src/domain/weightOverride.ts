@@ -1,5 +1,6 @@
 import type { LoggedSet, SessionDraft } from '../types/session';
 import { isWarmupSet } from './sets';
+import { attachWarmups, warmupKindFor } from './warmupLadder';
 
 function clampWeightKg(weightKg: number): number {
   if (!Number.isFinite(weightKg)) return 0;
@@ -53,11 +54,12 @@ export function overrideUnloggedLiftWeight(
   const nextKg = clampWeightKg(weightKg);
   const lifts = draft.lifts.map((lift, li) => {
     if (li !== liftIndex) return lift;
+    const sets = lift.sets.map((set) =>
+      set.completed || isWarmupSet(set) ? set : { ...set, weight_kg: nextKg },
+    );
     return {
       ...lift,
-      sets: lift.sets.map((set) =>
-        set.completed || isWarmupSet(set) ? set : { ...set, weight_kg: nextKg },
-      ),
+      sets: attachWarmups(sets, warmupKindFor(lift.exercise_id)),
     };
   });
   return { ...draft, lifts, updated_at: new Date().toISOString() };

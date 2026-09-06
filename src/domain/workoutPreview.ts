@@ -2,6 +2,7 @@ import { exerciseName, type SeedSet, type TemplateSlot } from '../data/templates
 import type { ExerciseId } from '../types/exercises';
 import { formatClock } from './countdown';
 import { isWarmupSet, setDisplayLabel, workSets } from './sets';
+import { attachWarmups, warmupKindFor } from './warmupLadder';
 
 export interface PlannedSetLine {
   setNumber: number;
@@ -82,19 +83,20 @@ export function formatWarmupLabel(sets: SeedSet[]): string | null {
 }
 
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
-  const restSec = uniformRestSeconds(slot.sets);
+  const sets = attachWarmups(slot.sets, warmupKindFor(slot.exercise_id));
+  const restSec = uniformRestSeconds(sets);
   return {
     slot_id: slot.slot_id,
     role: slot.role,
     name: exerciseName(slot.exercise_id),
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
-    scheme: formatSetScheme(slot.sets),
-    warmupLabel: formatWarmupLabel(slot.sets),
+    scheme: formatSetScheme(sets),
+    warmupLabel: formatWarmupLabel(sets),
     restLabel: restSec != null ? formatRestLabel(restSec) : null,
-    sets: slot.sets.map((set, index) => ({
+    sets: sets.map((set, index) => ({
       setNumber: index + 1,
-      label: setDisplayLabel(slot.sets, index),
+      label: setDisplayLabel(sets, index),
       weight_kg: set.weight_kg,
       reps: set.reps,
       rpe: set.rpe,

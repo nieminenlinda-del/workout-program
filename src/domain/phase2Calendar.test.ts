@@ -3,6 +3,7 @@ import { getMesocycleContext, resolveTrainingMode } from './phase2Calendar';
 import {
   CURRENT_CYCLE,
   HYPERTROPHY_PROGRESSION_HOOK,
+  MESOCYCLE_WINDOWS,
   Phase2NotImplementedError,
   SEED_TRAINING_MAXES,
   STRENGTH_PEAK_PROGRESSION_HOOK,
@@ -15,21 +16,37 @@ import {
 } from '../types/phase2';
 
 describe('phase 2 calendar hook', () => {
-  it('is strength_peak whenever a test date is set and asOf is on or before it', () => {
-    expect(getMesocycleContext('2026-09-03').training_mode).toBe('strength_peak');
-    expect(getMesocycleContext('2026-09-08').training_mode).toBe('strength_peak');
-    expect(getMesocycleContext('2026-09-08').phase).toBe('accumulate');
+  it('is strength_peak from day one of this cycle while the 2026-11-21 test date is set', () => {
+    expect(getMesocycleContext('2026-09-06').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext('2026-09-06').block).toBeNull();
+    expect(getMesocycleContext('2026-09-07').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext('2026-09-07').phase).toBe('accumulate');
+    expect(getMesocycleContext('2026-09-07').block).toBe('A');
+    expect(getMesocycleContext('2026-10-04').phase).toBe('accumulate');
+    expect(getMesocycleContext('2026-10-05').phase).toBe('intensify');
+    expect(getMesocycleContext('2026-10-05').block).toBe('B');
+    expect(getMesocycleContext('2026-11-01').phase).toBe('intensify');
+    expect(getMesocycleContext('2026-11-02').phase).toBe('peak_overreach');
+    expect(getMesocycleContext('2026-11-02').block).toBe('C');
     expect(getMesocycleContext('2026-10-20').training_mode).toBe('strength_peak');
-    expect(getMesocycleContext('2026-10-20').phase).toBe('intensify');
     expect(getMesocycleContext('2026-11-10').training_mode).toBe('strength_peak');
     expect(getMesocycleContext(TARGET_TEST_DATE).training_mode).toBe('strength_peak');
-    expect(resolveTrainingMode('2026-09-06', 'accumulate', TARGET_TEST_DATE)).toBe('strength_peak');
-    expect(resolveTrainingMode('2026-09-06', null, null)).toBe('hypertrophy');
+    expect(resolveTrainingMode('2026-09-07', 'accumulate', TARGET_TEST_DATE)).toBe('strength_peak');
+    expect(resolveTrainingMode('2026-09-07', null, null)).toBe('hypertrophy');
     expect(CURRENT_CYCLE).toEqual({
       target_test_date: '2026-11-21',
       peak_training_mode: 'strength_peak',
       post_test_training_mode: 'hypertrophy',
     });
+  });
+
+  it('uses Kraft’s contiguous 2026 windows: A 7 Sep–4 Oct, B next day, C through test day', () => {
+    expect(MESOCYCLE_WINDOWS.map((w) => [w.block, w.start, w.end])).toEqual([
+      ['A', '2026-09-07', '2026-10-04'],
+      ['B', '2026-10-05', '2026-11-01'],
+      ['C', '2026-11-02', '2026-11-21'],
+    ]);
+    expect(SEED_TRAINING_MAXES).toEqual({ squat_kg: 67.5, bench_kg: 50, deadlift_kg: 85 });
   });
 
   it('freezes on peak taper and test day, squat then bench then deadlift', () => {

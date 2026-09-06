@@ -130,28 +130,29 @@ export function progressionRulesFor(training_mode: TrainingMode): PowerComboProg
 }
 
 /**
- * Calendar windows for the 2026 test cycle.
- * Block A ~8 Sep–5 Oct · B ~6 Oct–2 Nov · C ~3–21 Nov.
+ * Calendar windows for the 2026 test cycle (authoritative).
+ * Block A 7 Sep–4 Oct · B 5 Oct–1 Nov · C 2–21 Nov (ends on test day).
+ * Contiguous: each block starts the day after the previous ends.
  */
 export const MESOCYCLE_WINDOWS: readonly MesocycleWindow[] = [
   {
     block: 'A',
     label: 'Accumulate',
-    start: '2026-09-08',
-    end: '2026-10-05',
+    start: '2026-09-07',
+    end: '2026-10-04',
     defaultPhase: 'accumulate',
   },
   {
     block: 'B',
     label: 'Intensify',
-    start: '2026-10-06',
-    end: '2026-11-02',
+    start: '2026-10-05',
+    end: '2026-11-01',
     defaultPhase: 'intensify',
   },
   {
     block: 'C',
     label: 'Peak',
-    start: '2026-11-03',
+    start: '2026-11-02',
     end: '2026-11-21',
     defaultPhase: 'peak_overreach',
   },

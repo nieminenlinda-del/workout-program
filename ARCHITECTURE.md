@@ -80,9 +80,9 @@ The UI file picker posts zip/xml to `src/health/parse/worker.ts`, which stream-u
 
 | Block | Window | Default phase |
 | --- | --- | --- |
-| A | 2026-09-08 → 2026-10-05 | `accumulate` |
-| B | 2026-10-06 → 2026-11-02 | `intensify` |
-| C | 2026-11-03 → 2026-11-21 | `peak_overreach` |
+| A | 2026-09-07 → 2026-10-04 | `accumulate` |
+| B | 2026-10-05 → 2026-11-01 | `intensify` |
+| C | 2026-11-02 → 2026-11-21 | `peak_overreach` |
 
 Block C refinements already encoded in the hook:
 
@@ -105,7 +105,7 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 - **No `target_test_date`** → **`hypertrophy`**.
 - **While a test date is set and `asOf <= target_test_date`** → **`strength_peak`**. That includes accumulate, intensify, and off-block dates before the test — not only `peak_overreach` / `peak_taper` / `test`.
 - **After the test date** → auto **`hypertrophy`**, unless a later `target_test_date` is set.
-- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. The Home chip shows **strength peak** through that date (e.g. Block A accumulate on 2026-09-08); from 2026-11-22 the hook returns `hypertrophy`.
+- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Mode is **`strength_peak` from day one** of Block A (2026-09-07) through the test date — not only `peak_overreach` / `peak_taper` / `test`. From 2026-11-22 the hook returns `hypertrophy`. Seeded TMs (docs only): squat **67.5** / bench **50** / deadlift **85** kg.
 
 **Strength auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`, used when `training_mode === "strength_peak"`)
 

@@ -497,6 +497,10 @@ button {
   background: rgba(232, 160, 74, 0.12);
 }
 
+.voice-toggle {
+  width: 100%;
+}
+
 .progress-line {
   position: relative;
   height: 28px;

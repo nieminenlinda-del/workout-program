@@ -1,3 +1,5 @@
+import { unlockTimerVoice } from './timerVoice';
+
 let audioCtx: AudioContext | null = null;
 
 function audioContext(): AudioContext | null {
@@ -11,12 +13,13 @@ function audioContext(): AudioContext | null {
   return audioCtx;
 }
 
-/** Call from a tap so iOS/Chrome will allow later beeps. */
+/** Call from a tap so iOS/Chrome will allow later beeps + speech. */
 export function unlockTimerAudio(): void {
   const ctx = audioContext();
   if (ctx && ctx.state === 'suspended') {
     void ctx.resume();
   }
+  unlockTimerVoice();
 }
 
 function vibratePattern(pattern: number[]): void {

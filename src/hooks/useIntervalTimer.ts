@@ -11,16 +11,27 @@ import {
   stopInterval,
   syncInterval,
 } from '../domain/intervalTimer';
+import { displaySeconds } from '../domain/countdown';
 import { signalTimerCue, unlockTimerAudio } from '../domain/timerCue';
+import { speakZeroIfEnabled, useSpokenCountdown } from './useSpokenCountdown';
 import { useWakeLock } from './useWakeLock';
 
-export function useIntervalTimer(initial: IntervalConfig = DEFAULT_INTERVAL_CONFIG) {
+export function useIntervalTimer(
+  initial: IntervalConfig = DEFAULT_INTERVAL_CONFIG,
+  voiceEnabled = true,
+) {
   const [config, setConfig] = useState<IntervalConfig>(initial);
   const [state, setState] = useState<IntervalState>(() => idleInterval(initial));
   const lastCueKey = useRef<string>('idle');
+  const skipVoiceRef = useRef(false);
 
   const active = state.phase === 'work' || state.phase === 'rest';
   useWakeLock(active && state.countdown.running);
+  useSpokenCountdown(
+    displaySeconds(state.countdown),
+    `${state.phase}-${state.round}`,
+    voiceEnabled && active,
+  );
 
   useEffect(() => {
     if (!state.countdown.running) return;
@@ -46,11 +57,21 @@ export function useIntervalTimer(initial: IntervalConfig = DEFAULT_INTERVAL_CONF
     if (!state.justTransitioned) return;
     const key = `${state.phase}-${state.round}`;
     if (lastCueKey.current === key) return;
+    const startedThisEffect = lastCueKey.current === 'start';
+    const skipVoice = skipVoiceRef.current;
+    skipVoiceRef.current = false;
     lastCueKey.current = key;
-    if (state.phase === 'work') signalTimerCue('work');
-    else if (state.phase === 'rest') signalTimerCue('rest');
-    else if (state.phase === 'done') signalTimerCue('end');
-  }, [state.justTransitioned, state.phase, state.round]);
+    if (state.phase === 'work') {
+      signalTimerCue('work');
+      if (!startedThisEffect && !skipVoice) speakZeroIfEnabled(voiceEnabled, 'work');
+    } else if (state.phase === 'rest') {
+      signalTimerCue('rest');
+      if (!skipVoice) speakZeroIfEnabled(voiceEnabled, 'rest');
+    } else if (state.phase === 'done') {
+      signalTimerCue('end');
+      if (!skipVoice) speakZeroIfEnabled(voiceEnabled, 'done');
+    }
+  }, [state.justTransitioned, state.phase, state.round, voiceEnabled]);
 
   const start = useCallback(() => {
     unlockTimerAudio();
@@ -72,6 +93,7 @@ export function useIntervalTimer(initial: IntervalConfig = DEFAULT_INTERVAL_CONF
   }, []);
 
   const skipPhase = useCallback(() => {
+    skipVoiceRef.current = true;
     setState((current) => skipIntervalPhase(current, Date.now()));
   }, []);
 

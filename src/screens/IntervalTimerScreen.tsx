@@ -1,11 +1,14 @@
 import { NumberStepper } from '../components/NumberStepper';
+import { VoiceToggle } from '../components/VoiceToggle';
 import { displaySeconds, formatClock, progressRatio } from '../domain/countdown';
 import { DEFAULT_INTERVAL_CONFIG } from '../domain/intervalTimer';
 import { useIntervalTimer } from '../hooks/useIntervalTimer';
+import { useTimerVoicePref } from '../hooks/useTimerVoicePref';
 
 export function IntervalTimerScreen({ onBack }: { onBack: () => void }) {
+  const { voiceEnabled, setVoiceEnabled } = useTimerVoicePref();
   const { config, setConfig, state, start, pause, resume, extend, skipPhase, stop } =
-    useIntervalTimer(DEFAULT_INTERVAL_CONFIG);
+    useIntervalTimer(DEFAULT_INTERVAL_CONFIG, voiceEnabled);
   const remaining = displaySeconds(state.countdown);
   const pct = progressRatio(state.countdown);
   const circumference = 2 * Math.PI * 52;
@@ -23,7 +26,8 @@ export function IntervalTimerScreen({ onBack }: { onBack: () => void }) {
         <span />
       </header>
       <p className="lede">
-        Conditioning / circuits. Not tied to a lift. Cues buzz even if the phone is muted.
+        Conditioning / circuits. Not tied to a lift. Buzz + beep still fire; voice says 30s,
+        10s, and the next phase.
       </p>
 
       {state.phase === 'idle' ? (
@@ -56,6 +60,7 @@ export function IntervalTimerScreen({ onBack }: { onBack: () => void }) {
             max={600}
             suffix="sec"
           />
+          <VoiceToggle enabled={voiceEnabled} onChange={setVoiceEnabled} />
           <button type="button" className="btn btn-primary btn-block" onClick={start}>
             Start {config.rounds} × {config.workSec}/{config.restSec}
           </button>
@@ -86,6 +91,7 @@ export function IntervalTimerScreen({ onBack }: { onBack: () => void }) {
             {state.countdown.running ? 'Running' : 'Paused'} · {state.config.workSec}s work /{' '}
             {state.config.restSec}s rest
           </p>
+          <VoiceToggle enabled={voiceEnabled} onChange={setVoiceEnabled} />
           <div className="rest-extend">
             <button type="button" className="btn btn-ghost" onClick={() => extend(15)}>
               +15s

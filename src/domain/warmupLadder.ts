@@ -109,6 +109,16 @@ function repsFor(index: number, total: number, firstIsBar: boolean, barReps: num
   return 5;
 }
 
+/**
+ * Yellow / low-readiness: bar + the last intermediate, then work.
+ * Not attached to sessions yet — tomorrow ships the full ladder.
+ */
+export function shortLadder(workKg: number, kind: WarmupKind = 'squat'): WarmupStep[] {
+  const full = warmupLadder(workKg, kind);
+  if (full.length <= 2) return full;
+  return [full[0], full[full.length - 1]];
+}
+
 export function warmupSeedSets(workKg: number, kind: WarmupKind): SeedSet[] {
   const steps = warmupLadder(workKg, kind);
   return steps.map((step, index) => ({

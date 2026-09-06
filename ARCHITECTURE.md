@@ -150,7 +150,9 @@ T1 squat / bench / deadlift and Day D bench volume get a Kraft ladder **before**
 3. **~70% W × 3**
 4. **~85% W × 1–2** (drop the single if W − this ≤ 5 kg)
 
-Week 1: squat 47.5 → 20×5 / 30×5 / 40×3; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
+Week 1: squat 47.5 → 20×5 / 30×5 / 40×3; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Squat W=50 → 20×5 / 30×5 / 35×3 / 42.5×2 (raw 50% is 25; that step snaps to a 10 kg plate). Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
+
+`shortLadder` (bar + last intermediate) exists for a later yellow / low-readiness day. Sessions still attach the full ladder.
 
 ### Freeze rules (must implement in Phase 2)
 

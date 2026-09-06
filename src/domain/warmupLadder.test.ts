@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { refreshDraftWarmups, warmupKindFor, warmupLadder } from './warmupLadder';
+import { refreshDraftWarmups, shortLadder, warmupKindFor, warmupLadder } from './warmupLadder';
 
 describe('Kraft warmup ladder', () => {
   it('squat W=47.5: 20×5 → 30×5 → 40×3', () => {
@@ -15,6 +15,23 @@ describe('Kraft warmup ladder', () => {
       { weight_kg: 20, reps: 8 },
       { weight_kg: 25, reps: 5 },
       { weight_kg: 30, reps: 3 },
+    ]);
+  });
+
+  it('squat W=50: 20×5 → 30×5 → 35×3 → 42.5×2', () => {
+    // Kraft scratch used 25 as raw 50%; the 50% step snaps to a 10 kg plate (30).
+    expect(warmupLadder(50, 'squat')).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 30, reps: 5 },
+      { weight_kg: 35, reps: 3 },
+      { weight_kg: 42.5, reps: 2 },
+    ]);
+  });
+
+  it('shortLadder keeps bar + last intermediate (unused until yellow-day)', () => {
+    expect(shortLadder(47.5, 'squat')).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 40, reps: 3 },
     ]);
   });
 

@@ -5,6 +5,7 @@ import { createIndexedDbRepository } from '../db/indexedDbRepository';
 import { createDraftSession } from '../domain/sessionFactory';
 import type { TemplateDay } from '../types/session';
 import { todayIsoDate } from '../domain/templateDay';
+import { refreshDraftWarmups } from '../domain/warmupLadder';
 
 export type AppView =
   | 'home'
@@ -37,7 +38,13 @@ export function useSessionFlow(repo: SessionRepository) {
     let cancelled = false;
     (async () => {
       const existing = await repo.getDraft();
-      if (!cancelled && existing) setDraft(existing);
+      if (!cancelled && existing) {
+        const next = { ...existing, lifts: refreshDraftWarmups(existing.lifts) };
+        setDraft(next);
+        if (JSON.stringify(next.lifts) !== JSON.stringify(existing.lifts)) {
+          void repo.saveDraft(next);
+        }
+      }
       await refreshHistory();
       if (!cancelled) setBooted(true);
     })();

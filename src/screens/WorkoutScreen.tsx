@@ -143,7 +143,7 @@ export function WorkoutScreen({
                 onChange={(kg) => onChange(overrideUnloggedLiftWeight(draft, liftIndex, kg))}
                 step={2.5}
                 suffix="kg"
-                hint="Edits leftover work sets. Warmups stay on their ladder."
+                hint="Edits leftover work sets. Unused warmups follow the new W."
               />
             ) : null}
 

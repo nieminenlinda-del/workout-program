@@ -142,3 +142,13 @@ export function attachWarmups<T extends SeedSet | LoggedSet>(sets: T[], kind: Wa
   );
   return [...next, ...work];
 }
+
+/** Rebuild unused warmup ladders from current work-set W (keeps logged warmups). */
+export function refreshDraftWarmups<T extends { exercise_id: ExerciseId; sets: LoggedSet[] }>(
+  lifts: T[],
+): T[] {
+  return lifts.map((lift) => ({
+    ...lift,
+    sets: attachWarmups(lift.sets, warmupKindFor(lift.exercise_id)),
+  }));
+}

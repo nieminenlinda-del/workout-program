@@ -56,17 +56,25 @@ describe('timer voice thresholds', () => {
 });
 
 describe('timer voice language', () => {
-  it('prefers a Finnish voice when getVoices lists fi*', () => {
+  it('prefers sv-SE over English or Finnish', () => {
     expect(
       pickTimerVoice([
         { lang: 'en-US', default: true },
         { lang: 'fi-FI' },
         { lang: 'sv-SE' },
       ]),
-    ).toEqual({ index: 1, lang: 'fi' });
+    ).toEqual({ index: 2, lang: 'sv' });
   });
 
-  it('falls back to the default / first voice', () => {
+  it('accepts any sv* voice, then English — never Finnish', () => {
+    expect(pickTimerVoice([{ lang: 'sv-FI' }, { lang: 'en-US' }])).toEqual({
+      index: 0,
+      lang: 'sv',
+    });
+    expect(pickTimerVoice([{ lang: 'fi-FI', default: true }, { lang: 'en-GB' }])).toEqual({
+      index: 1,
+      lang: 'en',
+    });
     expect(pickTimerVoice([{ lang: 'en-GB', default: true }, { lang: 'de-DE' }])).toEqual({
       index: 0,
       lang: 'en',
@@ -74,11 +82,11 @@ describe('timer voice language', () => {
     expect(pickTimerVoice([])).toBeNull();
   });
 
-  it('uses short gym lines in FI or EN', () => {
-    expect(voiceLine('fi', 30)).toBe('Kolmekymmentä sekuntia');
+  it('uses short gym lines in SV or EN', () => {
+    expect(voiceLine('sv', 30)).toBe('Trettio sekunder');
     expect(voiceLine('en', 10)).toBe('10 seconds');
-    expect(voiceLine('fi', 0, 'done')).toBe('Valmis');
+    expect(voiceLine('sv', 0, 'done')).toBe('Klart');
     expect(voiceLine('en', 0, 'work')).toBe('Work');
-    expect(voiceLine('fi', 0, 'rest')).toBe('Lepo');
+    expect(voiceLine('sv', 0, 'rest')).toBe('Vila');
   });
 });

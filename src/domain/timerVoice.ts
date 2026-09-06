@@ -1,7 +1,7 @@
 export const VOICE_THRESHOLDS_SEC = [30, 10, 0] as const;
 export type VoiceThresholdSec = (typeof VOICE_THRESHOLDS_SEC)[number];
 export type VoiceZeroKind = 'done' | 'work' | 'rest';
-export type VoiceLang = 'fi' | 'en';
+export type VoiceLang = 'sv' | 'en';
 
 export const TIMER_VOICE_PREF_KEY = 'linda-lift-timer-voice';
 
@@ -53,18 +53,23 @@ export function pickTimerVoice(voices: readonly { lang: string; default?: boolea
   lang: VoiceLang;
 } | null {
   if (voices.length === 0) return null;
-  const fi = voices.findIndex((v) => v.lang.toLowerCase().startsWith('fi'));
-  if (fi >= 0) return { index: fi, lang: 'fi' };
+  const norm = (lang: string) => lang.toLowerCase().replace('_', '-');
+  const svSE = voices.findIndex((v) => norm(v.lang) === 'sv-se');
+  if (svSE >= 0) return { index: svSE, lang: 'sv' };
+  const sv = voices.findIndex((v) => norm(v.lang).startsWith('sv'));
+  if (sv >= 0) return { index: sv, lang: 'sv' };
+  const en = voices.findIndex((v) => norm(v.lang).startsWith('en'));
+  if (en >= 0) return { index: en, lang: 'en' };
   const def = voices.findIndex((v) => v.default);
   return { index: def >= 0 ? def : 0, lang: 'en' };
 }
 
 export function voiceLine(lang: VoiceLang, cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): string {
-  if (cue === 30) return lang === 'fi' ? 'Kolmekymmentä sekuntia' : '30 seconds';
-  if (cue === 10) return lang === 'fi' ? 'Kymmenen sekuntia' : '10 seconds';
-  if (zeroKind === 'work') return lang === 'fi' ? 'Työ' : 'Work';
-  if (zeroKind === 'rest') return lang === 'fi' ? 'Lepo' : 'Rest';
-  return lang === 'fi' ? 'Valmis' : 'Done';
+  if (cue === 30) return lang === 'sv' ? 'Trettio sekunder' : '30 seconds';
+  if (cue === 10) return lang === 'sv' ? 'Tio sekunder' : '10 seconds';
+  if (zeroKind === 'work') return lang === 'sv' ? 'Arbete' : 'Work';
+  if (zeroKind === 'rest') return lang === 'sv' ? 'Vila' : 'Rest';
+  return lang === 'sv' ? 'Klart' : 'Done';
 }
 
 export type SpeechVoiceLike = { lang: string; default?: boolean };
@@ -78,10 +83,10 @@ function resolveUtterance(
     return {
       voice,
       lang: picked.lang,
-      bcp47: picked.lang === 'fi' ? 'fi-FI' : voice?.lang || 'en-US',
+      bcp47: picked.lang === 'sv' ? 'sv-SE' : voice?.lang || 'en-US',
     };
   }
-  return { voice: null, lang: 'fi', bcp47: 'fi-FI' };
+  return { voice: null, lang: 'en', bcp47: 'en-US' };
 }
 
 export function speakTimerCue(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): void {

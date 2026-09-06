@@ -11,8 +11,8 @@ describe('warmup vs work sets', () => {
       warmupKindFor(DAY_TEMPLATES.A.slots[0].exercise_id),
     );
     expect(setDisplayLabel(squat, 0)).toBe('W1');
-    expect(setDisplayLabel(squat, 2)).toBe('W3');
-    expect(setDisplayLabel(squat, 3)).toBe('1');
+    expect(setDisplayLabel(squat, 3)).toBe('W4');
+    expect(setDisplayLabel(squat, 4)).toBe('1');
     expect(workSets(DAY_TEMPLATES.A.slots[1].sets)).toHaveLength(3);
     expect(DAY_TEMPLATES.A.slots[1].sets.every((s) => !s.warmup)).toBe(true);
   });

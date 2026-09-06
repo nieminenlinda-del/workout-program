@@ -146,11 +146,11 @@ Seed kg is a starting prescription, not a lock. Mid-session edits write onto the
 T1 squat / bench / deadlift and Day D bench volume get a Kraft ladder **before** work sets (`src/domain/warmupLadder.ts`). W is the most common non-AMRAP work kg (else first work set). Round every warmup to 2.5; skip a step within 2.5 kg of the previous step or of W; never warmup ≥ W.
 
 1. Bar **20 × 5–8** (skip if W ≤ 25; 8 reps when W < 40)
-2. **~50% W × 5** (ceil to 10 kg; deadlift first plate at least 40 if 20/30 is pointless)
+2. **~50% W × 5** (nearest 2.5; deadlift first plate at least 40 if 20/30 is pointless)
 3. **~70% W × 3**
 4. **~85% W × 1–2** (drop the single if W − this ≤ 5 kg)
 
-Week 1: squat 47.5 → 20×5 / 30×5 / 40×3; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Squat W=50 → 20×5 / 30×5 / 35×3 / 42.5×2 (raw 50% is 25; that step snaps to a 10 kg plate). Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
+Week 1: squat 47.5 → 20×5 / 25×5 / 32.5×3 / 40×2; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Squat W=50 → 20×5 / 25×5 / 35×3 / 42.5×2. Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
 
 `shortLadder` (bar + last intermediate) exists for a later yellow / low-readiness day. Sessions still attach the full ladder.
 

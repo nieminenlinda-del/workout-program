@@ -87,8 +87,9 @@ describe('session factory', () => {
     const dl = createDraftSession('C', '2026-09-10').lifts[0].sets.filter((s) => s.warmup);
     expect(squat.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
       { weight_kg: 20, reps: 5 },
-      { weight_kg: 30, reps: 5 },
-      { weight_kg: 40, reps: 3 },
+      { weight_kg: 25, reps: 5 },
+      { weight_kg: 32.5, reps: 3 },
+      { weight_kg: 40, reps: 2 },
     ]);
     expect(bench.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
       { weight_kg: 20, reps: 8 },

@@ -11,17 +11,12 @@ export interface WarmupStep {
 }
 
 const BAR_KG = 20;
-const PLATE_JUMP = 10;
 const NEAREST = 2.5;
 const WARM_REST = 60;
 const WARM_REST_LAST = 90;
 
 export function roundToNearest2p5(kg: number): number {
   return Math.round(kg / NEAREST) * NEAREST;
-}
-
-function ceilTo10(kg: number): number {
-  return Math.ceil(kg / PLATE_JUMP) * PLATE_JUMP;
 }
 
 export function warmupKindFor(exerciseId: ExerciseId): WarmupKind | null {
@@ -58,7 +53,7 @@ export function prescribedWorkWeightKg(sets: readonly { weight_kg: number; warmu
  * Kraft warmup ladder from work weight W.
  *
  * 1. Bar 20 × 5–8 (skip if W ≤ 25)
- * 2. ~50% W × 5 (ceil to 10 kg; DL first plate at least 40 if 20/30 is pointless)
+ * 2. ~50% W × 5 (nearest 2.5; DL first plate at least 40 if 20/30 is pointless)
  * 3. ~70% W × 3
  * 4. ~85% W × 1–2 (omit the single if W − this ≤ 5; the load may still be the last ×3)
  *
@@ -73,7 +68,7 @@ export function warmupLadder(workKg: number, kind: WarmupKind = 'squat'): Warmup
 
   if (W > 25) weights.push(BAR_KG);
 
-  let fifty = ceilTo10(W * 0.5);
+  let fifty = roundToNearest2p5(W * 0.5);
   if (kind === 'deadlift' && fifty < 40) fifty = 40;
   weights.push(fifty);
   weights.push(roundToNearest2p5(W * 0.7));

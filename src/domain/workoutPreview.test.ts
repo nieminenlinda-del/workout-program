@@ -14,9 +14,9 @@ describe('planned session preview (template only)', () => {
     const squat = plannedLiftSummary(DAY_TEMPLATES.A.slots[0]);
     expect(squat.name).toBe('Low-bar squat');
     expect(squat.scheme).toBe('4 × 5+');
-    expect(squat.warmupLabel).toBe('W 20 kg → 30 kg → 40 kg');
+    expect(squat.warmupLabel).toBe('W 20 kg → 25 kg → 32.5 kg → 40 kg');
     expect(squat.restLabel).toBe('3:00 rest');
-    expect(squat.sets.filter((s) => s.warmup)).toHaveLength(3);
+    expect(squat.sets.filter((s) => s.warmup)).toHaveLength(4);
     expect(squat.sets.filter((s) => !s.warmup)).toHaveLength(4);
     expect(squat.sets[0]).toMatchObject({ label: 'W1', warmup: true, weight_kg: 20, reps: 5 });
     expect(squat.sets.find((s) => s.amrap)).toMatchObject({

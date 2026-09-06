@@ -3,7 +3,7 @@ import { WorkoutPreview } from '../components/WorkoutPreview';
 import { DAY_TEMPLATES } from '../data/templates';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
-import type { CanonicalTemplateDay, SessionDraft } from '../types/session';
+import type { CanonicalTemplateDay, SessionDraft, SessionLog } from '../types/session';
 import { SEED_TRAINING_MAXES } from '../types/phase2';
 
 export function HomeScreen({
@@ -11,6 +11,7 @@ export function HomeScreen({
   templateDay,
   onTemplateDay,
   draft,
+  history = [],
   historyCount,
   onStart,
   onResume,
@@ -22,6 +23,7 @@ export function HomeScreen({
   templateDay: CanonicalTemplateDay;
   onTemplateDay: (day: CanonicalTemplateDay) => void;
   draft: SessionDraft | null;
+  history?: readonly SessionLog[];
   historyCount: number;
   onStart: () => void;
   onResume: () => void;
@@ -39,13 +41,19 @@ export function HomeScreen({
         <h1>Today’s session</h1>
         <p className="muted">{formatDisplayDate(date)}</p>
         {meso.block && meso.phase ? (
-          <p className="phase-chip" title="Phase 2 calendar hook — engine not implemented">
+          <p
+            className={`phase-chip ${meso.training_mode === 'strength_peak' ? 'peak' : ''}`}
+            title="Phase 2 calendar hook — engine not implemented"
+          >
             Block {meso.block} · {meso.phase.replaceAll('_', ' ')} ·{' '}
             {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>
         ) : (
-          <p className="phase-chip dim" title="Phase 2 calendar hook — engine not implemented">
+          <p
+            className={`phase-chip ${meso.training_mode === 'strength_peak' ? 'peak' : 'dim'}`}
+            title="Phase 2 calendar hook — engine not implemented"
+          >
             Off-block · {meso.training_mode.replaceAll('_', ' ')}
           </p>
         )}
@@ -74,7 +82,7 @@ export function HomeScreen({
         <TemplatePicker value={templateDay} onChange={onTemplateDay} />
         <h2 className="template-heading">{template.title}</h2>
         <p className="muted">{template.focus}</p>
-        <WorkoutPreview key={template.id} template={template} />
+        <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
         <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
           {draft ? 'Replace draft & start' : 'Start session'}
         </button>

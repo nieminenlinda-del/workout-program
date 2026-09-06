@@ -1,5 +1,6 @@
 import type { SessionDraft } from '../types/session';
 import { completedSetCount } from '../domain/sessionFactory';
+import { isWarmupSet, workSets } from '../domain/sets';
 import { LightBadge } from '../components/LightBadge';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 
@@ -41,9 +42,11 @@ export function SaveScreen({
 
       <ul className="summary-lifts">
         {draft.lifts.map((lift) => {
-          const done = lift.sets.filter((s) => s.completed);
-          const top = done.reduce<(typeof done)[0] | null>((best, s) => {
+          const work = workSets(lift.sets);
+          const doneWork = work.filter((s) => s.completed);
+          const top = doneWork.reduce<(typeof doneWork)[0] | null>((best, s) => {
             if (!best) return s;
+            if (isWarmupSet(s)) return best;
             const load = s.weight_kg * s.reps;
             const bestLoad = best.weight_kg * best.reps;
             return load > bestLoad ? s : best;
@@ -52,7 +55,7 @@ export function SaveScreen({
             <li key={lift.exercise_id + lift.name}>
               <strong>{lift.name}</strong>
               <span>
-                {done.length}/{lift.sets.length}
+                {doneWork.length}/{work.length || lift.sets.length}
                 {top ? ` · ${top.weight_kg}×${top.reps}` : ''}
               </span>
             </li>

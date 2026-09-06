@@ -7,6 +7,7 @@ export interface SeedSet {
   rpe: number;
   amrap?: boolean;
   rest_sec: number;
+  warmup?: boolean;
 }
 
 export interface TemplateSlot {
@@ -30,7 +31,7 @@ const T1_REST = 180;
 const ACC_REST = 90;
 const CORE_REST = 60;
 
-/** Static 4-day seed. Phase 2 will replace weights via the progression engine. */
+/** Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder). */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
   A: {
     id: 'A',

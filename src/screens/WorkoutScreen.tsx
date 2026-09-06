@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import type { LoggedLift, LoggedSet, SessionDraft } from '../types/session';
+import { useMemo, useState } from 'react';
+import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
 import type { ExerciseId } from '../types/exercises';
 import { DAY_TEMPLATES, exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
+import { lastMatchingPerformance } from '../domain/lastPerformance';
+import { laterSameKindUnlogged, setDisplayLabel, workSets } from '../domain/sets';
+import { logSetOnDraft, overrideUnloggedLiftWeight } from '../domain/weightOverride';
 import { SetLogger } from '../components/SetLogger';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
+import { NumberStepper } from '../components/NumberStepper';
+import { LastPerformanceHint } from '../components/LastPerformanceHint';
 import { unlockTimerAudio } from '../domain/timerCue';
 
 interface ActiveSet {
@@ -16,11 +21,13 @@ interface ActiveSet {
 
 export function WorkoutScreen({
   draft,
+  history = [],
   onChange,
   onBack,
   onFinish,
 }: {
   draft: SessionDraft;
+  history?: readonly SessionLog[];
   onChange: (next: SessionDraft) => void;
   onBack: () => void;
   onFinish: () => void;
@@ -33,15 +40,18 @@ export function WorkoutScreen({
   const template = DAY_TEMPLATES[day];
   const progress = completedSetCount(draft);
 
-  const completeSet = (liftIndex: number, setIndex: number, logged: LoggedSet) => {
-    const lifts = draft.lifts.map((lift, li) => {
-      if (li !== liftIndex) return lift;
-      return {
-        ...lift,
-        sets: lift.sets.map((s, si) => (si === setIndex ? logged : s)),
-      };
-    });
-    onChange({ ...draft, lifts, updated_at: new Date().toISOString() });
+  const lastByExercise = useMemo(() => {
+    const ids = draft.lifts.map((lift) => lift.exercise_id);
+    const map = new Map<ExerciseId, ReturnType<typeof lastMatchingPerformance>>();
+    for (const id of ids) {
+      map.set(id, lastMatchingPerformance(history, id, day, draft.date));
+    }
+    return map;
+  }, [history, day, draft.date, draft.lifts]);
+
+  const completeSet = (liftIndex: number, setIndex: number, logged: Parameters<typeof logSetOnDraft>[3], applyRemaining: boolean) => {
+    const next = logSetOnDraft(draft, liftIndex, setIndex, logged, applyRemaining);
+    onChange(next);
     setActive(null);
     unlockTimerAudio();
     const restSec =
@@ -74,8 +84,15 @@ export function WorkoutScreen({
 
       {draft.lifts.map((lift, liftIndex) => {
         const slot = slotForLift(template, lift) ?? template.slots[liftIndex];
-        const done = lift.sets.filter((s) => s.completed).length;
         const expanded = openLift === liftIndex;
+        const last = lastByExercise.get(lift.exercise_id) ?? null;
+        const work = workSets(lift.sets);
+        const workDone = work.filter((s) => s.completed).length;
+        const warmups = lift.sets.filter((s) => s.warmup);
+        const warmupDone = warmups.filter((s) => s.completed).length;
+        const unloggedWork = work.filter((s) => !s.completed);
+        const workingKg =
+          unloggedWork[0]?.weight_kg ?? work[work.length - 1]?.weight_kg ?? 0;
         return (
           <section key={`${lift.exercise_id}-${liftIndex}`} className={`card lift-card ${expanded ? 'open' : ''}`}>
             <button
@@ -86,9 +103,15 @@ export function WorkoutScreen({
               <div>
                 <p className="kicker">{slot?.role ?? 'lift'}</p>
                 <h2>{lift.name}</h2>
+                <LastPerformanceHint performance={last} />
               </div>
               <span className="lift-count">
-                {done}/{lift.sets.length}
+                {workDone}/{work.length || lift.sets.length}
+                {warmups.length > 0 ? (
+                  <em className="warmup-count">
+                    W {warmupDone}/{warmups.length}
+                  </em>
+                ) : null}
               </span>
             </button>
 
@@ -113,21 +136,36 @@ export function WorkoutScreen({
               </button>
             ) : null}
 
+            {expanded && unloggedWork.length > 0 ? (
+              <NumberStepper
+                label="Working weight"
+                value={workingKg}
+                onChange={(kg) => onChange(overrideUnloggedLiftWeight(draft, liftIndex, kg))}
+                step={2.5}
+                suffix="kg"
+                hint="Edits leftover work sets. Unused warmups follow the new W."
+              />
+            ) : null}
+
             {expanded
               ? lift.sets.map((set, setIndex) => (
                   <button
                     key={setIndex}
                     type="button"
-                    className={`set-row ${set.completed ? 'done' : ''}`}
+                    className={`set-row ${set.completed ? 'done' : ''} ${set.warmup ? 'warmup' : ''}`}
                     onClick={() => setActive({ liftIndex, setIndex })}
                   >
-                    <span className="set-num">{setIndex + 1}</span>
+                    <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>
+                      {setDisplayLabel(lift.sets, setIndex)}
+                    </span>
                     <span className="set-main">
                       {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
                       {set.amrap ? ' +' : ''}
                       <em> @ {set.rpe} RPE</em>
                     </span>
-                    <span className="set-state">{set.completed ? 'Logged' : 'Log'}</span>
+                    <span className="set-state">
+                      {set.completed ? 'Logged' : set.warmup ? 'Warmup' : 'Log'}
+                    </span>
                   </button>
                 ))
               : null}
@@ -142,11 +180,22 @@ export function WorkoutScreen({
       {active ? (
         <SetLogger
           exerciseName={draft.lifts[active.liftIndex]?.name ?? 'Lift'}
-          setNumber={active.setIndex + 1}
-          setCount={draft.lifts[active.liftIndex]?.sets.length ?? 0}
+          setLabel={setDisplayLabel(draft.lifts[active.liftIndex]?.sets ?? [], active.setIndex)}
+          setCount={
+            (draft.lifts[active.liftIndex]?.sets[active.setIndex]?.warmup
+              ? draft.lifts[active.liftIndex]?.sets.filter((s) => s.warmup).length
+              : draft.lifts[active.liftIndex]?.sets.filter((s) => !s.warmup).length) ?? 0
+          }
           initial={draft.lifts[active.liftIndex].sets[active.setIndex]}
+          lastPerformance={lastByExercise.get(draft.lifts[active.liftIndex].exercise_id) ?? null}
+          hasLaterSameKind={laterSameKindUnlogged(
+            draft.lifts[active.liftIndex]?.sets ?? [],
+            active.setIndex,
+          )}
           onCancel={() => setActive(null)}
-          onComplete={(logged) => completeSet(active.liftIndex, active.setIndex, logged)}
+          onComplete={(logged, applyRemaining) =>
+            completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)
+          }
         />
       ) : null}
 

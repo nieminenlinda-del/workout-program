@@ -22,6 +22,8 @@ export interface LoggedSet {
   rpe: number;
   completed: boolean;
   amrap?: boolean;
+  /** True for seeded warmup sets. Must not count as a work set for last-week / Phase 2. */
+  warmup?: boolean;
 }
 
 export interface LoggedLift {

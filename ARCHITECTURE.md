@@ -80,9 +80,9 @@ The UI file picker posts zip/xml to `src/health/parse/worker.ts`, which stream-u
 
 | Block | Window | Default phase |
 | --- | --- | --- |
-| A | 2026-09-08 → 2026-10-05 | `accumulate` |
-| B | 2026-10-06 → 2026-11-02 | `intensify` |
-| C | 2026-11-03 → 2026-11-21 | `peak_overreach` |
+| A | 2026-09-07 → 2026-10-04 | `accumulate` |
+| B | 2026-10-05 → 2026-11-01 | `intensify` |
+| C | 2026-11-02 → 2026-11-21 | `peak_overreach` |
 
 Block C refinements already encoded in the hook:
 
@@ -102,10 +102,10 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 
 **Mode rules**
 
-- Default **`hypertrophy`** between meets (accumulate, intensify, off-block, or no `target_test_date`).
-- **`strength_peak` only** while `target_test_date` is in the peaking window (`peak_overreach`, `peak_taper`, `test`).
+- **No `target_test_date`** → **`hypertrophy`**.
+- **While a test date is set and `asOf <= target_test_date`** → **`strength_peak`**. That includes accumulate, intensify, and off-block dates before the test — not only `peak_overreach` / `peak_taper` / `test`.
 - **After the test date** → auto **`hypertrophy`**, unless a later `target_test_date` is set.
-- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Peak mode is `strength_peak` through that date; from 2026-11-22 the hook returns `hypertrophy`.
+- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Mode is **`strength_peak` from day one** of Block A (2026-09-07) through the test date — not only `peak_overreach` / `peak_taper` / `test`. From 2026-11-22 the hook returns `hypertrophy`. Seeded TMs (docs only): squat **67.5** / bench **50** / deadlift **85** kg.
 
 **Strength auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`, used when `training_mode === "strength_peak"`)
 
@@ -123,6 +123,36 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 `progressionRulesFor(training_mode)` returns the matching constants. It does **not** compute next-session weights. `progressionEngineStub.proposeNext` still throws `Phase2NotImplementedError`.
 
 Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-logging UI.
+
+## Last-week performance (Phase 1 read of SessionLog)
+
+`src/domain/lastPerformance.ts` reads completed IndexedDB sessions (`repo.listComplete()`). No backend.
+
+**Match:** same `exercise_id`, prefer the same canonical template day (A–D) — that is the previous occurrence of this day, usually ~7 days earlier. If that day has never been logged, fall back to the same exercise on any day. Only sessions with `date < asOf` count.
+
+**Top work set:** among completed **work** sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Sets with `warmup: true` are excluded. Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
+
+Shown on the Today preview, each in-session lift card, and the set logger.
+
+## Manual weight override (Phase 1)
+
+Seed kg is a starting prescription, not a lock. Mid-session edits write onto the draft (`src/domain/weightOverride.ts`) so Linda does not restart the session.
+
+- **Working weight** stepper on an expanded lift updates every **unlogged work** set. The warmup ladder is then recomputed from the new W unless a warmup is already logged.
+- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default apply-forward copies kg onto later unlogged sets of the **same kind** (warmup→warmup, work→work).
+
+## Warmup sets (Phase 1)
+
+T1 squat / bench / deadlift and Day D bench volume get a Kraft ladder **before** work sets (`src/domain/warmupLadder.ts`). W is the most common non-AMRAP work kg (else first work set). Round every warmup to 2.5; skip a step within 2.5 kg of the previous step or of W; never warmup ≥ W.
+
+1. Bar **20 × 5–8** (skip if W ≤ 25; 8 reps when W < 40)
+2. **~50% W × 5** (nearest 2.5; deadlift first plate at least 40 if 20/30 is pointless)
+3. **~70% W × 3**
+4. **~85% W × 1–2** (drop the single if W − this ≤ 5 kg)
+
+Week 1: squat 47.5 → 20×5 / 25×5 / 32.5×3 / 40×2; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Squat W=50 → 20×5 / 25×5 / 35×3 / 42.5×2. Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
+
+`shortLadder` (bar + last intermediate) exists for a later yellow / low-readiness day. Sessions still attach the full ladder.
 
 ### Freeze rules (must implement in Phase 2)
 
@@ -177,7 +207,7 @@ Keep `SessionLog` field names stable. Additive fields are fine; renames break th
 
 The rest overlay reads `rest_sec` from the seed template slot after each completed set. The interval screen is a separate view (`AppView: "interval"`) and does not write `SessionLog` or Phase 2 types.
 
-Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
+Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Spoken voice (`speechSynthesis`) is additive: **30s**, **10s**, and **0s** (rest: “done”; interval: next phase / done). Swedish (`sv-SE`, or any `sv*`) if `getVoices()` lists it, else English. Do not prefer Finnish. Each threshold fires once per countdown (lock-screen jumps speak only the lowest crossed mark). Skip does not speak 0s. Voice on/off lives on the rest card and interval setup (`localStorage` `linda-lift-timer-voice`, default on). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
 
 ## Exercise IDs
 

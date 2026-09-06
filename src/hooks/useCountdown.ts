@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  displaySeconds,
   extendCountdown,
   pauseCountdown,
   resumeCountdown,
@@ -9,17 +10,24 @@ import {
   type CountdownState,
 } from '../domain/countdown';
 import { signalTimerCue, unlockTimerAudio } from '../domain/timerCue';
+import { speakZeroIfEnabled, useSpokenCountdown } from './useSpokenCountdown';
 import { useWakeLock } from './useWakeLock';
 
-export function useCountdown(durationSec: number, onFinished?: () => void) {
+export function useCountdown(
+  durationSec: number,
+  onFinished?: () => void,
+  voiceEnabled = true,
+) {
   const [state, setState] = useState<CountdownState>(() =>
     startCountdown(durationSec, Date.now()),
   );
   const finishedRef = useRef(false);
+  const [voiceCycle, setVoiceCycle] = useState(0);
   const onFinishedRef = useRef(onFinished);
   onFinishedRef.current = onFinished;
 
   useWakeLock(state.running && !state.finished);
+  useSpokenCountdown(displaySeconds(state), `rest-${voiceCycle}`, voiceEnabled);
 
   useEffect(() => {
     unlockTimerAudio();
@@ -49,8 +57,9 @@ export function useCountdown(durationSec: number, onFinished?: () => void) {
     if (!state.finished || finishedRef.current) return;
     finishedRef.current = true;
     signalTimerCue('end');
+    speakZeroIfEnabled(voiceEnabled, 'done');
     onFinishedRef.current?.();
-  }, [state.finished]);
+  }, [state.finished, voiceEnabled]);
 
   const pause = useCallback(() => {
     setState((current) => pauseCountdown(current, Date.now()));
@@ -62,6 +71,7 @@ export function useCountdown(durationSec: number, onFinished?: () => void) {
   }, []);
 
   const extend = useCallback((extraSec: number) => {
+    if (finishedRef.current) setVoiceCycle((n) => n + 1);
     finishedRef.current = false;
     setState((current) => extendCountdown(current, extraSec, Date.now()));
   }, []);

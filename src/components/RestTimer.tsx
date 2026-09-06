@@ -1,6 +1,8 @@
 import { displaySeconds, formatClock, progressRatio } from '../domain/countdown';
 import { unlockTimerAudio } from '../domain/timerCue';
 import { useCountdown } from '../hooks/useCountdown';
+import { useTimerVoicePref } from '../hooks/useTimerVoicePref';
+import { VoiceToggle } from './VoiceToggle';
 
 export function RestTimer({
   seconds,
@@ -11,7 +13,8 @@ export function RestTimer({
   exerciseName: string;
   onDone: () => void;
 }) {
-  const { state, pause, resume, extend, skip } = useCountdown(seconds);
+  const { voiceEnabled, setVoiceEnabled } = useTimerVoicePref();
+  const { state, pause, resume, extend, skip } = useCountdown(seconds, undefined, voiceEnabled);
   const remaining = displaySeconds(state);
   const done = state.finished;
   const pct = progressRatio(state);
@@ -38,7 +41,10 @@ export function RestTimer({
       >
         <p className="rest-kicker">{done ? 'Rest done' : state.running ? 'Rest' : 'Paused'}</p>
         <h2 className="rest-title">{exerciseName}</h2>
-        <p className="muted rest-hint">{seconds}s default · tap outside or skip to log</p>
+        <p className="muted rest-hint">
+          {seconds}s default · tap outside or skip to log · voice at 30s, 10s, done
+        </p>
+        <VoiceToggle enabled={voiceEnabled} onChange={setVoiceEnabled} />
         <div className="rest-ring-wrap">
           <svg className="rest-ring" viewBox="0 0 120 120" aria-hidden="true">
             <circle cx="60" cy="60" r="52" className="rest-ring-bg" />

@@ -39,6 +39,7 @@ export default function App() {
           templateDay={templateDay}
           onTemplateDay={setTemplateDay}
           draft={flow.draft}
+          history={flow.history}
           historyCount={flow.history.length}
           onStart={() => void flow.startSession(templateDay)}
           onResume={() => {
@@ -65,6 +66,7 @@ export default function App() {
       {flow.view === 'workout' && flow.draft ? (
         <WorkoutScreen
           draft={flow.draft}
+          history={flow.history}
           onChange={(next) => void flow.persistDraft(next)}
           onBack={() => flow.setView('readiness')}
           onFinish={() => flow.setView('save')}

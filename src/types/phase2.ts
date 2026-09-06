@@ -44,8 +44,8 @@ export type TestLift = (typeof TEST_LIFT_ORDER)[number];
 
 /**
  * Juggernaut PowerCombo program switch for the Phase 2 engine.
- * Hypertrophy when not peaking; peak when preparing for a test/meet
- * (this cycle: toward TARGET_TEST_DATE / 2026-11-21).
+ * Hypertrophy when no test is on the calendar; peak (`strength_peak`) while
+ * preparing for a test/meet (this cycle: toward TARGET_TEST_DATE / 2026-11-21).
  *
  * Phase 1 session logging must not read or persist this field.
  */
@@ -53,7 +53,9 @@ export type ProgramMode = 'hypertrophy' | 'peak';
 
 /**
  * Engine-facing synonym of ProgramMode (`strength_peak` === `peak`).
- * Hypertrophy between meets; strength_peak only inside the peaking window.
+ * While `target_test_date` is set and asOf is on or before that date,
+ * mode is strength_peak (including accumulate / intensify). After the date,
+ * auto hypertrophy.
  */
 export type TrainingMode = 'hypertrophy' | 'strength_peak';
 
@@ -128,28 +130,29 @@ export function progressionRulesFor(training_mode: TrainingMode): PowerComboProg
 }
 
 /**
- * Calendar windows for the 2026 test cycle.
- * Block A ~8 Sep–5 Oct · B ~6 Oct–2 Nov · C ~3–21 Nov.
+ * Calendar windows for the 2026 test cycle (authoritative).
+ * Block A 7 Sep–4 Oct · B 5 Oct–1 Nov · C 2–21 Nov (ends on test day).
+ * Contiguous: each block starts the day after the previous ends.
  */
 export const MESOCYCLE_WINDOWS: readonly MesocycleWindow[] = [
   {
     block: 'A',
     label: 'Accumulate',
-    start: '2026-09-08',
-    end: '2026-10-05',
+    start: '2026-09-07',
+    end: '2026-10-04',
     defaultPhase: 'accumulate',
   },
   {
     block: 'B',
     label: 'Intensify',
-    start: '2026-10-06',
-    end: '2026-11-02',
+    start: '2026-10-05',
+    end: '2026-11-01',
     defaultPhase: 'intensify',
   },
   {
     block: 'C',
     label: 'Peak',
-    start: '2026-11-03',
+    start: '2026-11-02',
     end: '2026-11-21',
     defaultPhase: 'peak_overreach',
   },

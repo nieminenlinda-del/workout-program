@@ -80,4 +80,26 @@ describe('session factory', () => {
     expect(swapped.lifts[1]?.exercise_id).toBe('row_db');
     expect(swapped.lifts[1]?.sets).toHaveLength(draft.lifts[1].sets.length);
   });
+
+  it('seeds Week 1 Kraft ladders on T1 squat, bench, and deadlift', () => {
+    const squat = createDraftSession('A', '2026-09-07').lifts[0].sets.filter((s) => s.warmup);
+    const bench = createDraftSession('B', '2026-09-08').lifts[0].sets.filter((s) => s.warmup);
+    const dl = createDraftSession('C', '2026-09-10').lifts[0].sets.filter((s) => s.warmup);
+    expect(squat.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 25, reps: 5 },
+      { weight_kg: 32.5, reps: 3 },
+      { weight_kg: 40, reps: 2 },
+    ]);
+    expect(bench.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
+      { weight_kg: 20, reps: 8 },
+      { weight_kg: 25, reps: 5 },
+      { weight_kg: 30, reps: 3 },
+    ]);
+    expect(dl.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 40, reps: 5 },
+      { weight_kg: 50, reps: 3 },
+    ]);
+  });
 });

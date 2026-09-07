@@ -185,7 +185,7 @@ export function WorkoutScreen({
               </button>
             ) : null}
 
-            {expanded && unloggedWork.length > 0 ? (
+            {expanded && !timed && unloggedWork.length > 0 ? (
               <NumberStepper
                 label="Working weight"
                 value={workingKg}

@@ -1,6 +1,6 @@
 /**
  * Canonical exercise IDs for Linda Lift.
- * Primaries exclude sumo, high-bar, and close-grip as programmed lifts.
+ * Primaries exclude sumo, high-bar, close-grip, extra-wide, and feet-up as programmed lifts.
  */
 export const PRIMARY_EXERCISE_IDS = [
   'squat_low_bar',

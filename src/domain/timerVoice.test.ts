@@ -151,6 +151,7 @@ describe('iOS speech unlock and keep-alive', () => {
   afterEach(() => {
     while (speechKeepAliveRunning()) stopSpeechKeepAlive();
     cancelTimerVoice();
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
     vi.useRealTimers();
   });
 
@@ -184,5 +185,44 @@ describe('iOS speech unlock and keep-alive', () => {
     vi.advanceTimersByTime(SPEECH_KEEP_ALIVE_MS);
     expect(synth.pause).not.toHaveBeenCalled();
     stopSpeechKeepAlive();
+  });
+
+  it('does not speak while the page is backgrounded', () => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    speakTimerCue(30);
+    expect(synth.speak).not.toHaveBeenCalled();
+  });
+
+  it('does not pulse keep-alive while the page is backgrounded', () => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    startSpeechKeepAlive();
+    vi.advanceTimersByTime(SPEECH_KEEP_ALIVE_MS);
+    expect(synth.pause).not.toHaveBeenCalled();
+    stopSpeechKeepAlive();
+  });
+
+  it('keeps voices from voiceschanged when getVoices is empty at speak time', () => {
+    let voices: { lang: string; voiceURI: string; default?: boolean }[] = [];
+    synth.getVoices = vi.fn(() => voices);
+    unlockTimerVoice();
+    const onVoices = synth.addEventListener.mock.calls.find((call) => call[0] === 'voiceschanged')?.[1] as
+      | (() => void)
+      | undefined;
+    expect(onVoices).toEqual(expect.any(Function));
+    voices = [{ lang: 'sv-SE', voiceURI: 'sv', default: true }];
+    onVoices?.();
+    voices = [];
+    synth.spoken.length = 0;
+    synth.speak.mockClear();
+    speakTimerCue(30);
+    expect(synth.spoken).toContain('Trettio sekunder');
+  });
+
+  it('resumes the synth when the page becomes visible again', () => {
+    unlockTimerVoice();
+    synth.resume.mockClear();
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(synth.resume).toHaveBeenCalled();
   });
 });

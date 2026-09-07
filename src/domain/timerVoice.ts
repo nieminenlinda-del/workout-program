@@ -9,6 +9,9 @@ export const TIMER_VOICE_PREF_KEY = 'linda-lift-timer-voice';
 export const SPEECH_KEEP_ALIVE_MS = 8000;
 
 let voicesListenerBound = false;
+let boundSynth: SpeechSynthesis | null = null;
+let cachedVoices: SpeechVoiceLike[] = [];
+let visibilityBound = false;
 let keepAliveId: ReturnType<typeof setInterval> | null = null;
 let keepAliveRefs = 0;
 let pendingSpeakTimer: ReturnType<typeof setTimeout> | null = null;
@@ -97,13 +100,41 @@ function getSynth(): SpeechSynthesis | null {
   return window.speechSynthesis;
 }
 
+function pageIsHidden(): boolean {
+  return typeof document !== 'undefined' && document.hidden;
+}
+
+function cacheVoicesFrom(synth: SpeechSynthesis): SpeechVoiceLike[] {
+  const live = synth.getVoices();
+  if (live.length > 0) cachedVoices = Array.from(live);
+  return cachedVoices.length > 0 ? cachedVoices : Array.from(live);
+}
+
 function bindVoicesListener(synth: SpeechSynthesis): void {
-  if (voicesListenerBound) return;
+  if (voicesListenerBound && boundSynth === synth) return;
+  if (boundSynth !== synth) cachedVoices = [];
   voicesListenerBound = true;
-  synth.addEventListener('voiceschanged', () => {
-    void synth.getVoices();
+  boundSynth = synth;
+  const cache = () => {
+    cacheVoicesFrom(synth);
+  };
+  synth.addEventListener('voiceschanged', cache);
+  cache();
+}
+
+function bindVisibilityResume(): void {
+  if (typeof document === 'undefined' || visibilityBound) return;
+  visibilityBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    const synth = getSynth();
+    if (!synth) return;
+    try {
+      synth.resume();
+    } catch {
+      /* ignore */
+    }
   });
-  void synth.getVoices();
 }
 
 function resumeSynth(synth: SpeechSynthesis): void {
@@ -148,12 +179,14 @@ function enqueueUtterance(synth: SpeechSynthesis, utter: SpeechSynthesisUtteranc
 }
 
 export function speakTimerCue(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): void {
+  if (pageIsHidden()) return;
   const synth = getSynth();
   if (!synth) return;
   try {
     bindVoicesListener(synth);
+    bindVisibilityResume();
     resumeSynth(synth);
-    const { voice, lang, bcp47 } = resolveUtterance(synth.getVoices());
+    const { voice, lang, bcp47 } = resolveUtterance(cacheVoicesFrom(synth));
     const utter = new SpeechSynthesisUtterance(voiceLine(lang, cue, zeroKind));
     utter.lang = bcp47;
     if (voice && 'voiceURI' in voice) {
@@ -177,7 +210,9 @@ export function unlockTimerVoice(): void {
   if (!synth) return;
   try {
     bindVoicesListener(synth);
+    bindVisibilityResume();
     resumeSynth(synth);
+    cacheVoicesFrom(synth);
     const warm = new SpeechSynthesisUtterance('\u00a0');
     warm.lang = 'en-US';
     warm.volume = 1;
@@ -197,6 +232,7 @@ export function startSpeechKeepAlive(): void {
   keepAliveRefs += 1;
   if (keepAliveId != null) return;
   const pulse = () => {
+    if (pageIsHidden()) return;
     const synth = getSynth();
     if (!synth || synth.speaking || synth.pending) return;
     try {

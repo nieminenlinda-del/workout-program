@@ -14,6 +14,8 @@ export function RestTimer({
   onDone: () => void;
 }) {
   const { voiceEnabled, setVoiceEnabled } = useTimerVoicePref();
+  // useCountdown ticks ~200ms and feeds remaining seconds into useSpokenCountdown
+  // as (prev, next) for 30 / 10; natural finish speaks 0.
   const { state, pause, resume, extend, skip } = useCountdown(seconds, undefined, voiceEnabled);
   const remaining = displaySeconds(state);
   const done = state.finished;

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { HomeScreen } from './screens/HomeScreen';
 import { ReadinessScreen } from './screens/ReadinessScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
@@ -22,8 +23,13 @@ export default function App() {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-    setIntervalBack(from);
-    flow.setView('interval');
+    flushSync(() => {
+      setIntervalBack(from);
+      flow.setView('interval');
+    });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   const needsDraft = flow.view === 'readiness' || flow.view === 'workout' || flow.view === 'save';

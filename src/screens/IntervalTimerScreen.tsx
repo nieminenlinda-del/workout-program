@@ -5,7 +5,13 @@ import { DEFAULT_INTERVAL_CONFIG } from '../domain/intervalTimer';
 import { useIntervalTimer } from '../hooks/useIntervalTimer';
 import { useTimerVoicePref } from '../hooks/useTimerVoicePref';
 
-export function IntervalTimerScreen({ onBack }: { onBack: () => void }) {
+export function IntervalTimerScreen({
+  onBack,
+  backLabel = 'Today',
+}: {
+  onBack: () => void;
+  backLabel?: string;
+}) {
   const { voiceEnabled, setVoiceEnabled } = useTimerVoicePref();
   const { config, setConfig, state, start, pause, resume, extend, skipPhase, stop } =
     useIntervalTimer(DEFAULT_INTERVAL_CONFIG, voiceEnabled);
@@ -20,7 +26,7 @@ export function IntervalTimerScreen({ onBack }: { onBack: () => void }) {
     <main className="screen">
       <header className="topbar">
         <button type="button" className="btn btn-ghost" onClick={onBack}>
-          Today
+          {backLabel}
         </button>
         <h1>Intervals</h1>
         <span />

@@ -30,12 +30,14 @@ export function WorkoutScreen({
   history = [],
   onChange,
   onBack,
+  onInterval,
   onFinish,
 }: {
   draft: SessionDraft;
   history?: readonly SessionLog[];
   onChange: (next: SessionDraft) => void;
   onBack: () => void;
+  onInterval: () => void;
   onFinish: () => void;
 }) {
   const [active, setActive] = useState<ActiveSet | null>(null);
@@ -193,9 +195,14 @@ export function WorkoutScreen({
         );
       })}
 
-      <button type="button" className="btn btn-primary btn-block" onClick={onFinish}>
-        Review & save
-      </button>
+      <div className="workout-footer">
+        <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>
+          Interval timer
+        </button>
+        <button type="button" className="btn btn-primary btn-block" onClick={onFinish}>
+          Review & save
+        </button>
+      </div>
 
       {active ? (
         <SetLogger

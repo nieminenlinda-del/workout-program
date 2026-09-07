@@ -9,7 +9,7 @@ src/
   domain/         Readiness light, draft factory, calendar hook, countdown + interval timers
   db/             SessionRepository + IndexedDB + in-memory (tests)
   health/         Shared linda-health store, Apple export parser, training-day join
-  screens/        Readiness → workout → set log → rest → save; interval timer; Health import
+  screens/        Readiness → workout → set log → rest → save; interval timer (Today + in-session); Health import
 ```
 
 ## Persistence contract

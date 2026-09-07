@@ -526,6 +526,17 @@ button {
   font-weight: 700;
 }
 
+.workout-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(18, 20, 26, 0), #12141a 22px);
+}
+
 .lift-head {
   display: flex;
   justify-content: space-between;

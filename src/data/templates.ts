@@ -162,12 +162,12 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
       {
         slot_id: 'c-glute',
         role: 'accessory',
-        exercise_id: 'glute_bridge',
-        alternatives: ['hip_thrust'],
+        exercise_id: 'hip_thrust',
+        alternatives: ['glute_bridge'],
         sets: [
-          { weight_kg: 40, reps: 10, rpe: 7, rest_sec: ACC_REST },
-          { weight_kg: 40, reps: 10, rpe: 7, rest_sec: ACC_REST },
-          { weight_kg: 40, reps: 10, rpe: 7.5, rest_sec: ACC_REST },
+          { weight_kg: 82.5, reps: 12, rpe: 7, rest_sec: ACC_REST },
+          { weight_kg: 82.5, reps: 12, rpe: 7, rest_sec: ACC_REST },
+          { weight_kg: 82.5, reps: 12, rpe: 7.5, rest_sec: ACC_REST },
         ],
       },
       {

@@ -30,12 +30,15 @@ describe('seed templates', () => {
     expect(ids).toContain('band_pull_apart');
   });
 
-  it('Thursday C is conventional deadlift plus glute, light rdl, side plank', () => {
+  it('Thursday C is conventional deadlift plus hip thrust, light rdl, side plank', () => {
     const ids = DAY_TEMPLATES.C.slots.map((s) => s.exercise_id);
     const alts = DAY_TEMPLATES.C.slots.flatMap((s) => s.alternatives);
     expect(ids).toContain('deadlift_conventional');
-    expect(ids).toContain('glute_bridge');
-    expect(alts).toContain('hip_thrust');
+    expect(ids).toContain('hip_thrust');
+    expect(alts).toContain('glute_bridge');
+    expect(DAY_TEMPLATES.C.slots.find((s) => s.slot_id === 'c-glute')?.sets.map((s) => s.weight_kg)).toEqual([
+      82.5, 82.5, 82.5,
+    ]);
     expect(ids).toContain('rdl');
     expect(ids).toContain('side_plank');
   });

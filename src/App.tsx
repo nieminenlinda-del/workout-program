@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HomeScreen } from './screens/HomeScreen';
 import { ReadinessScreen } from './screens/ReadinessScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
@@ -25,6 +25,10 @@ export default function App() {
 
   const needsDraft = flow.view === 'readiness' || flow.view === 'workout' || flow.view === 'save';
   const view = needsDraft && !flow.draft ? 'home' : flow.view;
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   if (!flow.booted) {
     return (

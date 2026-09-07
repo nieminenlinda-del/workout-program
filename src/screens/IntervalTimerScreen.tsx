@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { NumberStepper } from '../components/NumberStepper';
 import { VoiceToggle } from '../components/VoiceToggle';
 import { displaySeconds, formatClock, progressRatio } from '../domain/countdown';
@@ -15,6 +16,12 @@ export function IntervalTimerScreen({
   const { voiceEnabled, setVoiceEnabled } = useTimerVoicePref();
   const { config, setConfig, state, start, pause, resume, extend, skipPhase, stop } =
     useIntervalTimer(DEFAULT_INTERVAL_CONFIG, voiceEnabled);
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
   const remaining = displaySeconds(state.countdown);
   const pct = progressRatio(state.countdown);
   const circumference = 2 * Math.PI * 52;

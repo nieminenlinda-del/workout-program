@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { HomeScreen } from './screens/HomeScreen';
 import { ReadinessScreen } from './screens/ReadinessScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
@@ -26,8 +26,17 @@ export default function App() {
   const needsDraft = flow.view === 'readiness' || flow.view === 'workout' || flow.view === 'save';
   const view = needsDraft && !flow.draft ? 'home' : flow.view;
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
+  useLayoutEffect(() => {
+    const reset = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const shell = document.querySelector('.shell');
+      if (shell instanceof HTMLElement) shell.scrollTop = 0;
+    };
+    reset();
+    const id = window.requestAnimationFrame(reset);
+    return () => window.cancelAnimationFrame(id);
   }, [view]);
 
   if (!flow.booted) {

@@ -39,6 +39,8 @@ export interface LoggedLift {
   exercise_id: ExerciseId;
   /** Snapshot of catalog equipment. Older logs omit this — derive from `exercise_id`. */
   equipment?: Equipment;
+  /** Barbell mass in kg (15 women’s / 20 standard). Omitted on DB / BW / bands. */
+  bar_kg?: number;
   sets: LoggedSet[];
 }
 

@@ -6,7 +6,8 @@ import type { LastPerformance } from '../domain/lastPerformance';
 import { formatPlanLoad, prescriptionWeightKg } from '../domain/setPrescription';
 import { unlockTimerAudio } from '../domain/timerCue';
 import { HOLD_SEC_LOG_MAX, REPS_LOG_MAX, type Equipment } from '../types/exercises';
-import { EquipmentPicker } from './EquipmentPicker';
+import { BarMassPicker, EquipmentPicker } from './EquipmentPicker';
+import { DEFAULT_BAR_KG, clampBarKg } from '../domain/equipment';
 
 const RPE_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
@@ -21,6 +22,8 @@ export function SetLogger({
   equipmentOptions = [],
   equipment,
   onEquipment,
+  barKg,
+  onBarKg,
   onCancel,
   onComplete,
 }: {
@@ -34,6 +37,8 @@ export function SetLogger({
   equipmentOptions?: readonly Equipment[];
   equipment?: Equipment;
   onEquipment?: (next: Equipment) => void;
+  barKg?: number;
+  onBarKg?: (kg: number) => void;
   onCancel: () => void;
   onComplete: (set: LoggedSet, applyWeightToRemaining: boolean) => void;
 }) {
@@ -42,6 +47,7 @@ export function SetLogger({
   const [rpe, setRpe] = useState(initial.rpe);
   const [amrap, setAmrap] = useState(Boolean(initial.amrap));
   const [applyRemaining, setApplyRemaining] = useState(false);
+  const bar = clampBarKg(barKg ?? DEFAULT_BAR_KG);
   const planKg = prescriptionWeightKg(initial);
   const overridden = weight !== planKg;
   const warmup = Boolean(initial.warmup);
@@ -64,16 +70,42 @@ export function SetLogger({
         <LastPerformanceHint performance={lastPerformance} />
 
         {equipment && equipmentOptions.length > 1 && onEquipment ? (
-          <EquipmentPicker options={equipmentOptions} value={equipment} onChange={onEquipment} />
+          <EquipmentPicker
+            variant="segment"
+            options={equipmentOptions}
+            value={equipment}
+            onChange={onEquipment}
+          />
+        ) : null}
+
+        {equipment === 'barbell' && onBarKg ? (
+          <BarMassPicker
+            value={bar}
+            onChange={(kg) => {
+              onBarKg(kg);
+            }}
+          />
         ) : null}
 
         <NumberStepper
-          label={overridden ? 'Weight — overridden' : 'Weight'}
+          label={
+            equipment === 'bodyweight'
+              ? 'Added weight'
+              : overridden
+                ? 'Weight — overridden'
+                : 'Weight'
+          }
           value={weight}
           onChange={setWeight}
           step={2.5}
           suffix="kg"
-          hint="Tap the number to type. Steppers are 2.5 kg. Not locked to the plan."
+          hint={
+            equipment === 'bodyweight'
+              ? '0 is bodyweight. Add kg for a plate or vest.'
+              : equipment === 'barbell'
+                ? `Total on the bar, including the ${bar} kg bar. Steppers are 2.5 kg.`
+                : 'Tap the number to type. Steppers are 2.5 kg. Not locked to the plan.'
+          }
         />
         <div className="micro-steps">
           <button type="button" className="chip" onClick={() => setWeight((w) => Math.max(0, Math.round((w - 1.25) * 100) / 100))}>

@@ -70,6 +70,14 @@ export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   bodyweight: 'BW',
 };
 
+/** Logger segmented control — Juggernaut-style Weights | DBs | BW | Bands. */
+export const EQUIPMENT_MODE_LABELS: Record<Equipment, string> = {
+  barbell: 'Weights',
+  dumbbells: 'DBs',
+  bands: 'Bands',
+  bodyweight: 'BW',
+};
+
 export const EQUIPMENT_ARIA: Record<Equipment, string> = {
   barbell: 'Barbell',
   dumbbells: 'Dumbbells',

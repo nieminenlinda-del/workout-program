@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DAY_TEMPLATES } from '../data/templates';
 import {
+  clampBarKg,
+  DEFAULT_BAR_KG,
   equipmentOptionsForSlot,
   exerciseForEquipment,
+  setLiftBarKg,
   slotAllowsEquipmentPicker,
 } from './equipment';
 import { createDraftSession, swapLiftExercise } from './sessionFactory';
@@ -51,5 +54,15 @@ describe('accessory equipment from slot alternatives', () => {
       name: 'DB row',
       equipment: 'dumbbells',
     });
+  });
+
+  it('clamps bar mass to 10 / 15 / 20 and stores it on the lift', () => {
+    expect(clampBarKg(15)).toBe(15);
+    expect(clampBarKg(20)).toBe(20);
+    expect(clampBarKg(12)).toBe(10);
+    expect(clampBarKg(Number.NaN)).toBe(DEFAULT_BAR_KG);
+    const draft = createDraftSession('A', '2026-09-07');
+    const withBar = setLiftBarKg(draft, 0, 15);
+    expect(withBar.lifts[0]?.bar_kg).toBe(15);
   });
 });

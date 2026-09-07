@@ -17,6 +17,8 @@ import {
   equipmentOptionsForSlot,
   exerciseForEquipment,
   liftEquipment,
+  loadPreferredBarKg,
+  setLiftBarKg,
   slotAllowsEquipmentPicker,
 } from '../domain/equipment';
 import { SetLogger } from '../components/SetLogger';
@@ -65,7 +67,10 @@ export function WorkoutScreen({
   }, [history, day, draft.date, draft.lifts]);
 
   const completeSet = (liftIndex: number, setIndex: number, logged: Parameters<typeof logSetOnDraft>[3], applyRemaining: boolean) => {
-    const next = logSetOnDraft(draft, liftIndex, setIndex, logged, applyRemaining);
+    let next = logSetOnDraft(draft, liftIndex, setIndex, logged, applyRemaining);
+    if (liftEquipment(next.lifts[liftIndex] ?? draft.lifts[liftIndex]) === 'barbell') {
+      next = setLiftBarKg(next, liftIndex, next.lifts[liftIndex]?.bar_kg ?? loadPreferredBarKg());
+    }
     onChange(next);
     setActive(null);
     unlockTimerAudio();
@@ -145,8 +150,9 @@ export function WorkoutScreen({
               </span>
             </button>
 
-            {slot && slotAllowsEquipmentPicker(slot) ? (
+            {slot && slotAllowsEquipmentPicker(slot) && equipmentOptionsForSlot(slot).length > 1 ? (
               <EquipmentPicker
+                variant="segment"
                 options={equipmentOptionsForSlot(slot)}
                 value={liftEquipment(lift)}
                 onChange={(eq) => {
@@ -261,6 +267,8 @@ export function WorkoutScreen({
               onChange(swapLiftExercise(draft, active.liftIndex, nextId));
             }
           }}
+          barKg={activeLift.bar_kg ?? loadPreferredBarKg()}
+          onBarKg={(kg) => onChange(setLiftBarKg(draft, active.liftIndex, kg))}
           onCancel={() => setActive(null)}
           onComplete={(logged, applyRemaining) =>
             completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)

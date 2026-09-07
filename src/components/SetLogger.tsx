@@ -77,12 +77,34 @@ export function SetLogger({
           label={timed ? 'Hold' : 'Reps'}
           value={reps}
           onChange={setReps}
-          step={1}
+          step={timed ? 5 : 1}
           min={0}
           max={timed ? HOLD_SEC_LOG_MAX : REPS_LOG_MAX}
           suffix={timed ? 'sec' : 'reps'}
-          hint={timed ? 'Tap the number to type. Holds can be 60s or more (max 300s).' : undefined}
+          hint={
+            timed
+              ? 'Tap the number to type 60s or more. Max 300s — not capped at 50 reps.'
+              : undefined
+          }
         />
+        {timed ? (
+          <div className="micro-steps">
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setReps((n) => Math.min(HOLD_SEC_LOG_MAX, n + 15))}
+            >
+              +15s
+            </button>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setReps((n) => Math.min(HOLD_SEC_LOG_MAX, n + 30))}
+            >
+              +30s
+            </button>
+          </div>
+        ) : null}
 
         <div className="rpe-block">
           <span className="stepper-label">RPE</span>
@@ -102,13 +124,15 @@ export function SetLogger({
           </div>
         </div>
 
-        <button
-          type="button"
-          className={`toggle ${amrap ? 'on' : ''}`}
-          onClick={() => setAmrap((v) => !v)}
-        >
-          AMRAP set
-        </button>
+        {timed ? null : (
+          <button
+            type="button"
+            className={`toggle ${amrap ? 'on' : ''}`}
+            onClick={() => setAmrap((v) => !v)}
+          >
+            AMRAP set
+          </button>
+        )}
 
         {hasLaterSameKind ? (
           <button

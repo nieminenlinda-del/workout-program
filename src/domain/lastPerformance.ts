@@ -1,4 +1,4 @@
-import type { ExerciseId } from '../types/exercises';
+import { isTimedHold, type ExerciseId } from '../types/exercises';
 import type {
   CanonicalTemplateDay,
   LoggedLift,
@@ -116,5 +116,6 @@ export function lastPerformanceByExercise(
 /** `Last: 50 kg × 5` or muted-copy `No prior log`. */
 export function formatLastPerformance(perf: LastPerformance | null): string {
   if (!perf) return 'No prior log';
-  return `Last: ${formatLoad(perf.weight_kg)} × ${perf.reps}`;
+  const count = isTimedHold(perf.exercise_id) ? `${perf.reps}s` : String(perf.reps);
+  return `Last: ${formatLoad(perf.weight_kg)} × ${count}`;
 }

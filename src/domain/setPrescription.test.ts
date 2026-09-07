@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatPlanLoad,
+  formatLoggedLoad,
   loggedDiffersFromPlan,
   prescriptionReps,
   prescriptionWeightKg,
@@ -33,6 +34,10 @@ describe('set prescription', () => {
     expect(formatPlanLoad({ ...plan, weight_kg: 42.5, amrap: true, target_weight_kg: 50 })).toBe(
       '50 kg × 5+',
     );
+    expect(
+      formatPlanLoad({ weight_kg: 0, reps: 30, target_weight_kg: 0, target_reps: 30 }, true),
+    ).toBe('BW × 30s');
+    expect(formatLoggedLoad({ weight_kg: 0, reps: 60, amrap: false }, true)).toBe('BW × 60s');
   });
 
   it('flags a logged set only when actual kg/reps left the plan', () => {

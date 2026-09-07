@@ -5,6 +5,7 @@ import { LastPerformanceHint } from './LastPerformanceHint';
 import type { LastPerformance } from '../domain/lastPerformance';
 import { formatPlanLoad, prescriptionWeightKg } from '../domain/setPrescription';
 import { unlockTimerAudio } from '../domain/timerCue';
+import { HOLD_SEC_LOG_MAX, REPS_LOG_MAX } from '../types/exercises';
 
 const RPE_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
@@ -15,6 +16,7 @@ export function SetLogger({
   initial,
   lastPerformance,
   hasLaterSameKind,
+  timed = false,
   onCancel,
   onComplete,
 }: {
@@ -24,6 +26,7 @@ export function SetLogger({
   initial: LoggedSet;
   lastPerformance?: LastPerformance | null;
   hasLaterSameKind: boolean;
+  timed?: boolean;
   onCancel: () => void;
   onComplete: (set: LoggedSet, applyWeightToRemaining: boolean) => void;
 }) {
@@ -50,7 +53,7 @@ export function SetLogger({
           {amrap ? ' · AMRAP' : ''}
         </p>
         <h2 className="sheet-title">{exerciseName}</h2>
-        <p className="sheet-plan">Plan {formatPlanLoad(initial)}</p>
+        <p className="sheet-plan">Plan {formatPlanLoad(initial, timed)}</p>
         <LastPerformanceHint performance={lastPerformance} />
 
         <NumberStepper
@@ -70,7 +73,16 @@ export function SetLogger({
           </button>
         </div>
 
-        <NumberStepper label="Reps" value={reps} onChange={setReps} step={1} min={0} max={50} suffix="reps" />
+        <NumberStepper
+          label={timed ? 'Hold' : 'Reps'}
+          value={reps}
+          onChange={setReps}
+          step={1}
+          min={0}
+          max={timed ? HOLD_SEC_LOG_MAX : REPS_LOG_MAX}
+          suffix={timed ? 'sec' : 'reps'}
+          hint={timed ? 'Tap the number to type. Holds can be 60s or more (max 300s).' : undefined}
+        />
 
         <div className="rpe-block">
           <span className="stepper-label">RPE</span>

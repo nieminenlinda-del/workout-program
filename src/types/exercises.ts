@@ -65,6 +65,8 @@ export interface ExerciseMeta {
   role: ExerciseRole;
   pattern: MovementPattern;
   style?: string;
+  /** Hold duration is stored in `reps` (seconds), not a rep count. */
+  timed?: boolean;
 }
 
 export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
@@ -218,12 +220,13 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     pattern: 'pull',
   },
   y_raise: { id: 'y_raise', name: 'Y-raise', role: 'accessory', pattern: 'press' },
-  plank: { id: 'plank', name: 'Plank', role: 'accessory', pattern: 'core' },
+  plank: { id: 'plank', name: 'Plank', role: 'accessory', pattern: 'core', timed: true },
   side_plank: {
     id: 'side_plank',
     name: 'Side plank',
     role: 'accessory',
     pattern: 'core',
+    timed: true,
   },
   dead_bug: { id: 'dead_bug', name: 'Dead bug', role: 'accessory', pattern: 'core' },
   curl_db: { id: 'curl_db', name: 'DB curl', role: 'accessory', pattern: 'arm' },
@@ -237,4 +240,16 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
 
 export function isExerciseId(value: string): value is ExerciseId {
   return (EXERCISE_IDS as readonly string[]).includes(value);
+}
+
+/** Strength work stays at 50; timed holds (plank) must accept 60s+. */
+export const REPS_LOG_MAX = 50;
+export const HOLD_SEC_LOG_MAX = 300;
+
+export function isTimedHold(exerciseId: ExerciseId): boolean {
+  return Boolean(EXERCISE_CATALOG[exerciseId]?.timed);
+}
+
+export function logCountMax(exerciseId: ExerciseId): number {
+  return isTimedHold(exerciseId) ? HOLD_SEC_LOG_MAX : REPS_LOG_MAX;
 }

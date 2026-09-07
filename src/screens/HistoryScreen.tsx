@@ -3,6 +3,7 @@ import { LightBadge } from '../components/LightBadge';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 import { completedSetCount } from '../domain/sessionFactory';
 import { setDisplayLabel } from '../domain/sets';
+import { isTimedHold } from '../types/exercises';
 
 export function HistoryScreen({
   sessions,
@@ -81,6 +82,7 @@ export function DetailScreen({
             {lift.sets.map((set, i) => (
               <li key={i} className={set.completed ? '' : 'dim'}>
                 {setDisplayLabel(lift.sets, i)}. {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
+                {isTimedHold(lift.exercise_id) ? 's' : ''}
                 {set.amrap ? ' AMRAP' : ''} @ {set.rpe} RPE
                 {set.completed ? '' : ' (not logged)'}
               </li>

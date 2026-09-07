@@ -3,8 +3,12 @@ import {
   ACCESSORY_EXERCISE_IDS,
   EXERCISE_CATALOG,
   EXERCISE_IDS,
+  HOLD_SEC_LOG_MAX,
   PRIMARY_EXERCISE_IDS,
+  REPS_LOG_MAX,
   SUB_EXERCISE_IDS,
+  isTimedHold,
+  logCountMax,
 } from '../types/exercises';
 
 const REQUIRED_PRIMARIES = [
@@ -70,5 +74,17 @@ describe('exercise catalog', () => {
         expect(id.includes(token)).toBe(false);
       }
     }
+  });
+
+  it('treats plank holds as timed seconds, not a 50-rep cap', () => {
+    expect(isTimedHold('plank')).toBe(true);
+    expect(isTimedHold('side_plank')).toBe(true);
+    expect(isTimedHold('dead_bug')).toBe(false);
+    expect(isTimedHold('squat_low_bar')).toBe(false);
+    expect(logCountMax('plank')).toBeGreaterThanOrEqual(60);
+    expect(logCountMax('plank')).toBe(HOLD_SEC_LOG_MAX);
+    expect(logCountMax('squat_low_bar')).toBe(REPS_LOG_MAX);
+    expect(REPS_LOG_MAX).toBe(50);
+    expect(HOLD_SEC_LOG_MAX).toBe(300);
   });
 });

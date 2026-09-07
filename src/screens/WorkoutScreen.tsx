@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
-import type { ExerciseId } from '../types/exercises';
+import { isTimedHold, type ExerciseId } from '../types/exercises';
 import { DAY_TEMPLATES, exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
@@ -99,6 +99,7 @@ export function WorkoutScreen({
         const warmups = lift.sets.filter((s) => s.warmup);
         const warmupDone = warmups.filter((s) => s.completed).length;
         const unloggedWork = work.filter((s) => !s.completed);
+        const timed = isTimedHold(lift.exercise_id);
         const workingKg = unloggedWork[0]
           ? prescriptionWeightKg(unloggedWork[0])
           : (work[work.length - 1]?.weight_kg ?? 0);
@@ -171,16 +172,16 @@ export function WorkoutScreen({
                       {set.completed ? (
                         <>
                           <span>
-                            {formatLoggedLoad(set)}
+                            {formatLoggedLoad(set, timed)}
                             <em> @ {set.rpe} RPE</em>
                           </span>
                           {loggedDiffersFromPlan(set) ? (
-                            <span className="set-plan">plan {formatPlanLoad(set)}</span>
+                            <span className="set-plan">plan {formatPlanLoad(set, timed)}</span>
                           ) : null}
                         </>
                       ) : (
                         <span>
-                          <span className="set-plan-label">Plan</span> {formatPlanLoad(set)}
+                          <span className="set-plan-label">Plan</span> {formatPlanLoad(set, timed)}
                           <em> @ {set.rpe} RPE</em>
                         </span>
                       )}
@@ -219,6 +220,7 @@ export function WorkoutScreen({
             draft.lifts[active.liftIndex]?.sets ?? [],
             active.setIndex,
           )}
+          timed={isTimedHold(draft.lifts[active.liftIndex].exercise_id)}
           onCancel={() => setActive(null)}
           onComplete={(logged, applyRemaining) =>
             completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)

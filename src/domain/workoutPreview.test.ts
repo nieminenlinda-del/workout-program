@@ -75,5 +75,9 @@ describe('planned session preview (template only)', () => {
     expect(formatLoad(0)).toBe('BW');
     expect(formatLoad(47.5)).toBe('47.5 kg');
     expect(formatRestLabel(90)).toBe('1:30 rest');
+    const plank = plannedLiftSummary(DAY_TEMPLATES.A.slots[3]);
+    expect(plank.name).toBe('Plank');
+    expect(plank.timed).toBe(true);
+    expect(plank.scheme).toBe('3 × 30s');
   });
 });

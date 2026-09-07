@@ -25,17 +25,26 @@ export function prescriptionReps(set: Pick<WeightReps, 'reps' | 'target_reps'>):
   return set.target_reps ?? set.reps;
 }
 
-export function formatLoadReps(weightKg: number, reps: number, amrap?: boolean): string {
-  return `${formatLoad(weightKg)} × ${reps}${amrap ? '+' : ''}`;
+export function formatLoadReps(
+  weightKg: number,
+  reps: number,
+  amrap?: boolean,
+  timed = false,
+): string {
+  const count = timed ? `${reps}s` : `${reps}${amrap ? '+' : ''}`;
+  return `${formatLoad(weightKg)} × ${count}`;
 }
 
 /** Visible plan for an unfinished row (or the original plan on a logged row). */
-export function formatPlanLoad(set: WeightReps & { amrap?: boolean }): string {
-  return formatLoadReps(prescriptionWeightKg(set), prescriptionReps(set), set.amrap);
+export function formatPlanLoad(set: WeightReps & { amrap?: boolean }, timed = false): string {
+  return formatLoadReps(prescriptionWeightKg(set), prescriptionReps(set), set.amrap, timed);
 }
 
-export function formatLoggedLoad(set: Pick<LoggedSet, 'weight_kg' | 'reps' | 'amrap'>): string {
-  return formatLoadReps(set.weight_kg, set.reps, set.amrap);
+export function formatLoggedLoad(
+  set: Pick<LoggedSet, 'weight_kg' | 'reps' | 'amrap'>,
+  timed = false,
+): string {
+  return formatLoadReps(set.weight_kg, set.reps, set.amrap, timed);
 }
 
 export function loggedDiffersFromPlan(set: LoggedSet): boolean {

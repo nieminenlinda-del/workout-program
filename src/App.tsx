@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { HomeScreen } from './screens/HomeScreen';
 import { ReadinessScreen } from './screens/ReadinessScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
@@ -6,7 +7,7 @@ import { SaveScreen } from './screens/SaveScreen';
 import { DetailScreen, HistoryScreen } from './screens/HistoryScreen';
 import { IntervalTimerScreen } from './screens/IntervalTimerScreen';
 import { HealthScreen } from './screens/HealthScreen';
-import { useRepository, useSessionFlow } from './hooks/useSessionFlow';
+import { useRepository, useSessionFlow, type AppView } from './hooks/useSessionFlow';
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
 import { canonicalTemplateDay, todayIsoDate } from './domain/templateDay';
 import type { CanonicalTemplateDay } from './types/session';
@@ -15,10 +16,37 @@ export default function App() {
   const repo = useRepository();
   const flow = useSessionFlow(repo);
   const [templateDay, setTemplateDay] = useState<CanonicalTemplateDay>(DEFAULT_TEMPLATE_DAY);
+  const [intervalBack, setIntervalBack] = useState<Extract<AppView, 'home' | 'workout'>>('home');
   const date = todayIsoDate();
+
+  const openInterval = (from: 'home' | 'workout') => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    flushSync(() => {
+      setIntervalBack(from);
+      flow.setView('interval');
+    });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
 
   const needsDraft = flow.view === 'readiness' || flow.view === 'workout' || flow.view === 'save';
   const view = needsDraft && !flow.draft ? 'home' : flow.view;
+
+  useLayoutEffect(() => {
+    const reset = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const shell = document.querySelector('.shell');
+      if (shell instanceof HTMLElement) shell.scrollTop = 0;
+    };
+    reset();
+    const id = window.requestAnimationFrame(reset);
+    return () => window.cancelAnimationFrame(id);
+  }, [view]);
 
   if (!flow.booted) {
     return (
@@ -49,7 +77,7 @@ export default function App() {
             flow.resumeSession();
           }}
           onHistory={() => flow.setView('history')}
-          onInterval={() => flow.setView('interval')}
+          onInterval={() => openInterval('home')}
           onHealth={() => flow.setView('health')}
         />
       ) : null}
@@ -69,6 +97,7 @@ export default function App() {
           history={flow.history}
           onChange={(next) => void flow.persistDraft(next)}
           onBack={() => flow.setView('readiness')}
+          onInterval={() => openInterval('workout')}
           onFinish={() => flow.setView('save')}
         />
       ) : null}
@@ -96,7 +125,10 @@ export default function App() {
       ) : null}
 
       {flow.view === 'interval' ? (
-        <IntervalTimerScreen onBack={() => flow.setView('home')} />
+        <IntervalTimerScreen
+          backLabel={intervalBack === 'workout' ? 'Workout' : 'Today'}
+          onBack={() => flow.setView(intervalBack)}
+        />
       ) : null}
 
       {flow.view === 'health' ? (

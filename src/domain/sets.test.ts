@@ -18,9 +18,9 @@ describe('warmup vs work sets', () => {
   });
 
   it('attaches Kraft ladders on T1 / Day D bench and leaves accessories bare', () => {
-    const squatW = warmupLadder(47.5, 'squat').map((s) => s.weight_kg);
-    const benchW = warmupLadder(35, 'bench').map((s) => s.weight_kg);
-    const dlW = warmupLadder(60, 'deadlift').map((s) => s.weight_kg);
+    const squatW = warmupLadder(55, 'squat').map((s) => s.weight_kg);
+    const benchW = warmupLadder(40, 'bench').map((s) => s.weight_kg);
+    const dlW = warmupLadder(70, 'deadlift').map((s) => s.weight_kg);
 
     const squat = attachWarmups(DAY_TEMPLATES.A.slots[0].sets, 'squat');
     const bench = attachWarmups(DAY_TEMPLATES.B.slots[0].sets, 'bench');
@@ -31,7 +31,7 @@ describe('warmup vs work sets', () => {
     expect(bench.filter((s) => s.warmup).map((s) => s.weight_kg)).toEqual(benchW);
     expect(dl.filter((s) => s.warmup).map((s) => s.weight_kg)).toEqual(dlW);
     expect(volume.filter((s) => s.warmup).map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual(
-      warmupLadder(30, 'bench'),
+      warmupLadder(40, 'bench'),
     );
     expect(DAY_TEMPLATES.A.slots[1].sets.every((s) => !s.warmup)).toBe(true);
   });

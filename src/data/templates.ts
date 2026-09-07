@@ -31,7 +31,12 @@ const T1_REST = 180;
 const ACC_REST = 90;
 const CORE_REST = 60;
 
-/** Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder). */
+/**
+ * Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder).
+ * Block A Week 1 T1 loads (Kraft, Sep 2026): squat 55 × 3×5, bench 40 × 3×5,
+ * DL 70 × 3×5, Fri bench vol 40 × 2×5, all @ RPE 6–7. Front plank seed is 3 × 60s.
+ * Changing these templates only affects new drafts — completed SessionLog rows stay as logged.
+ */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
   A: {
     id: 'A',
@@ -45,10 +50,9 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'squat_low_bar',
         alternatives: [],
         sets: [
-          { weight_kg: 45, reps: 5, rpe: 6.5, rest_sec: T1_REST },
-          { weight_kg: 47.5, reps: 5, rpe: 7, rest_sec: T1_REST },
-          { weight_kg: 47.5, reps: 5, rpe: 7.5, rest_sec: T1_REST },
-          { weight_kg: 50, reps: 5, rpe: 8, amrap: true, rest_sec: T1_REST },
+          { weight_kg: 55, reps: 5, rpe: 6.5, rest_sec: T1_REST },
+          { weight_kg: 55, reps: 5, rpe: 6.5, rest_sec: T1_REST },
+          { weight_kg: 55, reps: 5, rpe: 7, rest_sec: T1_REST },
         ],
       },
       {
@@ -79,9 +83,9 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'plank',
         alternatives: ['dead_bug'],
         sets: [
-          { weight_kg: 0, reps: 30, rpe: 7, rest_sec: CORE_REST },
-          { weight_kg: 0, reps: 30, rpe: 7, rest_sec: CORE_REST },
-          { weight_kg: 0, reps: 30, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 0, reps: 60, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 0, reps: 60, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 0, reps: 60, rpe: 7, rest_sec: CORE_REST },
         ],
       },
     ],
@@ -98,10 +102,9 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'bench_regular',
         alternatives: [],
         sets: [
-          { weight_kg: 32.5, reps: 5, rpe: 6.5, rest_sec: T1_REST },
-          { weight_kg: 35, reps: 5, rpe: 7, rest_sec: T1_REST },
-          { weight_kg: 35, reps: 5, rpe: 7.5, rest_sec: T1_REST },
-          { weight_kg: 37.5, reps: 5, rpe: 8, amrap: true, rest_sec: T1_REST },
+          { weight_kg: 40, reps: 5, rpe: 6.5, rest_sec: T1_REST },
+          { weight_kg: 40, reps: 5, rpe: 6.5, rest_sec: T1_REST },
+          { weight_kg: 40, reps: 5, rpe: 7, rest_sec: T1_REST },
         ],
       },
       {
@@ -151,21 +154,20 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'deadlift_conventional',
         alternatives: [],
         sets: [
-          { weight_kg: 60, reps: 4, rpe: 6.5, rest_sec: T1_REST },
-          { weight_kg: 65, reps: 4, rpe: 7, rest_sec: T1_REST },
-          { weight_kg: 67.5, reps: 4, rpe: 7.5, rest_sec: T1_REST },
-          { weight_kg: 70, reps: 4, rpe: 8, amrap: true, rest_sec: T1_REST },
+          { weight_kg: 70, reps: 5, rpe: 6.5, rest_sec: T1_REST },
+          { weight_kg: 70, reps: 5, rpe: 6.5, rest_sec: T1_REST },
+          { weight_kg: 70, reps: 5, rpe: 7, rest_sec: T1_REST },
         ],
       },
       {
         slot_id: 'c-glute',
         role: 'accessory',
-        exercise_id: 'glute_bridge',
-        alternatives: ['hip_thrust'],
+        exercise_id: 'hip_thrust',
+        alternatives: ['glute_bridge'],
         sets: [
-          { weight_kg: 40, reps: 10, rpe: 7, rest_sec: ACC_REST },
-          { weight_kg: 40, reps: 10, rpe: 7, rest_sec: ACC_REST },
-          { weight_kg: 40, reps: 10, rpe: 7.5, rest_sec: ACC_REST },
+          { weight_kg: 82.5, reps: 12, rpe: 7, rest_sec: ACC_REST },
+          { weight_kg: 82.5, reps: 12, rpe: 7, rest_sec: ACC_REST },
+          { weight_kg: 82.5, reps: 12, rpe: 7.5, rest_sec: ACC_REST },
         ],
       },
       {
@@ -204,11 +206,8 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'bench_regular_volume',
         alternatives: [],
         sets: [
-          { weight_kg: 30, reps: 8, rpe: 7, rest_sec: 120 },
-          { weight_kg: 30, reps: 8, rpe: 7, rest_sec: 120 },
-          { weight_kg: 30, reps: 8, rpe: 7, rest_sec: 120 },
-          { weight_kg: 30, reps: 8, rpe: 7.5, rest_sec: 120 },
-          { weight_kg: 30, reps: 8, rpe: 8, rest_sec: 120 },
+          { weight_kg: 40, reps: 5, rpe: 6.5, rest_sec: 120 },
+          { weight_kg: 40, reps: 5, rpe: 7, rest_sec: 120 },
         ],
       },
       {

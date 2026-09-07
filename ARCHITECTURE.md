@@ -9,7 +9,7 @@ src/
   domain/         Readiness light, draft factory, calendar hook, countdown + interval timers
   db/             SessionRepository + IndexedDB + in-memory (tests)
   health/         Shared linda-health store, Apple export parser, training-day join
-  screens/        Readiness → workout → set log → rest → save; interval timer; Health import
+  screens/        Readiness → workout → set log → rest → save; interval timer (Today + in-session); Health import
 ```
 
 ## Persistence contract
@@ -68,9 +68,9 @@ The UI file picker posts zip/xml to `src/health/parse/worker.ts`, which stream-u
 
    | Lift | TM |
    | --- | --- |
-   | Squat | 67.5 kg |
-   | Bench | 50 kg |
-   | Deadlift | 85 kg |
+   | Squat | 72.5 kg |
+   | Bench | 52.5 kg |
+   | Deadlift | 90 kg |
 
 3. `asOf` date (ISO `YYYY-MM-DD`).
 
@@ -105,7 +105,7 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 - **No `target_test_date`** → **`hypertrophy`**.
 - **While a test date is set and `asOf <= target_test_date`** → **`strength_peak`**. That includes accumulate, intensify, and off-block dates before the test — not only `peak_overreach` / `peak_taper` / `test`.
 - **After the test date** → auto **`hypertrophy`**, unless a later `target_test_date` is set.
-- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Mode is **`strength_peak` from day one** of Block A (2026-09-07) through the test date — not only `peak_overreach` / `peak_taper` / `test`. From 2026-11-22 the hook returns `hypertrophy`. Seeded TMs (docs only): squat **67.5** / bench **50** / deadlift **85** kg.
+- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Mode is **`strength_peak` from day one** of Block A (2026-09-07) through the test date — not only `peak_overreach` / `peak_taper` / `test`. From 2026-11-22 the hook returns `hypertrophy`. Seeded TMs (docs only): squat **72.5** / bench **52.5** / deadlift **90** kg.
 
 **Strength auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`, used when `training_mode === "strength_peak"`)
 
@@ -139,7 +139,8 @@ Shown on the Today preview, each in-session lift card, and the set logger.
 Seed kg is a starting prescription, not a lock. Mid-session edits write onto the draft (`src/domain/weightOverride.ts`) so Linda does not restart the session.
 
 - **Working weight** stepper on an expanded lift updates every **unlogged work** set. The warmup ladder is then recomputed from the new W unless a warmup is already logged.
-- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default apply-forward copies kg onto later unlogged sets of the **same kind** (warmup→warmup, work→work).
+- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set only. Unfinished slots keep their programmed `target_weight_kg` / `target_reps` on the row (`Plan 55 kg × 5`). Opt-in “Start leftover sets at this kg” copies working kg into the **next logger inputs**, not the displayed plan.
+- Each in-session set row shows **Plan** (prescription) until logged, then the actual kg/reps. If those differ, a muted `plan …` line stays on the logged row. Last-week copy remains the lift’s top work set (`Last: 50 kg × 5`), not per-set.
 
 ## Warmup sets (Phase 1)
 
@@ -150,7 +151,7 @@ T1 squat / bench / deadlift and Day D bench volume get a Kraft ladder **before**
 3. **~70% W × 3**
 4. **~85% W × 1–2** (drop the single if W − this ≤ 5 kg)
 
-Week 1: squat 47.5 → 20×5 / 25×5 / 32.5×3 / 40×2; bench 35 → 20×8 / 25×5 / 30×3; DL 60 → 20×5 / 40×5 / 50×3. Squat W=50 → 20×5 / 25×5 / 35×3 / 42.5×2. Day D bench volume uses the same bench algorithm. UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged.
+Week 1: squat 55 → 20×5 / 27.5×5 / 37.5×3 / 47.5×2; bench 40 → 20×5 / 27.5×5 / 35×3; DL 70 → 20×5 / 40×5 / 50×3 / 60×2. Squat W=50 → 20×5 / 25×5 / 35×3 / 42.5×2. Day D bench volume uses the same bench algorithm (W=40). UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged. Existing saved sessions are not rewritten if Monday squat already logged at 47.5.
 
 `shortLadder` (bar + last intermediate) exists for a later yellow / low-readiness day. Sessions still attach the full ladder.
 
@@ -207,7 +208,9 @@ Keep `SessionLog` field names stable. Additive fields are fine; renames break th
 
 The rest overlay reads `rest_sec` from the seed template slot after each completed set. The interval screen is a separate view (`AppView: "interval"`) and does not write `SessionLog` or Phase 2 types.
 
-Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Spoken voice (`speechSynthesis`) is additive: **30s**, **10s**, and **0s** (rest: “done”; interval: next phase / done). Swedish (`sv-SE`, or any `sv*`) if `getVoices()` lists it, else English. Do not prefer Finnish. Each threshold fires once per countdown (lock-screen jumps speak only the lowest crossed mark). Skip does not speak 0s. Voice on/off lives on the rest card and interval setup (`localStorage` `linda-lift-timer-voice`, default on). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
+Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Spoken voice (`speechSynthesis`) is additive: **30s**, **10s**, and **0s** (rest: “done”; interval: next phase / done). Swedish (`sv-SE`, or any `sv*`) if `getVoices()` lists it, else English. Finnish voices are never selected. Each threshold fires once per countdown (lock-screen jumps speak only the lowest crossed mark). Skip does not speak 0s. Voice on/off lives on the rest card and interval setup (`localStorage` `linda-lift-timer-voice`, default on). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
+
+**iPhone Safari / PWA:** Completing a set (or Start on intervals) is the user gesture that unlocks speech. Unlock must **not** `cancel()` the warmup utterance. While a countdown is running, `startSpeechKeepAlive` pulses `pause`/`resume` every 8s so iOS does not silently drop `speak()` after ~15s of silence (a 90–180s rest would otherwise never say “30 seconds”).
 
 ## Exercise IDs
 

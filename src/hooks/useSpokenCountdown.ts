@@ -1,9 +1,16 @@
 import { useEffect, useRef } from 'react';
-import { nextVoiceThreshold, speakTimerCue, type VoiceZeroKind } from '../domain/timerVoice';
+import {
+  nextVoiceThreshold,
+  speakTimerCue,
+  startSpeechKeepAlive,
+  stopSpeechKeepAlive,
+  type VoiceZeroKind,
+} from '../domain/timerVoice';
 
 /**
- * Speaks 30s / 10s once per `cycleKey`. 0s is spoken by the caller (natural
- * finish / phase change) so Skip stays silent.
+ * Speaks 30s / 10s once per `cycleKey`. RestTimer / interval ticks pass the
+ * current remaining seconds here; each change calls `nextVoiceThreshold(prev, next)`.
+ * 0s is spoken by the caller (natural finish / phase change) so Skip stays silent.
  */
 export function useSpokenCountdown(
   remainingSec: number,
@@ -19,6 +26,12 @@ export function useSpokenCountdown(
     prevRef.current = null;
     spokenRef.current = new Set();
   }
+
+  useEffect(() => {
+    if (!enabled) return;
+    startSpeechKeepAlive();
+    return () => stopSpeechKeepAlive();
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {

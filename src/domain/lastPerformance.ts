@@ -1,4 +1,11 @@
-import type { ExerciseId } from '../types/exercises';
+import {
+  EQUIPMENT_LABELS,
+  EXERCISE_CATALOG,
+  exerciseEquipment,
+  isTimedHold,
+  type Equipment,
+  type ExerciseId,
+} from '../types/exercises';
 import type {
   CanonicalTemplateDay,
   LoggedLift,
@@ -29,6 +36,7 @@ export interface LastPerformance {
   date: string;
   weight_kg: number;
   reps: number;
+  equipment?: Equipment;
 }
 
 export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
@@ -72,6 +80,7 @@ function fromSession(
     date: session.date.slice(0, 10),
     weight_kg: top.weight_kg,
     reps: top.reps,
+    equipment: lift.equipment ?? exerciseEquipment(exerciseId),
   };
 }
 
@@ -113,8 +122,12 @@ export function lastPerformanceByExercise(
   return map;
 }
 
-/** `Last: 50 kg × 5` or muted-copy `No prior log`. */
+/** `Last: 50 kg × 5` or muted-copy `No prior log`. Accessory adds · DBs / Bands / Barbell. */
 export function formatLastPerformance(perf: LastPerformance | null): string {
   if (!perf) return 'No prior log';
-  return `Last: ${formatLoad(perf.weight_kg)} × ${perf.reps}`;
+  const count = isTimedHold(perf.exercise_id) ? `${perf.reps}s` : String(perf.reps);
+  const load = `Last: ${formatLoad(perf.weight_kg)} × ${count}`;
+  if (!perf.equipment || perf.equipment === 'bodyweight') return load;
+  if (EXERCISE_CATALOG[perf.exercise_id]?.role === 'primary') return load;
+  return `${load} · ${EQUIPMENT_LABELS[perf.equipment]}`;
 }

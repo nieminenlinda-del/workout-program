@@ -4,7 +4,7 @@ Mobile-first PWA for gym-phone session logging. Phase 1 is **today’s workout o
 
 **Live app:** [https://nieminenlinda-del.github.io/workout-program/](https://nieminenlinda-del.github.io/workout-program/)
 
-Phase 2 auto-progression is not implemented, but the Home chip already resolves PowerCombo mode. This cycle starts **Block A 2026-09-07 → 2026-10-04**, then B intensify and C peak through the **2026-11-21** test. Mode is **`strength_peak` from day one** while that test date is set; from 2026-11-22 it returns to `hypertrophy`. Seeded TMs: squat **67.5** / bench **50** / deadlift **85** kg. See [ARCHITECTURE.md](./ARCHITECTURE.md).
+Phase 2 auto-progression is not implemented, but the Home chip already resolves PowerCombo mode. This cycle starts **Block A 2026-09-07 → 2026-10-04**, then B intensify and C peak through the **2026-11-21** test. Mode is **`strength_peak` from day one** while that test date is set; from 2026-11-22 it returns to `hypertrophy`. Seeded TMs: squat **72.5** / bench **52.5** / deadlift **90** kg. See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Install on iPhone
 
@@ -52,9 +52,9 @@ Pushes to `main` deploy via [`.github/workflows/deploy-pages.yml`](./.github/wor
 
 1. **Today** — default **Monday / Day A** squat template. Pick A–D (Mon/Tue/Thu/Fri).
 2. **Readiness** — sleep, soreness, energy, pain, motivation (1–10). Auto light `GREEN|YELLOW|RED` (override allowed). Pain flag.
-3. **Workout** — seed lifts (T1 + Day D bench volume compute a Kraft warmup ladder from work weight W, labeled W1…), swap listed alternatives, override kg mid-session (working-weight stepper + set logger; leftover **work** sets can take the same kg), see last matching **work** set (`Last: 50 kg × 5` or `No prior log`), log each set (`weight_kg`, `reps`, `rpe`, `completed`, optional `amrap` / `warmup`).
-4. **Rest timer** — starts after a completed set using that set’s `rest_sec` (T1 longer, accessory/core shorter). Pause/resume, +15s / +30s, or skip to log the next set. Recovers from lock/background via wall-clock; buzzes + beeps when time is up (vibration does not need audio). Speaks 30s / 10s / done via Web Speech (Swedish `sv-SE` if the phone has that voice, else English). Voice on/off on the rest card.
-5. **Interval timer** — separate screen from Today for circuits (rounds × work / rest). Same buzz/beep plus spoken 30s / 10s / next phase.
+3. **Workout** — seed lifts (T1 + Day D bench volume compute a Kraft warmup ladder from work weight W, labeled W1…), swap listed alternatives, override kg mid-session (working-weight stepper + set logger). Logging a set does **not** replace leftover planned kg; each row keeps its `Plan` until that set is logged. Opt-in can prefill leftover logger inputs with this kg. Last matching **work** set shows on the lift (`Last: 50 kg × 5` or `No prior log`). Log each set (`weight_kg`, `reps`, `rpe`, `completed`, optional `amrap` / `warmup`).
+4. **Rest timer** — starts after a completed set using that set’s `rest_sec` (T1 longer, accessory/core shorter). Pause/resume, +15s / +30s, or skip to log the next set. Recovers from lock/background via wall-clock; buzzes + beeps when time is up (vibration does not need audio). Speaks 30s / 10s / done via Web Speech (Swedish `sv-SE` if the phone has that voice, else English — never Finnish). Completing the set is the iPhone gesture that unlocks speech; leave **Voice on**. Keep the screen awake through the rest (don’t lock) for the first check. Voice on/off on the rest card.
+5. **Interval timer** — same rounds × work / rest screen from **Today** and from an in-session **Interval timer** button on the workout screen (Back returns to Workout). Same buzz/beep plus spoken 30s / 10s / next phase. Per-set rest overlay is unchanged.
 6. **Apple Health** — import `linda-health-shortcut.json` from the iOS Shortcut, or a Health export `.zip` / `export.xml`. Active energy is stored on-device and labeled by training day (A–D) vs rest.
 7. **Save** — notes, persist `SessionLog` in IndexedDB behind a repository interface.
 
@@ -87,13 +87,13 @@ Parser tests use tiny synthetic fixtures that copy real attribute shapes (`+0300
 
 ## Seed templates (static)
 
-Working weights are placeholders, not a TM calculator. Documented TMs: squat **67.5** / bench **50** / deadlift **85** kg.
+Working weights are placeholders, not a TM calculator. Documented TMs: squat **72.5** / bench **52.5** / deadlift **90** kg.
 
 | Day | Focus |
 | --- | --- |
 | Mon A | `squat_low_bar` T1, `rdl`, `reverse_lunge` or `goblet_squat`, `plank` or `dead_bug` |
 | Tue B | `bench_regular` T1, `row_barbell` or `row_db`, `overhead_press`, `band_pull_apart` |
-| Thu C | `deadlift_conventional` T1, `glute_bridge` or `hip_thrust`, light `rdl`, `side_plank` |
+| Thu C | `deadlift_conventional` T1, `hip_thrust` or `glute_bridge`, light `rdl`, `side_plank` |
 | Fri D | `bench_regular_volume`, `front_squat_light` or `goblet_squat`, `pull_up` or `pull_up_band`, optional `curl_db` / `tricep_pushdown_band` |
 
 Primaries are low-bar squat, regular bench, conventional deadlift only — no sumo / high-bar / close-grip as programmed T1s.

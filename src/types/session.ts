@@ -1,4 +1,4 @@
-import type { ExerciseId } from './exercises';
+import type { Equipment, ExerciseId } from './exercises';
 
 /** Training-day letter (A–D) or weekday alias (Mon/Tue/Thu/Fri). */
 export type TemplateDay = 'Mon' | 'Tue' | 'Thu' | 'Fri' | 'A' | 'B' | 'C' | 'D';
@@ -24,12 +24,23 @@ export interface LoggedSet {
   amrap?: boolean;
   /** True for seeded warmup sets. Must not count as a work set for last-week / Phase 2. */
   warmup?: boolean;
+  /**
+   * Programmed target for this slot. Logging a set must not overwrite later
+   * unfinished slots’ targets. Missing on older drafts — treat `weight_kg` /
+   * `reps` as the prescription until a log or working-weight edit writes these.
+   */
+  target_weight_kg?: number;
+  target_reps?: number;
 }
 
 export interface LoggedLift {
   name: string;
   style?: string;
   exercise_id: ExerciseId;
+  /** Snapshot of catalog equipment. Older logs omit this — derive from `exercise_id`. */
+  equipment?: Equipment;
+  /** Barbell mass in kg (15 women’s / 20 standard). Omitted on DB / BW / bands. */
+  bar_kg?: number;
   sets: LoggedSet[];
 }
 

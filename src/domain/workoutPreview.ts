@@ -1,5 +1,5 @@
 import { exerciseName, type SeedSet, type TemplateSlot } from '../data/templates';
-import type { ExerciseId } from '../types/exercises';
+import { isTimedHold, type ExerciseId } from '../types/exercises';
 import { formatClock } from './countdown';
 import { isWarmupSet, setDisplayLabel, workSets } from './sets';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
@@ -24,6 +24,7 @@ export interface PlannedLiftSummary {
   scheme: string;
   warmupLabel: string | null;
   restLabel: string | null;
+  timed: boolean;
   sets: PlannedSetLine[];
 }
 
@@ -38,14 +39,15 @@ export function formatLoad(weightKg: number): string {
 }
 
 /** Compact work-set scheme, e.g. `4 × 5+` or `3 × 8, 2 × 6`. Warmups omitted. */
-export function formatSetScheme(sets: SeedSet[]): string {
+export function formatSetScheme(sets: SeedSet[], timed = false): string {
   const work = workSets(sets);
   if (work.length === 0) return '';
+  const unit = timed ? 's' : '';
   const reps = work.map((s) => s.reps);
   const allSameReps = reps.every((r) => r === reps[0]);
   const anyAmrap = work.some((s) => s.amrap);
   if (allSameReps) {
-    return `${work.length} × ${reps[0]}${anyAmrap ? '+' : ''}`;
+    return `${work.length} × ${reps[0]}${unit}${anyAmrap ? '+' : ''}`;
   }
 
   const groups: { reps: number; count: number; amrap: boolean }[] = [];
@@ -59,7 +61,7 @@ export function formatSetScheme(sets: SeedSet[]): string {
     }
   }
   return groups
-    .map((g) => `${g.count} × ${g.reps}${g.amrap ? '+' : ''}`)
+    .map((g) => `${g.count} × ${g.reps}${unit}${g.amrap ? '+' : ''}`)
     .join(', ');
 }
 
@@ -85,15 +87,17 @@ export function formatWarmupLabel(sets: SeedSet[]): string | null {
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
   const sets = attachWarmups(slot.sets, warmupKindFor(slot.exercise_id));
   const restSec = uniformRestSeconds(sets);
+  const timed = isTimedHold(slot.exercise_id);
   return {
     slot_id: slot.slot_id,
     role: slot.role,
     name: exerciseName(slot.exercise_id),
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
-    scheme: formatSetScheme(sets),
+    scheme: formatSetScheme(sets, timed),
     warmupLabel: formatWarmupLabel(sets),
     restLabel: restSec != null ? formatRestLabel(restSec) : null,
+    timed,
     sets: sets.map((set, index) => ({
       setNumber: index + 1,
       label: setDisplayLabel(sets, index),

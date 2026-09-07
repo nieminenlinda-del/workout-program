@@ -1,17 +1,32 @@
 import { useMemo, useState } from 'react';
 import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
-import type { ExerciseId } from '../types/exercises';
+import { isTimedHold, type ExerciseId } from '../types/exercises';
 import { DAY_TEMPLATES, exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
 import { lastMatchingPerformance } from '../domain/lastPerformance';
 import { laterSameKindUnlogged, setDisplayLabel, workSets } from '../domain/sets';
+import {
+  formatLoggedLoad,
+  formatPlanLoad,
+  loggedDiffersFromPlan,
+  prescriptionWeightKg,
+} from '../domain/setPrescription';
 import { logSetOnDraft, overrideUnloggedLiftWeight } from '../domain/weightOverride';
+import {
+  equipmentOptionsForSlot,
+  exerciseForEquipment,
+  liftEquipment,
+  loadPreferredBarKg,
+  setLiftBarKg,
+  slotAllowsEquipmentPicker,
+} from '../domain/equipment';
 import { SetLogger } from '../components/SetLogger';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
 import { NumberStepper } from '../components/NumberStepper';
 import { LastPerformanceHint } from '../components/LastPerformanceHint';
+import { EquipmentPicker } from '../components/EquipmentPicker';
 import { unlockTimerAudio } from '../domain/timerCue';
 
 interface ActiveSet {
@@ -24,12 +39,14 @@ export function WorkoutScreen({
   history = [],
   onChange,
   onBack,
+  onInterval,
   onFinish,
 }: {
   draft: SessionDraft;
   history?: readonly SessionLog[];
   onChange: (next: SessionDraft) => void;
   onBack: () => void;
+  onInterval: () => void;
   onFinish: () => void;
 }) {
   const [active, setActive] = useState<ActiveSet | null>(null);
@@ -50,7 +67,10 @@ export function WorkoutScreen({
   }, [history, day, draft.date, draft.lifts]);
 
   const completeSet = (liftIndex: number, setIndex: number, logged: Parameters<typeof logSetOnDraft>[3], applyRemaining: boolean) => {
-    const next = logSetOnDraft(draft, liftIndex, setIndex, logged, applyRemaining);
+    let next = logSetOnDraft(draft, liftIndex, setIndex, logged, applyRemaining);
+    if (liftEquipment(next.lifts[liftIndex] ?? draft.lifts[liftIndex]) === 'barbell') {
+      next = setLiftBarKg(next, liftIndex, next.lifts[liftIndex]?.bar_kg ?? loadPreferredBarKg());
+    }
     onChange(next);
     setActive(null);
     unlockTimerAudio();
@@ -65,23 +85,36 @@ export function WorkoutScreen({
     setOpenLift(0);
   };
 
+  const activeLift = active ? draft.lifts[active.liftIndex] : undefined;
+  const activeSlot = activeLift ? slotForLift(template, activeLift) : undefined;
+  const activeEquipOptions =
+    activeSlot && slotAllowsEquipmentPicker(activeSlot) ? equipmentOptionsForSlot(activeSlot) : [];
+
   return (
     <main className="screen workout-screen">
-      <header className="topbar">
-        <button type="button" className="btn btn-ghost" onClick={onBack}>
-          Readiness
-        </button>
-        <h1>{template.title}</h1>
-        <LightBadge light={draft.readiness.light} />
-      </header>
+      <div className="workout-header">
+        <header className="topbar">
+          <button type="button" className="btn btn-ghost" onClick={onBack}>
+            Readiness
+          </button>
+          <h1>{template.title}</h1>
+          <LightBadge light={draft.readiness.light} />
+        </header>
 
-      <div className="progress-line" aria-label={`${progress.done} of ${progress.total} sets`}>
-        <div className="progress-bar" style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }} />
-        <span>
-          {progress.done}/{progress.total} sets
-        </span>
+        <div className="workout-chrome">
+          <div className="progress-line" aria-label={`${progress.done} of ${progress.total} sets`}>
+            <div className="progress-bar" style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }} />
+            <span>
+              {progress.done}/{progress.total} sets
+            </span>
+          </div>
+          <button type="button" className="btn btn-ghost btn-slim workout-interval-btn" onClick={onInterval}>
+            Interval
+          </button>
+        </div>
       </div>
 
+      <div className="workout-lifts">
       {draft.lifts.map((lift, liftIndex) => {
         const slot = slotForLift(template, lift) ?? template.slots[liftIndex];
         const expanded = openLift === liftIndex;
@@ -91,8 +124,10 @@ export function WorkoutScreen({
         const warmups = lift.sets.filter((s) => s.warmup);
         const warmupDone = warmups.filter((s) => s.completed).length;
         const unloggedWork = work.filter((s) => !s.completed);
-        const workingKg =
-          unloggedWork[0]?.weight_kg ?? work[work.length - 1]?.weight_kg ?? 0;
+        const timed = isTimedHold(lift.exercise_id);
+        const workingKg = unloggedWork[0]
+          ? prescriptionWeightKg(unloggedWork[0])
+          : (work[work.length - 1]?.weight_kg ?? 0);
         return (
           <section key={`${lift.exercise_id}-${liftIndex}`} className={`card lift-card ${expanded ? 'open' : ''}`}>
             <button
@@ -115,6 +150,20 @@ export function WorkoutScreen({
               </span>
             </button>
 
+            {slot && slotAllowsEquipmentPicker(slot) && equipmentOptionsForSlot(slot).length > 1 ? (
+              <EquipmentPicker
+                variant="segment"
+                options={equipmentOptionsForSlot(slot)}
+                value={liftEquipment(lift)}
+                onChange={(eq) => {
+                  const nextId = exerciseForEquipment(slot, eq, lift.exercise_id);
+                  if (nextId && nextId !== lift.exercise_id) {
+                    onChange(swapLiftExercise(draft, liftIndex, nextId));
+                  }
+                }}
+              />
+            ) : null}
+
             {slot && slot.alternatives.length > 0 ? (
               <div className="alt-row">
                 {[slot.exercise_id, ...slot.alternatives].map((id) => (
@@ -136,7 +185,7 @@ export function WorkoutScreen({
               </button>
             ) : null}
 
-            {expanded && unloggedWork.length > 0 ? (
+            {expanded && !timed && unloggedWork.length > 0 ? (
               <NumberStepper
                 label="Working weight"
                 value={workingKg}
@@ -159,9 +208,22 @@ export function WorkoutScreen({
                       {setDisplayLabel(lift.sets, setIndex)}
                     </span>
                     <span className="set-main">
-                      {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
-                      {set.amrap ? ' +' : ''}
-                      <em> @ {set.rpe} RPE</em>
+                      {set.completed ? (
+                        <>
+                          <span>
+                            {formatLoggedLoad(set, timed)}
+                            <em> @ {set.rpe} RPE</em>
+                          </span>
+                          {loggedDiffersFromPlan(set) ? (
+                            <span className="set-plan">plan {formatPlanLoad(set, timed)}</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span>
+                          <span className="set-plan-label">Plan</span> {formatPlanLoad(set, timed)}
+                          <em> @ {set.rpe} RPE</em>
+                        </span>
+                      )}
                     </span>
                     <span className="set-state">
                       {set.completed ? 'Logged' : set.warmup ? 'Warmup' : 'Log'}
@@ -172,26 +234,41 @@ export function WorkoutScreen({
           </section>
         );
       })}
+      </div>
 
-      <button type="button" className="btn btn-primary btn-block" onClick={onFinish}>
-        Review & save
-      </button>
+      <div className="workout-footer">
+        <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>
+          Interval timer
+        </button>
+        <button type="button" className="btn btn-primary btn-block" onClick={onFinish}>
+          Review & save
+        </button>
+      </div>
 
-      {active ? (
+      {active && activeLift ? (
         <SetLogger
-          exerciseName={draft.lifts[active.liftIndex]?.name ?? 'Lift'}
-          setLabel={setDisplayLabel(draft.lifts[active.liftIndex]?.sets ?? [], active.setIndex)}
+          exerciseName={activeLift.name}
+          setLabel={setDisplayLabel(activeLift.sets, active.setIndex)}
           setCount={
-            (draft.lifts[active.liftIndex]?.sets[active.setIndex]?.warmup
-              ? draft.lifts[active.liftIndex]?.sets.filter((s) => s.warmup).length
-              : draft.lifts[active.liftIndex]?.sets.filter((s) => !s.warmup).length) ?? 0
+            (activeLift.sets[active.setIndex]?.warmup
+              ? activeLift.sets.filter((s) => s.warmup).length
+              : activeLift.sets.filter((s) => !s.warmup).length) ?? 0
           }
-          initial={draft.lifts[active.liftIndex].sets[active.setIndex]}
-          lastPerformance={lastByExercise.get(draft.lifts[active.liftIndex].exercise_id) ?? null}
-          hasLaterSameKind={laterSameKindUnlogged(
-            draft.lifts[active.liftIndex]?.sets ?? [],
-            active.setIndex,
-          )}
+          initial={activeLift.sets[active.setIndex]}
+          lastPerformance={lastByExercise.get(activeLift.exercise_id) ?? null}
+          hasLaterSameKind={laterSameKindUnlogged(activeLift.sets, active.setIndex)}
+          timed={isTimedHold(activeLift.exercise_id)}
+          equipmentOptions={activeEquipOptions}
+          equipment={liftEquipment(activeLift)}
+          onEquipment={(eq) => {
+            if (!activeSlot) return;
+            const nextId = exerciseForEquipment(activeSlot, eq, activeLift.exercise_id);
+            if (nextId && nextId !== activeLift.exercise_id) {
+              onChange(swapLiftExercise(draft, active.liftIndex, nextId));
+            }
+          }}
+          barKg={activeLift.bar_kg ?? loadPreferredBarKg()}
+          onBarKg={(kg) => onChange(setLiftBarKg(draft, active.liftIndex, kg))}
           onCancel={() => setActive(null)}
           onComplete={(logged, applyRemaining) =>
             completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)

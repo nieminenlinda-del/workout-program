@@ -89,6 +89,7 @@ export function useIntervalTimer(
   }, []);
 
   const extend = useCallback((extraSec: number) => {
+    unlockTimerAudio();
     setState((current) => extendInterval(current, extraSec, Date.now()));
   }, []);
 

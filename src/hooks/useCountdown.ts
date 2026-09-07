@@ -30,10 +30,6 @@ export function useCountdown(
   useSpokenCountdown(displaySeconds(state), `rest-${voiceCycle}`, voiceEnabled);
 
   useEffect(() => {
-    unlockTimerAudio();
-  }, []);
-
-  useEffect(() => {
     if (!state.running) return;
     const id = window.setInterval(() => {
       setState((current) => syncCountdown(current, Date.now()));
@@ -71,6 +67,7 @@ export function useCountdown(
   }, []);
 
   const extend = useCallback((extraSec: number) => {
+    unlockTimerAudio();
     if (finishedRef.current) setVoiceCycle((n) => n + 1);
     finishedRef.current = false;
     setState((current) => extendCountdown(current, extraSec, Date.now()));

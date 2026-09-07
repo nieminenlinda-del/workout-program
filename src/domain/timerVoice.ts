@@ -5,7 +5,16 @@ export type VoiceLang = 'sv' | 'en';
 
 export const TIMER_VOICE_PREF_KEY = 'linda-lift-timer-voice';
 
+/** iOS Safari drops later `speak()` after ~15s of silence unless the synth is pulsed. */
+export const SPEECH_KEEP_ALIVE_MS = 8000;
+
 let voicesListenerBound = false;
+let boundSynth: SpeechSynthesis | null = null;
+let cachedVoices: SpeechVoiceLike[] = [];
+let visibilityBound = false;
+let keepAliveId: ReturnType<typeof setInterval> | null = null;
+let keepAliveRefs = 0;
+let pendingSpeakTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Default on — Linda trains with spoken cues unless she turns them off. */
 export function loadTimerVoiceEnabled(): boolean {
@@ -48,20 +57,32 @@ export function nextVoiceThreshold(
   return { speak, mark };
 }
 
+function normLang(lang: string): string {
+  return lang.toLowerCase().replace('_', '-');
+}
+
+function isFinnishLang(lang: string): boolean {
+  return normLang(lang).startsWith('fi');
+}
+
 export function pickTimerVoice(voices: readonly { lang: string; default?: boolean }[]): {
   index: number;
   lang: VoiceLang;
 } | null {
   if (voices.length === 0) return null;
-  const norm = (lang: string) => lang.toLowerCase().replace('_', '-');
-  const svSE = voices.findIndex((v) => norm(v.lang) === 'sv-se');
-  if (svSE >= 0) return { index: svSE, lang: 'sv' };
-  const sv = voices.findIndex((v) => norm(v.lang).startsWith('sv'));
-  if (sv >= 0) return { index: sv, lang: 'sv' };
-  const en = voices.findIndex((v) => norm(v.lang).startsWith('en'));
-  if (en >= 0) return { index: en, lang: 'en' };
-  const def = voices.findIndex((v) => v.default);
-  return { index: def >= 0 ? def : 0, lang: 'en' };
+  const usable = voices
+    .map((voice, index) => ({ voice, index }))
+    .filter(({ voice }) => !isFinnishLang(voice.lang));
+  if (usable.length === 0) return null;
+
+  const svSE = usable.find(({ voice }) => normLang(voice.lang) === 'sv-se');
+  if (svSE) return { index: svSE.index, lang: 'sv' };
+  const sv = usable.find(({ voice }) => normLang(voice.lang).startsWith('sv'));
+  if (sv) return { index: sv.index, lang: 'sv' };
+  const en = usable.find(({ voice }) => normLang(voice.lang).startsWith('en'));
+  if (en) return { index: en.index, lang: 'en' };
+  const def = usable.find(({ voice }) => voice.default);
+  return { index: (def ?? usable[0]).index, lang: 'en' };
 }
 
 export function voiceLine(lang: VoiceLang, cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): string {
@@ -73,6 +94,56 @@ export function voiceLine(lang: VoiceLang, cue: VoiceThresholdSec, zeroKind: Voi
 }
 
 export type SpeechVoiceLike = { lang: string; default?: boolean };
+
+function getSynth(): SpeechSynthesis | null {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+  return window.speechSynthesis;
+}
+
+function pageIsHidden(): boolean {
+  return typeof document !== 'undefined' && document.hidden;
+}
+
+function cacheVoicesFrom(synth: SpeechSynthesis): SpeechVoiceLike[] {
+  const live = synth.getVoices();
+  if (live.length > 0) cachedVoices = Array.from(live);
+  return cachedVoices.length > 0 ? cachedVoices : Array.from(live);
+}
+
+function bindVoicesListener(synth: SpeechSynthesis): void {
+  if (voicesListenerBound && boundSynth === synth) return;
+  if (boundSynth !== synth) cachedVoices = [];
+  voicesListenerBound = true;
+  boundSynth = synth;
+  const cache = () => {
+    cacheVoicesFrom(synth);
+  };
+  synth.addEventListener('voiceschanged', cache);
+  cache();
+}
+
+function bindVisibilityResume(): void {
+  if (typeof document === 'undefined' || visibilityBound) return;
+  visibilityBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    const synth = getSynth();
+    if (!synth) return;
+    try {
+      synth.resume();
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+function resumeSynth(synth: SpeechSynthesis): void {
+  try {
+    if (synth.paused) synth.resume();
+  } catch {
+    /* ignore */
+  }
+}
 
 function resolveUtterance(
   voices: SpeechVoiceLike[],
@@ -89,11 +160,33 @@ function resolveUtterance(
   return { voice: null, lang: 'en', bcp47: 'en-US' };
 }
 
+function enqueueUtterance(synth: SpeechSynthesis, utter: SpeechSynthesisUtterance): void {
+  const speakNow = () => {
+    resumeSynth(synth);
+    synth.speak(utter);
+  };
+  // iOS: cancel() then speak() in the same turn often no-ops.
+  if (synth.speaking || synth.pending) {
+    synth.cancel();
+    if (pendingSpeakTimer != null) window.clearTimeout(pendingSpeakTimer);
+    pendingSpeakTimer = window.setTimeout(() => {
+      pendingSpeakTimer = null;
+      speakNow();
+    }, 50);
+    return;
+  }
+  speakNow();
+}
+
 export function speakTimerCue(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  if (pageIsHidden()) return;
+  const synth = getSynth();
+  if (!synth) return;
   try {
-    const synth = window.speechSynthesis;
-    const { voice, lang, bcp47 } = resolveUtterance(synth.getVoices());
+    bindVoicesListener(synth);
+    bindVisibilityResume();
+    resumeSynth(synth);
+    const { voice, lang, bcp47 } = resolveUtterance(cacheVoicesFrom(synth));
     const utter = new SpeechSynthesisUtterance(voiceLine(lang, cue, zeroKind));
     utter.lang = bcp47;
     if (voice && 'voiceURI' in voice) {
@@ -101,38 +194,79 @@ export function speakTimerCue(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 
     }
     utter.rate = 1;
     utter.volume = 1;
-    synth.cancel();
-    synth.speak(utter);
+    enqueueUtterance(synth, utter);
   } catch {
     /* no voices / autoplay block — buzz/beep still run */
   }
 }
 
-/** Empty utterance so iOS Safari/PWA will allow later speaks after a tap. */
+/**
+ * Call from a tap (Complete set / Start intervals / Voice on). iOS Safari
+ * only allows later `speak()` after a gesture. Do **not** cancel the warmup
+ * utterance — that is what used to leave the engine dead for the rest overlay.
+ */
 export function unlockTimerVoice(): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  const synth = getSynth();
+  if (!synth) return;
   try {
-    const synth = window.speechSynthesis;
-    const warm = new SpeechSynthesisUtterance(' ');
-    warm.volume = 0;
+    bindVoicesListener(synth);
+    bindVisibilityResume();
+    resumeSynth(synth);
+    cacheVoicesFrom(synth);
+    const warm = new SpeechSynthesisUtterance('\u00a0');
+    warm.lang = 'en-US';
+    warm.volume = 1;
+    warm.rate = 10;
     synth.speak(warm);
-    synth.cancel();
-    void synth.getVoices();
-    if (!voicesListenerBound) {
-      voicesListenerBound = true;
-      synth.addEventListener('voiceschanged', () => {
-        void synth.getVoices();
-      });
-    }
   } catch {
     /* ignore */
   }
 }
 
-export function cancelTimerVoice(): void {
+/**
+ * Pulse pause/resume so iOS does not silently drop `speak()` after ~15s idle.
+ * Rest is 90–180s; the first cue is often a minute after Complete set.
+ */
+export function startSpeechKeepAlive(): void {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  keepAliveRefs += 1;
+  if (keepAliveId != null) return;
+  const pulse = () => {
+    if (pageIsHidden()) return;
+    const synth = getSynth();
+    if (!synth || synth.speaking || synth.pending) return;
+    try {
+      synth.pause();
+      synth.resume();
+    } catch {
+      /* ignore */
+    }
+  };
+  keepAliveId = window.setInterval(pulse, SPEECH_KEEP_ALIVE_MS);
+}
+
+export function stopSpeechKeepAlive(): void {
+  keepAliveRefs = Math.max(0, keepAliveRefs - 1);
+  if (keepAliveRefs > 0) return;
+  if (keepAliveId != null) {
+    window.clearInterval(keepAliveId);
+    keepAliveId = null;
+  }
+}
+
+export function speechKeepAliveRunning(): boolean {
+  return keepAliveId != null;
+}
+
+export function cancelTimerVoice(): void {
+  const synth = getSynth();
+  if (!synth) return;
   try {
-    window.speechSynthesis.cancel();
+    if (pendingSpeakTimer != null) {
+      window.clearTimeout(pendingSpeakTimer);
+      pendingSpeakTimer = null;
+    }
+    synth.cancel();
   } catch {
     /* ignore */
   }

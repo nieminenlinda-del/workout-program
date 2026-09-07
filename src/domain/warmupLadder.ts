@@ -28,7 +28,7 @@ export function warmupKindFor(exerciseId: ExerciseId): WarmupKind | null {
 
 /**
  * Work weight W for the ladder: most common non-AMRAP work set, else first work set.
- * Week 1 seeds: squat 47.5 (appears twice), bench 35, DL first 60.
+ * Week 1 seeds: squat 55, bench 40, DL 70.
  */
 export function prescribedWorkWeightKg(sets: readonly { weight_kg: number; warmup?: boolean; amrap?: boolean }[]): number {
   const work = workSets(sets);
@@ -59,6 +59,9 @@ export function prescribedWorkWeightKg(sets: readonly { weight_kg: number; warmu
  *
  * Round every load to 2.5. Skip a step within 2.5 kg of the previous kept step or of W.
  * Never warmup ≥ W. Reps drop as load rises (bar 8 if W < 40 else 5, then 5, 3, 2).
+ *
+ * Week 1 W (computed, not gym-rounded 5 kg jumps): squat 55 → 20 / 27.5 / 37.5 / 47.5;
+ * bench 40 → 20 / 27.5 / 35; DL 70 → 20 / 40 / 50 / 60. DL matches Kraft’s 20/40/50/60.
  */
 export function warmupLadder(workKg: number, kind: WarmupKind = 'squat'): WarmupStep[] {
   const W = roundToNearest2p5(workKg);
@@ -142,6 +145,8 @@ export function attachWarmups<T extends SeedSet | LoggedSet>(sets: T[], kind: Wa
           rpe: 5,
           warmup: true,
           completed: false,
+          target_weight_kg: step.weight_kg,
+          target_reps: step.reps,
         } as T)
       : (step as T),
   );

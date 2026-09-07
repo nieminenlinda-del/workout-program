@@ -75,24 +75,26 @@ export function WorkoutScreen({
 
   return (
     <main className="screen workout-screen">
-      <header className="topbar">
-        <button type="button" className="btn btn-ghost" onClick={onBack}>
-          Readiness
-        </button>
-        <h1>{template.title}</h1>
-        <LightBadge light={draft.readiness.light} />
-      </header>
+      <div className="workout-header">
+        <header className="topbar">
+          <button type="button" className="btn btn-ghost" onClick={onBack}>
+            Readiness
+          </button>
+          <h1>{template.title}</h1>
+          <LightBadge light={draft.readiness.light} />
+        </header>
 
-      <div className="workout-chrome">
-        <div className="progress-line" aria-label={`${progress.done} of ${progress.total} sets`}>
-          <div className="progress-bar" style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }} />
-          <span>
-            {progress.done}/{progress.total} sets
-          </span>
+        <div className="workout-chrome">
+          <div className="progress-line" aria-label={`${progress.done} of ${progress.total} sets`}>
+            <div className="progress-bar" style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }} />
+            <span>
+              {progress.done}/{progress.total} sets
+            </span>
+          </div>
+          <button type="button" className="btn btn-ghost btn-slim workout-interval-btn" onClick={onInterval}>
+            Interval
+          </button>
         </div>
-        <button type="button" className="btn btn-ghost btn-slim workout-interval-btn" onClick={onInterval}>
-          Interval
-        </button>
       </div>
 
       {draft.lifts.map((lift, liftIndex) => {

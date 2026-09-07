@@ -527,19 +527,30 @@ button {
 }
 
 .workout-screen {
+  padding-top: calc(140px + env(safe-area-inset-top));
   padding-bottom: calc(148px + env(safe-area-inset-bottom));
 }
 
-.workout-chrome {
-  position: sticky;
+.workout-header {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
   top: 0;
-  z-index: 4;
+  z-index: 6;
+  width: 100%;
+  max-width: 430px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: calc(18px + env(safe-area-inset-top)) 18px 10px;
+  background: #12141a;
+}
+
+.workout-chrome {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: -4px 0 0;
-  padding: 4px 0 10px;
-  background: linear-gradient(180deg, #12141a 72%, rgba(18, 20, 26, 0));
 }
 
 .workout-chrome .progress-line {

@@ -97,6 +97,7 @@ export function WorkoutScreen({
         </div>
       </div>
 
+      <div className="workout-lifts">
       {draft.lifts.map((lift, liftIndex) => {
         const slot = slotForLift(template, lift) ?? template.slots[liftIndex];
         const expanded = openLift === liftIndex;
@@ -202,6 +203,7 @@ export function WorkoutScreen({
           </section>
         );
       })}
+      </div>
 
       <div className="workout-footer">
         <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>

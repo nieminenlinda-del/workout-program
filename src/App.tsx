@@ -19,6 +19,9 @@ export default function App() {
   const date = todayIsoDate();
 
   const openInterval = (from: 'home' | 'workout') => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     setIntervalBack(from);
     flow.setView('interval');
   };

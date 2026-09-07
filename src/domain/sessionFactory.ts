@@ -1,4 +1,4 @@
-import { EXERCISE_CATALOG } from '../types/exercises';
+import { EXERCISE_CATALOG, exerciseEquipment } from '../types/exercises';
 import type {
   CanonicalTemplateDay,
   LoggedLift,
@@ -26,6 +26,7 @@ export function liftsFromTemplate(day: CanonicalTemplateDay): LoggedLift[] {
       name: meta.name,
       style: meta.style,
       exercise_id: slot.exercise_id,
+      equipment: exerciseEquipment(slot.exercise_id),
       sets: attachWarmups(
         slot.sets.map((s) => ({
           weight_kg: s.weight_kg,
@@ -65,7 +66,13 @@ export function swapLiftExercise(draft: SessionDraft, liftIndex: number, exercis
   const meta = EXERCISE_CATALOG[exerciseId];
   const lifts = draft.lifts.map((lift, i) =>
     i === liftIndex
-      ? { ...lift, exercise_id: exerciseId, name: meta.name, style: meta.style }
+      ? {
+          ...lift,
+          exercise_id: exerciseId,
+          name: meta.name,
+          style: meta.style,
+          equipment: exerciseEquipment(exerciseId),
+        }
       : lift,
   );
   return { ...draft, lifts, updated_at: new Date().toISOString() };

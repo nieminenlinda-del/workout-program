@@ -5,7 +5,8 @@ import { LastPerformanceHint } from './LastPerformanceHint';
 import type { LastPerformance } from '../domain/lastPerformance';
 import { formatPlanLoad, prescriptionWeightKg } from '../domain/setPrescription';
 import { unlockTimerAudio } from '../domain/timerCue';
-import { HOLD_SEC_LOG_MAX, REPS_LOG_MAX } from '../types/exercises';
+import { HOLD_SEC_LOG_MAX, REPS_LOG_MAX, type Equipment } from '../types/exercises';
+import { EquipmentPicker } from './EquipmentPicker';
 
 const RPE_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
@@ -17,6 +18,9 @@ export function SetLogger({
   lastPerformance,
   hasLaterSameKind,
   timed = false,
+  equipmentOptions = [],
+  equipment,
+  onEquipment,
   onCancel,
   onComplete,
 }: {
@@ -27,6 +31,9 @@ export function SetLogger({
   lastPerformance?: LastPerformance | null;
   hasLaterSameKind: boolean;
   timed?: boolean;
+  equipmentOptions?: readonly Equipment[];
+  equipment?: Equipment;
+  onEquipment?: (next: Equipment) => void;
   onCancel: () => void;
   onComplete: (set: LoggedSet, applyWeightToRemaining: boolean) => void;
 }) {
@@ -55,6 +62,10 @@ export function SetLogger({
         <h2 className="sheet-title">{exerciseName}</h2>
         <p className="sheet-plan">Plan {formatPlanLoad(initial, timed)}</p>
         <LastPerformanceHint performance={lastPerformance} />
+
+        {equipment && equipmentOptions.length > 1 && onEquipment ? (
+          <EquipmentPicker options={equipmentOptions} value={equipment} onChange={onEquipment} />
+        ) : null}
 
         <NumberStepper
           label={overridden ? 'Weight — overridden' : 'Weight'}

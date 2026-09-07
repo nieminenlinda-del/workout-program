@@ -1,10 +1,13 @@
-export type { ExerciseId, ExerciseMeta, ExerciseRole, MovementPattern } from './exercises';
+export type { ExerciseId, ExerciseMeta, ExerciseRole, MovementPattern, Equipment } from './exercises';
 export {
   ACCESSORY_EXERCISE_IDS,
+  EQUIPMENT_IDS,
+  EQUIPMENT_LABELS,
   EXERCISE_CATALOG,
   EXERCISE_IDS,
   PRIMARY_EXERCISE_IDS,
   SUB_EXERCISE_IDS,
+  exerciseEquipment,
   isExerciseId,
 } from './exercises';
 

@@ -618,11 +618,16 @@ button {
 }
 
 .alt-row,
+.equip-row,
 .micro-steps,
 .rpe-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.equip-row .chip {
+  min-height: 44px;
 }
 
 .chip,

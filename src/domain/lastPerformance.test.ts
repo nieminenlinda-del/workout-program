@@ -119,4 +119,15 @@ describe('last matching performance', () => {
     expect(map.get('pull_up')?.reps).toBe(6);
     expect(map.get('curl_db')).toBeNull();
   });
+
+  it('names the accessory implement on last-week copy, not on T1 squat', () => {
+    const row = completeSession('B', '2026-09-01', 'row_barbell', [{ weight_kg: 40, reps: 8 }]);
+    expect(formatLastPerformance(lastMatchingPerformance([row], 'row_barbell', 'B', '2026-09-08'))).toBe(
+      'Last: 40 kg × 8 · Barbell',
+    );
+    const squat = completeSession('A', '2026-08-31', 'squat_low_bar', [{ weight_kg: 50, reps: 5 }]);
+    expect(formatLastPerformance(lastMatchingPerformance([squat], 'squat_low_bar', 'A', '2026-09-07'))).toBe(
+      'Last: 50 kg × 5',
+    );
+  });
 });

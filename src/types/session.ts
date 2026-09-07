@@ -1,4 +1,4 @@
-import type { ExerciseId } from './exercises';
+import type { Equipment, ExerciseId } from './exercises';
 
 /** Training-day letter (A–D) or weekday alias (Mon/Tue/Thu/Fri). */
 export type TemplateDay = 'Mon' | 'Tue' | 'Thu' | 'Fri' | 'A' | 'B' | 'C' | 'D';
@@ -37,6 +37,8 @@ export interface LoggedLift {
   name: string;
   style?: string;
   exercise_id: ExerciseId;
+  /** Snapshot of catalog equipment. Older logs omit this — derive from `exercise_id`. */
+  equipment?: Equipment;
   sets: LoggedSet[];
 }
 

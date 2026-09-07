@@ -59,6 +59,24 @@ export type ExerciseRole = 'primary' | 'sub' | 'accessory';
 
 export type MovementPattern = 'squat' | 'bench' | 'hinge' | 'row' | 'press' | 'pull' | 'core' | 'arm';
 
+/** Home-gym implements Linda can pick on accessory slots. */
+export const EQUIPMENT_IDS = ['barbell', 'dumbbells', 'bands', 'bodyweight'] as const;
+export type Equipment = (typeof EQUIPMENT_IDS)[number];
+
+export const EQUIPMENT_LABELS: Record<Equipment, string> = {
+  barbell: 'Barbell',
+  dumbbells: 'DBs',
+  bands: 'Bands',
+  bodyweight: 'BW',
+};
+
+export const EQUIPMENT_ARIA: Record<Equipment, string> = {
+  barbell: 'Barbell',
+  dumbbells: 'Dumbbells',
+  bands: 'Bands',
+  bodyweight: 'Bodyweight',
+};
+
 export interface ExerciseMeta {
   id: ExerciseId;
   name: string;
@@ -67,6 +85,8 @@ export interface ExerciseMeta {
   style?: string;
   /** Hold duration is stored in `reps` (seconds), not a rep count. */
   timed?: boolean;
+  /** How this catalog ID is typically loaded. Used to swap slot alternatives. */
+  equipment: Equipment;
 }
 
 export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
@@ -76,6 +96,7 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'primary',
     pattern: 'squat',
     style: 'low_bar',
+    equipment: 'barbell',
   },
   bench_regular: {
     id: 'bench_regular',
@@ -83,6 +104,7 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'primary',
     pattern: 'bench',
     style: 'regular',
+    equipment: 'barbell',
   },
   deadlift_conventional: {
     id: 'deadlift_conventional',
@@ -90,6 +112,7 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'primary',
     pattern: 'hinge',
     style: 'conventional',
+    equipment: 'barbell',
   },
   bench_regular_volume: {
     id: 'bench_regular_volume',
@@ -97,6 +120,7 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'primary',
     pattern: 'bench',
     style: 'regular',
+    equipment: 'barbell',
   },
   squat_low_bar_box: {
     id: 'squat_low_bar_box',
@@ -104,6 +128,7 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'sub',
     pattern: 'squat',
     style: 'low_bar',
+    equipment: 'barbell',
   },
   squat_low_bar_tempo: {
     id: 'squat_low_bar_tempo',
@@ -111,12 +136,14 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'sub',
     pattern: 'squat',
     style: 'low_bar',
+    equipment: 'barbell',
   },
   squat_goblet: {
     id: 'squat_goblet',
     name: 'Goblet squat',
     role: 'sub',
     pattern: 'squat',
+    equipment: 'dumbbells',
   },
   bench_floor_regular: {
     id: 'bench_floor_regular',
@@ -124,117 +151,135 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'sub',
     pattern: 'bench',
     style: 'regular',
+    equipment: 'barbell',
   },
-  push_up: { id: 'push_up', name: 'Push-up', role: 'sub', pattern: 'bench' },
+  push_up: { id: 'push_up', name: 'Push-up', role: 'sub', pattern: 'bench', equipment: 'bodyweight' },
   deadlift_rdl: {
     id: 'deadlift_rdl',
     name: 'Romanian deadlift',
     role: 'sub',
     pattern: 'hinge',
+    equipment: 'barbell',
   },
   rdl_single_leg: {
     id: 'rdl_single_leg',
     name: 'Single-leg RDL',
     role: 'sub',
     pattern: 'hinge',
+    equipment: 'dumbbells',
   },
-  rdl: { id: 'rdl', name: 'RDL', role: 'accessory', pattern: 'hinge' },
+  rdl: { id: 'rdl', name: 'RDL', role: 'accessory', pattern: 'hinge', equipment: 'barbell' },
   good_morning_light: {
     id: 'good_morning_light',
     name: 'Good morning (light)',
     role: 'accessory',
     pattern: 'hinge',
+    equipment: 'barbell',
   },
   goblet_squat: {
     id: 'goblet_squat',
     name: 'Goblet squat',
     role: 'accessory',
     pattern: 'squat',
+    equipment: 'dumbbells',
   },
   front_squat_light: {
     id: 'front_squat_light',
     name: 'Front squat (light)',
     role: 'accessory',
     pattern: 'squat',
+    equipment: 'barbell',
   },
   reverse_lunge: {
     id: 'reverse_lunge',
     name: 'Reverse lunge',
     role: 'accessory',
     pattern: 'squat',
+    equipment: 'dumbbells',
   },
   split_squat_db: {
     id: 'split_squat_db',
     name: 'DB split squat',
     role: 'accessory',
     pattern: 'squat',
+    equipment: 'dumbbells',
   },
   hip_thrust: {
     id: 'hip_thrust',
     name: 'Hip thrust',
     role: 'accessory',
     pattern: 'hinge',
+    equipment: 'barbell',
   },
   glute_bridge: {
     id: 'glute_bridge',
     name: 'Glute bridge',
     role: 'accessory',
     pattern: 'hinge',
+    equipment: 'bodyweight',
   },
   row_barbell: {
     id: 'row_barbell',
     name: 'Barbell row',
     role: 'accessory',
     pattern: 'row',
+    equipment: 'barbell',
   },
-  row_db: { id: 'row_db', name: 'DB row', role: 'accessory', pattern: 'row' },
+  row_db: { id: 'row_db', name: 'DB row', role: 'accessory', pattern: 'row', equipment: 'dumbbells' },
   overhead_press: {
     id: 'overhead_press',
     name: 'Overhead press',
     role: 'accessory',
     pattern: 'press',
+    equipment: 'barbell',
   },
-  pull_up: { id: 'pull_up', name: 'Pull-up', role: 'accessory', pattern: 'pull' },
+  pull_up: { id: 'pull_up', name: 'Pull-up', role: 'accessory', pattern: 'pull', equipment: 'bodyweight' },
   pull_up_band: {
     id: 'pull_up_band',
     name: 'Band-assisted pull-up',
     role: 'accessory',
     pattern: 'pull',
+    equipment: 'bands',
   },
   lat_pulldown_band: {
     id: 'lat_pulldown_band',
     name: 'Band lat pulldown',
     role: 'accessory',
     pattern: 'pull',
+    equipment: 'bands',
   },
   face_pull_band: {
     id: 'face_pull_band',
     name: 'Band face pull',
     role: 'accessory',
     pattern: 'pull',
+    equipment: 'bands',
   },
   band_pull_apart: {
     id: 'band_pull_apart',
     name: 'Band pull-apart',
     role: 'accessory',
     pattern: 'pull',
+    equipment: 'bands',
   },
-  y_raise: { id: 'y_raise', name: 'Y-raise', role: 'accessory', pattern: 'press' },
-  plank: { id: 'plank', name: 'Plank', role: 'accessory', pattern: 'core', timed: true },
+  y_raise: { id: 'y_raise', name: 'Y-raise', role: 'accessory', pattern: 'press', equipment: 'dumbbells' },
+  plank: { id: 'plank', name: 'Plank', role: 'accessory', pattern: 'core', timed: true, equipment: 'bodyweight' },
   side_plank: {
     id: 'side_plank',
     name: 'Side plank',
     role: 'accessory',
     pattern: 'core',
     timed: true,
+    equipment: 'bodyweight',
   },
-  dead_bug: { id: 'dead_bug', name: 'Dead bug', role: 'accessory', pattern: 'core' },
-  curl_db: { id: 'curl_db', name: 'DB curl', role: 'accessory', pattern: 'arm' },
+  dead_bug: { id: 'dead_bug', name: 'Dead bug', role: 'accessory', pattern: 'core', equipment: 'bodyweight' },
+  curl_db: { id: 'curl_db', name: 'DB curl', role: 'accessory', pattern: 'arm', equipment: 'dumbbells' },
   tricep_pushdown_band: {
     id: 'tricep_pushdown_band',
     name: 'Band tricep pushdown',
     role: 'accessory',
     pattern: 'arm',
+    equipment: 'bands',
   },
 };
 
@@ -252,4 +297,8 @@ export function isTimedHold(exerciseId: ExerciseId): boolean {
 
 export function logCountMax(exerciseId: ExerciseId): number {
   return isTimedHold(exerciseId) ? HOLD_SEC_LOG_MAX : REPS_LOG_MAX;
+}
+
+export function exerciseEquipment(exerciseId: ExerciseId): Equipment {
+  return EXERCISE_CATALOG[exerciseId].equipment;
 }

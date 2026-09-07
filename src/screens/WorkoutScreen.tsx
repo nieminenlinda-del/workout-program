@@ -13,11 +13,18 @@ import {
   prescriptionWeightKg,
 } from '../domain/setPrescription';
 import { logSetOnDraft, overrideUnloggedLiftWeight } from '../domain/weightOverride';
+import {
+  equipmentOptionsForSlot,
+  exerciseForEquipment,
+  liftEquipment,
+  slotAllowsEquipmentPicker,
+} from '../domain/equipment';
 import { SetLogger } from '../components/SetLogger';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
 import { NumberStepper } from '../components/NumberStepper';
 import { LastPerformanceHint } from '../components/LastPerformanceHint';
+import { EquipmentPicker } from '../components/EquipmentPicker';
 import { unlockTimerAudio } from '../domain/timerCue';
 
 interface ActiveSet {
@@ -72,6 +79,11 @@ export function WorkoutScreen({
     onChange({ ...draft, lifts, updated_at: new Date().toISOString() });
     setOpenLift(0);
   };
+
+  const activeLift = active ? draft.lifts[active.liftIndex] : undefined;
+  const activeSlot = activeLift ? slotForLift(template, activeLift) : undefined;
+  const activeEquipOptions =
+    activeSlot && slotAllowsEquipmentPicker(activeSlot) ? equipmentOptionsForSlot(activeSlot) : [];
 
   return (
     <main className="screen workout-screen">
@@ -132,6 +144,19 @@ export function WorkoutScreen({
                 ) : null}
               </span>
             </button>
+
+            {slot && slotAllowsEquipmentPicker(slot) ? (
+              <EquipmentPicker
+                options={equipmentOptionsForSlot(slot)}
+                value={liftEquipment(lift)}
+                onChange={(eq) => {
+                  const nextId = exerciseForEquipment(slot, eq, lift.exercise_id);
+                  if (nextId && nextId !== lift.exercise_id) {
+                    onChange(swapLiftExercise(draft, liftIndex, nextId));
+                  }
+                }}
+              />
+            ) : null}
 
             {slot && slot.alternatives.length > 0 ? (
               <div className="alt-row">
@@ -214,22 +239,28 @@ export function WorkoutScreen({
         </button>
       </div>
 
-      {active ? (
+      {active && activeLift ? (
         <SetLogger
-          exerciseName={draft.lifts[active.liftIndex]?.name ?? 'Lift'}
-          setLabel={setDisplayLabel(draft.lifts[active.liftIndex]?.sets ?? [], active.setIndex)}
+          exerciseName={activeLift.name}
+          setLabel={setDisplayLabel(activeLift.sets, active.setIndex)}
           setCount={
-            (draft.lifts[active.liftIndex]?.sets[active.setIndex]?.warmup
-              ? draft.lifts[active.liftIndex]?.sets.filter((s) => s.warmup).length
-              : draft.lifts[active.liftIndex]?.sets.filter((s) => !s.warmup).length) ?? 0
+            (activeLift.sets[active.setIndex]?.warmup
+              ? activeLift.sets.filter((s) => s.warmup).length
+              : activeLift.sets.filter((s) => !s.warmup).length) ?? 0
           }
-          initial={draft.lifts[active.liftIndex].sets[active.setIndex]}
-          lastPerformance={lastByExercise.get(draft.lifts[active.liftIndex].exercise_id) ?? null}
-          hasLaterSameKind={laterSameKindUnlogged(
-            draft.lifts[active.liftIndex]?.sets ?? [],
-            active.setIndex,
-          )}
-          timed={isTimedHold(draft.lifts[active.liftIndex].exercise_id)}
+          initial={activeLift.sets[active.setIndex]}
+          lastPerformance={lastByExercise.get(activeLift.exercise_id) ?? null}
+          hasLaterSameKind={laterSameKindUnlogged(activeLift.sets, active.setIndex)}
+          timed={isTimedHold(activeLift.exercise_id)}
+          equipmentOptions={activeEquipOptions}
+          equipment={liftEquipment(activeLift)}
+          onEquipment={(eq) => {
+            if (!activeSlot) return;
+            const nextId = exerciseForEquipment(activeSlot, eq, activeLift.exercise_id);
+            if (nextId && nextId !== activeLift.exercise_id) {
+              onChange(swapLiftExercise(draft, active.liftIndex, nextId));
+            }
+          }}
           onCancel={() => setActive(null)}
           onComplete={(logged, applyRemaining) =>
             completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)

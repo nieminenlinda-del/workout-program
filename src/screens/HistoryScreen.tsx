@@ -3,7 +3,8 @@ import { LightBadge } from '../components/LightBadge';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 import { completedSetCount } from '../domain/sessionFactory';
 import { setDisplayLabel } from '../domain/sets';
-import { isTimedHold } from '../types/exercises';
+import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isTimedHold } from '../types/exercises';
+import { liftEquipment } from '../domain/equipment';
 
 export function HistoryScreen({
   sessions,
@@ -78,6 +79,9 @@ export function DetailScreen({
       {session.lifts.map((lift) => (
         <section key={lift.exercise_id + lift.name} className="card">
           <h2>{lift.name}</h2>
+          {EXERCISE_CATALOG[lift.exercise_id]?.role !== 'primary' ? (
+            <p className="muted">{EQUIPMENT_LABELS[liftEquipment(lift)]}</p>
+          ) : null}
           <ul className="detail-sets">
             {lift.sets.map((set, i) => (
               <li key={i} className={set.completed ? '' : 'dim'}>

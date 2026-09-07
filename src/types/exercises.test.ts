@@ -64,6 +64,7 @@ describe('exercise catalog', () => {
     for (const id of EXERCISE_IDS) {
       expect(EXERCISE_CATALOG[id].id).toBe(id);
       expect(EXERCISE_CATALOG[id].name.length).toBeGreaterThan(1);
+      expect(EXERCISE_CATALOG[id].equipment).toMatch(/^(barbell|dumbbells|bands|bodyweight)$/);
     }
   });
 

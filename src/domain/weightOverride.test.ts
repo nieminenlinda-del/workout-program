@@ -67,6 +67,29 @@ describe('mid-session weight override', () => {
     );
   });
 
+  it('logging set 1 at a different kg does not change leftover prescribed weights', () => {
+    const draft = createDraftSession('A', '2026-09-07');
+    const work = firstWorkIndex(draft);
+    expect(draft.lifts[0].sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([
+      45, 47.5, 47.5, 50,
+    ]);
+
+    const logged = logSetOnDraft(draft, 0, work, {
+      weight_kg: 42.5,
+      reps: 5,
+      rpe: 6.5,
+      completed: true,
+      amrap: false,
+    });
+
+    expect(logged.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([
+      42.5, 47.5, 47.5, 50,
+    ]);
+    expect(logged.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.target_weight_kg)).toEqual([
+      45, 47.5, 47.5, 50,
+    ]);
+  });
+
   it('keeps leftover work targets after logging set 1 (T1 wave 45 / 47.5 / 47.5 / 50)', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);

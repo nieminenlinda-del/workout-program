@@ -105,6 +105,7 @@ export function logSetOnDraft(
   liftIndex: number,
   setIndex: number,
   logged: LoggedSet,
+  /** Default this-set-only so leftover planned kg stay visible. Pass true to opt in. */
   applyWeightToRemaining = false,
 ): SessionDraft {
   const withLog = {

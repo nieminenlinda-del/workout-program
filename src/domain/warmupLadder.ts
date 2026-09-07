@@ -142,6 +142,8 @@ export function attachWarmups<T extends SeedSet | LoggedSet>(sets: T[], kind: Wa
           rpe: 5,
           warmup: true,
           completed: false,
+          target_weight_kg: step.weight_kg,
+          target_reps: step.reps,
         } as T)
       : (step as T),
   );

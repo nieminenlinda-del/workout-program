@@ -139,7 +139,8 @@ Shown on the Today preview, each in-session lift card, and the set logger.
 Seed kg is a starting prescription, not a lock. Mid-session edits write onto the draft (`src/domain/weightOverride.ts`) so Linda does not restart the session.
 
 - **Working weight** stepper on an expanded lift updates every **unlogged work** set. The warmup ladder is then recomputed from the new W unless a warmup is already logged.
-- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set. Default apply-forward copies kg onto later unlogged sets of the **same kind** (warmup→warmup, work→work).
+- **Set logger** still edits that set’s kg (2.5 steppers, ±1.25 chips, tap the number to type). Completing the set stores the override on the logged set only. Unfinished slots keep their programmed `target_weight_kg` / `target_reps` on the row (`Plan 47.5 kg × 5`). Opt-in “Start leftover sets at this kg” copies working kg into the **next logger inputs**, not the displayed plan.
+- Each in-session set row shows **Plan** (prescription) until logged, then the actual kg/reps. If those differ, a muted `plan …` line stays on the logged row. Last-week copy remains the lift’s top work set (`Last: 50 kg × 5`), not per-set.
 
 ## Warmup sets (Phase 1)
 

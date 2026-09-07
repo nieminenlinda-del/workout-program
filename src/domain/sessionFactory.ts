@@ -34,6 +34,8 @@ export function liftsFromTemplate(day: CanonicalTemplateDay): LoggedLift[] {
           completed: false,
           amrap: s.amrap,
           warmup: s.warmup,
+          target_weight_kg: s.weight_kg,
+          target_reps: s.reps,
         })),
         warmupKindFor(slot.exercise_id),
       ),

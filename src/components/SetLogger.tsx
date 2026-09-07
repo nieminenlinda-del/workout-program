@@ -3,6 +3,7 @@ import type { LoggedSet } from '../types/session';
 import { NumberStepper } from './NumberStepper';
 import { LastPerformanceHint } from './LastPerformanceHint';
 import type { LastPerformance } from '../domain/lastPerformance';
+import { formatPlanLoad, prescriptionWeightKg } from '../domain/setPrescription';
 
 const RPE_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
@@ -29,8 +30,9 @@ export function SetLogger({
   const [reps, setReps] = useState(initial.reps);
   const [rpe, setRpe] = useState(initial.rpe);
   const [amrap, setAmrap] = useState(Boolean(initial.amrap));
-  const [applyRemaining, setApplyRemaining] = useState(true);
-  const overridden = weight !== initial.weight_kg;
+  const [applyRemaining, setApplyRemaining] = useState(false);
+  const planKg = prescriptionWeightKg(initial);
+  const overridden = weight !== planKg;
   const warmup = Boolean(initial.warmup);
 
   return (
@@ -47,6 +49,7 @@ export function SetLogger({
           {amrap ? ' · AMRAP' : ''}
         </p>
         <h2 className="sheet-title">{exerciseName}</h2>
+        <p className="sheet-plan">Plan {formatPlanLoad(initial)}</p>
         <LastPerformanceHint performance={lastPerformance} />
 
         <NumberStepper
@@ -102,8 +105,8 @@ export function SetLogger({
           >
             {applyRemaining
               ? warmup
-                ? 'Also apply kg to leftover warmups'
-                : 'Also apply kg to leftover work sets'
+                ? 'Start leftover warmups at this kg'
+                : 'Start leftover work sets at this kg'
               : 'This set only'}
           </button>
         ) : null}

@@ -24,6 +24,13 @@ export interface LoggedSet {
   amrap?: boolean;
   /** True for seeded warmup sets. Must not count as a work set for last-week / Phase 2. */
   warmup?: boolean;
+  /**
+   * Programmed target for this slot. Logging a set must not overwrite later
+   * unfinished slots’ targets. Missing on older drafts — treat `weight_kg` /
+   * `reps` as the prescription until a log or working-weight edit writes these.
+   */
+  target_weight_kg?: number;
+  target_reps?: number;
 }
 
 export interface LoggedLift {

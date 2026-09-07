@@ -6,6 +6,12 @@ import { canonicalTemplateDay } from '../domain/templateDay';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
 import { lastMatchingPerformance } from '../domain/lastPerformance';
 import { laterSameKindUnlogged, setDisplayLabel, workSets } from '../domain/sets';
+import {
+  formatLoggedLoad,
+  formatPlanLoad,
+  loggedDiffersFromPlan,
+  prescriptionWeightKg,
+} from '../domain/setPrescription';
 import { logSetOnDraft, overrideUnloggedLiftWeight } from '../domain/weightOverride';
 import { SetLogger } from '../components/SetLogger';
 import { RestTimer } from '../components/RestTimer';
@@ -91,8 +97,9 @@ export function WorkoutScreen({
         const warmups = lift.sets.filter((s) => s.warmup);
         const warmupDone = warmups.filter((s) => s.completed).length;
         const unloggedWork = work.filter((s) => !s.completed);
-        const workingKg =
-          unloggedWork[0]?.weight_kg ?? work[work.length - 1]?.weight_kg ?? 0;
+        const workingKg = unloggedWork[0]
+          ? prescriptionWeightKg(unloggedWork[0])
+          : (work[work.length - 1]?.weight_kg ?? 0);
         return (
           <section key={`${lift.exercise_id}-${liftIndex}`} className={`card lift-card ${expanded ? 'open' : ''}`}>
             <button
@@ -159,9 +166,22 @@ export function WorkoutScreen({
                       {setDisplayLabel(lift.sets, setIndex)}
                     </span>
                     <span className="set-main">
-                      {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
-                      {set.amrap ? ' +' : ''}
-                      <em> @ {set.rpe} RPE</em>
+                      {set.completed ? (
+                        <>
+                          <span>
+                            {formatLoggedLoad(set)}
+                            <em> @ {set.rpe} RPE</em>
+                          </span>
+                          {loggedDiffersFromPlan(set) ? (
+                            <span className="set-plan">plan {formatPlanLoad(set)}</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span>
+                          <span className="set-plan-label">Plan</span> {formatPlanLoad(set)}
+                          <em> @ {set.rpe} RPE</em>
+                        </span>
+                      )}
                     </span>
                     <span className="set-state">
                       {set.completed ? 'Logged' : set.warmup ? 'Warmup' : 'Log'}

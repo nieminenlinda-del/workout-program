@@ -72,6 +72,9 @@ describe('session factory', () => {
       completed: false,
       amrap: true,
     });
+    const squatWork = draft.lifts[0].sets.filter((s) => !s.warmup);
+    expect(squatWork.map((s) => s.target_weight_kg)).toEqual([45, 47.5, 47.5, 50]);
+    expect(squatWork.map((s) => s.target_reps)).toEqual([5, 5, 5, 5]);
   });
 
   it('swaps an alternative without dropping set slots', () => {

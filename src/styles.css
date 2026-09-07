@@ -590,7 +590,7 @@ button {
   align-items: center;
   gap: 8px;
   min-height: 56px;
-  padding: 0 12px;
+  padding: 8px 12px;
   border: 0;
   border-radius: 12px;
   background: var(--bg-elev);
@@ -620,6 +620,33 @@ button {
   font-family: var(--display);
   font-size: 22px;
   color: var(--muted);
+}
+
+.set-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+
+.set-plan-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.set-plan,
+.sheet-plan {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.sheet-plan {
+  margin: 0 0 2px;
 }
 
 .set-main em {

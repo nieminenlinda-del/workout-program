@@ -68,8 +68,8 @@ describe('exercise catalog', () => {
     }
   });
 
-  it('does not program sumo, high-bar, or close-grip primaries', () => {
-    const banned = ['sumo', 'high_bar', 'close_grip'];
+  it('does not program sumo, high-bar, close-grip, extra-wide, or feet-up primaries', () => {
+    const banned = ['sumo', 'high_bar', 'close_grip', 'extra_wide', 'feet_up'];
     for (const id of PRIMARY_EXERCISE_IDS) {
       for (const token of banned) {
         expect(id.includes(token)).toBe(false);

@@ -74,6 +74,6 @@ describe('planned session preview (template only)', () => {
     const plank = plannedLiftSummary(DAY_TEMPLATES.A.slots[3]);
     expect(plank.name).toBe('Plank');
     expect(plank.timed).toBe(true);
-    expect(plank.scheme).toBe('3 × 30s');
+    expect(plank.scheme).toBe('3 × 60s');
   });
 });

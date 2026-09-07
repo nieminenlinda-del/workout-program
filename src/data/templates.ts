@@ -34,7 +34,7 @@ const CORE_REST = 60;
 /**
  * Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder).
  * Block A Week 1 T1 loads (Kraft, Sep 2026): squat 55 × 3×5, bench 40 × 3×5,
- * DL 70 × 3×5, Fri bench vol 40 × 2×5, all @ RPE 6–7.
+ * DL 70 × 3×5, Fri bench vol 40 × 2×5, all @ RPE 6–7. Front plank seed is 3 × 60s.
  * Changing these templates only affects new drafts — completed SessionLog rows stay as logged.
  */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
@@ -83,9 +83,9 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'plank',
         alternatives: ['dead_bug'],
         sets: [
-          { weight_kg: 0, reps: 30, rpe: 7, rest_sec: CORE_REST },
-          { weight_kg: 0, reps: 30, rpe: 7, rest_sec: CORE_REST },
-          { weight_kg: 0, reps: 30, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 0, reps: 60, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 0, reps: 60, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 0, reps: 60, rpe: 7, rest_sec: CORE_REST },
         ],
       },
     ],

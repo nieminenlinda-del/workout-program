@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { nextVoiceThreshold, speakTimerCue, type VoiceZeroKind } from '../domain/timerVoice';
+import {
+  nextVoiceThreshold,
+  speakTimerCue,
+  startSpeechKeepAlive,
+  stopSpeechKeepAlive,
+  type VoiceZeroKind,
+} from '../domain/timerVoice';
 
 /**
  * Speaks 30s / 10s once per `cycleKey`. 0s is spoken by the caller (natural
@@ -19,6 +25,12 @@ export function useSpokenCountdown(
     prevRef.current = null;
     spokenRef.current = new Set();
   }
+
+  useEffect(() => {
+    if (!enabled) return;
+    startSpeechKeepAlive();
+    return () => stopSpeechKeepAlive();
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {

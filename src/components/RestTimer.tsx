@@ -38,6 +38,7 @@ export function RestTimer({
       <div
         className="rest-card"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={() => unlockTimerAudio()}
       >
         <p className="rest-kicker">{done ? 'Rest done' : state.running ? 'Rest' : 'Paused'}</p>
         <h2 className="rest-title">{exerciseName}</h2>

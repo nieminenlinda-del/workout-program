@@ -208,7 +208,9 @@ Keep `SessionLog` field names stable. Additive fields are fine; renames break th
 
 The rest overlay reads `rest_sec` from the seed template slot after each completed set. The interval screen is a separate view (`AppView: "interval"`) and does not write `SessionLog` or Phase 2 types.
 
-Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Spoken voice (`speechSynthesis`) is additive: **30s**, **10s**, and **0s** (rest: “done”; interval: next phase / done). Swedish (`sv-SE`, or any `sv*`) if `getVoices()` lists it, else English. Do not prefer Finnish. Each threshold fires once per countdown (lock-screen jumps speak only the lowest crossed mark). Skip does not speak 0s. Voice on/off lives on the rest card and interval setup (`localStorage` `linda-lift-timer-voice`, default on). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
+Cues: `src/domain/timerCue.ts` — `navigator.vibrate` first, then a Web Audio beep (may be silent if the phone is muted). Spoken voice (`speechSynthesis`) is additive: **30s**, **10s**, and **0s** (rest: “done”; interval: next phase / done). Swedish (`sv-SE`, or any `sv*`) if `getVoices()` lists it, else English. Finnish voices are never selected. Each threshold fires once per countdown (lock-screen jumps speak only the lowest crossed mark). Skip does not speak 0s. Voice on/off lives on the rest card and interval setup (`localStorage` `linda-lift-timer-voice`, default on). Screen Wake Lock is requested while a timer is running (`useWakeLock`).
+
+**iPhone Safari / PWA:** Completing a set (or Start on intervals) is the user gesture that unlocks speech. Unlock must **not** `cancel()` the warmup utterance. While a countdown is running, `startSpeechKeepAlive` pulses `pause`/`resume` every 8s so iOS does not silently drop `speak()` after ~15s of silence (a 90–180s rest would otherwise never say “30 seconds”).
 
 ## Exercise IDs
 

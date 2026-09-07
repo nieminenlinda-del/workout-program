@@ -4,6 +4,7 @@ import { NumberStepper } from './NumberStepper';
 import { LastPerformanceHint } from './LastPerformanceHint';
 import type { LastPerformance } from '../domain/lastPerformance';
 import { formatPlanLoad, prescriptionWeightKg } from '../domain/setPrescription';
+import { unlockTimerAudio } from '../domain/timerCue';
 
 const RPE_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
@@ -118,7 +119,8 @@ export function SetLogger({
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() =>
+            onClick={() => {
+              unlockTimerAudio();
               onComplete(
                 {
                   weight_kg: weight,
@@ -129,8 +131,8 @@ export function SetLogger({
                   warmup,
                 },
                 applyRemaining,
-              )
-            }
+              );
+            }}
           >
             Complete set
           </button>

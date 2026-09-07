@@ -58,13 +58,20 @@ describe('seed templates', () => {
 });
 
 describe('session factory', () => {
-  it('builds a SessionLog-shaped draft with kg/reps/rpe/amrap', () => {
+  it('builds a SessionLog-shaped draft with kg/reps/rpe and Day D AMRAP', () => {
     const draft = createDraftSession('Mon', '2026-09-03');
     expect(draft.template_day).toBe('A');
     expect(draft.date).toBe('2026-09-03');
     expect(draft.pain_flag).toBe(false);
     expect(draft.lifts[0]?.exercise_id).toBe('squat_low_bar');
-    const amrap = draft.lifts[0].sets.find((s) => s.amrap);
+    const squatWork = draft.lifts[0].sets.filter((s) => !s.warmup);
+    expect(squatWork.map((s) => s.target_weight_kg)).toEqual([55, 55, 55]);
+    expect(squatWork.map((s) => s.target_reps)).toEqual([5, 5, 5]);
+    expect(squatWork.every((s) => !s.amrap)).toBe(true);
+
+    const friday = createDraftSession('D', '2026-09-04');
+    const pull = friday.lifts.find((l) => l.exercise_id === 'pull_up');
+    const amrap = pull?.sets.find((s) => s.amrap);
     expect(amrap).toMatchObject({
       weight_kg: expect.any(Number),
       reps: expect.any(Number),
@@ -72,9 +79,6 @@ describe('session factory', () => {
       completed: false,
       amrap: true,
     });
-    const squatWork = draft.lifts[0].sets.filter((s) => !s.warmup);
-    expect(squatWork.map((s) => s.target_weight_kg)).toEqual([45, 47.5, 47.5, 50]);
-    expect(squatWork.map((s) => s.target_reps)).toEqual([5, 5, 5, 5]);
   });
 
   it('swaps an alternative without dropping set slots', () => {
@@ -90,19 +94,28 @@ describe('session factory', () => {
     const dl = createDraftSession('C', '2026-09-10').lifts[0].sets.filter((s) => s.warmup);
     expect(squat.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
       { weight_kg: 20, reps: 5 },
-      { weight_kg: 25, reps: 5 },
-      { weight_kg: 32.5, reps: 3 },
-      { weight_kg: 40, reps: 2 },
+      { weight_kg: 27.5, reps: 5 },
+      { weight_kg: 37.5, reps: 3 },
+      { weight_kg: 47.5, reps: 2 },
     ]);
     expect(bench.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
-      { weight_kg: 20, reps: 8 },
-      { weight_kg: 25, reps: 5 },
-      { weight_kg: 30, reps: 3 },
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 27.5, reps: 5 },
+      { weight_kg: 35, reps: 3 },
     ]);
     expect(dl.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
       { weight_kg: 20, reps: 5 },
       { weight_kg: 40, reps: 5 },
       { weight_kg: 50, reps: 3 },
+      { weight_kg: 60, reps: 2 },
     ]);
+
+    const benchWork = createDraftSession('B', '2026-09-08').lifts[0].sets.filter((s) => !s.warmup);
+    const dlWork = createDraftSession('C', '2026-09-10').lifts[0].sets.filter((s) => !s.warmup);
+    const volumeWork = createDraftSession('D', '2026-09-11').lifts[0].sets.filter((s) => !s.warmup);
+    expect(benchWork.map((s) => s.weight_kg)).toEqual([40, 40, 40]);
+    expect(dlWork.map((s) => s.weight_kg)).toEqual([70, 70, 70]);
+    expect(volumeWork.map((s) => s.weight_kg)).toEqual([40, 40]);
+    expect(volumeWork.map((s) => s.reps)).toEqual([5, 5]);
   });
 });

@@ -52,6 +52,32 @@ describe('Kraft warmup ladder', () => {
     expect(warmupLadder(22.5, 'squat').every((s) => s.weight_kg < 22.5)).toBe(true);
   });
 
+  it('squat W=55 (Week 1 seed): 20×5 → 27.5×5 → 37.5×3 → 47.5×2', () => {
+    expect(warmupLadder(55, 'squat')).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 27.5, reps: 5 },
+      { weight_kg: 37.5, reps: 3 },
+      { weight_kg: 47.5, reps: 2 },
+    ]);
+  });
+
+  it('bench W=40 (Week 1 seed): 20×5 → 27.5×5 → 35×3', () => {
+    expect(warmupLadder(40, 'bench')).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 27.5, reps: 5 },
+      { weight_kg: 35, reps: 3 },
+    ]);
+  });
+
+  it('deadlift W=70 (Week 1 seed): 20×5 → 40×5 → 50×3 → 60×2', () => {
+    expect(warmupLadder(70, 'deadlift')).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 40, reps: 5 },
+      { weight_kg: 50, reps: 3 },
+      { weight_kg: 60, reps: 2 },
+    ]);
+  });
+
   it('replaces a leftover placeholder squat ladder from current W', () => {
     const lifts = refreshDraftWarmups([
       {
@@ -61,15 +87,14 @@ describe('Kraft warmup ladder', () => {
           { weight_kg: 25, reps: 5, rpe: 5, completed: false, warmup: true },
           { weight_kg: 30, reps: 5, rpe: 5, completed: false, warmup: true },
           { weight_kg: 40, reps: 3, rpe: 5, completed: false, warmup: true },
-          { weight_kg: 45, reps: 5, rpe: 6.5, completed: false },
-          { weight_kg: 47.5, reps: 5, rpe: 7, completed: false },
-          { weight_kg: 47.5, reps: 5, rpe: 7.5, completed: false },
-          { weight_kg: 50, reps: 5, rpe: 8, completed: false, amrap: true },
+          { weight_kg: 55, reps: 5, rpe: 6.5, completed: false },
+          { weight_kg: 55, reps: 5, rpe: 6.5, completed: false },
+          { weight_kg: 55, reps: 5, rpe: 7, completed: false },
         ],
       },
     ]);
     expect(lifts[0].sets.filter((s) => s.warmup).map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual(
-      warmupLadder(47.5, 'squat'),
+      warmupLadder(55, 'squat'),
     );
   });
 

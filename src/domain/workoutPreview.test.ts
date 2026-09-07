@@ -10,31 +10,27 @@ import {
 } from './workoutPreview';
 
 describe('planned session preview (template only)', () => {
-  it('summarizes Day A squat T1 as 4 × 5+ with 3:00 rest from the seed template', () => {
+  it('summarizes Day A squat T1 as 3 × 5 with 3:00 rest from the seed template', () => {
     const squat = plannedLiftSummary(DAY_TEMPLATES.A.slots[0]);
     expect(squat.name).toBe('Low-bar squat');
-    expect(squat.scheme).toBe('4 × 5+');
-    expect(squat.warmupLabel).toBe('W 20 kg → 25 kg → 32.5 kg → 40 kg');
+    expect(squat.scheme).toBe('3 × 5');
+    expect(squat.warmupLabel).toBe('W 20 kg → 27.5 kg → 37.5 kg → 47.5 kg');
     expect(squat.restLabel).toBe('3:00 rest');
     expect(squat.sets.filter((s) => s.warmup)).toHaveLength(4);
-    expect(squat.sets.filter((s) => !s.warmup)).toHaveLength(4);
+    expect(squat.sets.filter((s) => !s.warmup)).toHaveLength(3);
     expect(squat.sets[0]).toMatchObject({ label: 'W1', warmup: true, weight_kg: 20, reps: 5 });
-    expect(squat.sets.find((s) => s.amrap)).toMatchObject({
-      label: '4',
-      weight_kg: 50,
-      reps: 5,
-      amrap: true,
-      rest_sec: 180,
-      warmup: false,
-    });
+    expect(squat.sets.filter((s) => !s.warmup).every((s) => s.weight_kg === 55 && s.reps === 5 && !s.amrap)).toBe(
+      true,
+    );
   });
 
-  it('summarizes Day D bench volume as 5 × 8 with 2:00 rest', () => {
+  it('summarizes Day D bench volume as 2 × 5 with 2:00 rest', () => {
     const bench = plannedLiftSummary(DAY_TEMPLATES.D.slots[0]);
     expect(bench.name).toBe('Bench press (volume)');
-    expect(bench.scheme).toBe('5 × 8');
+    expect(bench.scheme).toBe('2 × 5');
     expect(bench.restLabel).toBe('2:00 rest');
     expect(bench.optional).toBe(false);
+    expect(bench.sets.filter((s) => !s.warmup).every((s) => s.weight_kg === 40)).toBe(true);
   });
 
   it('marks optional Day D arm work and lists alternatives without creating a draft', () => {

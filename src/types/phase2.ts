@@ -12,9 +12,9 @@ export interface TrainingMaxes {
 }
 
 export const SEED_TRAINING_MAXES: TrainingMaxes = {
-  squat_kg: 67.5,
-  bench_kg: 50,
-  deadlift_kg: 85,
+  squat_kg: 72.5,
+  bench_kg: 52.5,
+  deadlift_kg: 90,
 };
 
 export type MesocycleBlock = 'A' | 'B' | 'C';

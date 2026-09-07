@@ -46,7 +46,7 @@ describe('phase 2 calendar hook', () => {
       ['B', '2026-10-05', '2026-11-01'],
       ['C', '2026-11-02', '2026-11-21'],
     ]);
-    expect(SEED_TRAINING_MAXES).toEqual({ squat_kg: 67.5, bench_kg: 50, deadlift_kg: 85 });
+    expect(SEED_TRAINING_MAXES).toEqual({ squat_kg: 72.5, bench_kg: 52.5, deadlift_kg: 90 });
   });
 
   it('freezes on peak taper and test day, squat then bench then deadlift', () => {
@@ -62,7 +62,7 @@ describe('phase 2 calendar hook', () => {
       target_test_date: TARGET_TEST_DATE,
     });
     expect([...test.testLiftOrder]).toEqual([...TEST_LIFT_ORDER]);
-    expect(SEED_TRAINING_MAXES).toEqual({ squat_kg: 67.5, bench_kg: 50, deadlift_kg: 85 });
+    expect(SEED_TRAINING_MAXES).toEqual({ squat_kg: 72.5, bench_kg: 52.5, deadlift_kg: 90 });
   });
 
   it('returns to hypertrophy after the test unless a next test is set', () => {

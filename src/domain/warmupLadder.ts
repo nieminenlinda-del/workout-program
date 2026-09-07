@@ -28,7 +28,7 @@ export function warmupKindFor(exerciseId: ExerciseId): WarmupKind | null {
 
 /**
  * Work weight W for the ladder: most common non-AMRAP work set, else first work set.
- * Week 1 seeds: squat 47.5 (appears twice), bench 35, DL first 60.
+ * Week 1 seeds: squat 55, bench 40, DL 70.
  */
 export function prescribedWorkWeightKg(sets: readonly { weight_kg: number; warmup?: boolean; amrap?: boolean }[]): number {
   const work = workSets(sets);

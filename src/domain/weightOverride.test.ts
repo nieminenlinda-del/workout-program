@@ -43,11 +43,10 @@ describe('mid-session weight override', () => {
       45,
       52.5,
       52.5,
-      52.5,
     ]);
     expect(
       next.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.target_weight_kg),
-    ).toEqual([45, 52.5, 52.5, 52.5]);
+    ).toEqual([55, 52.5, 52.5]);
   });
 
   it('working-weight stepper skips warmups and logged work sets', () => {
@@ -60,7 +59,6 @@ describe('mid-session weight override', () => {
       { kg: 32.5, done: true },
       { kg: 40, done: false },
       { kg: 40, done: false },
-      { kg: 40, done: false },
     ]);
     expect(next.lifts[0]?.sets.filter((s) => !s.warmup && !s.completed).every((s) => s.target_weight_kg === 40)).toBe(
       true,
@@ -71,7 +69,7 @@ describe('mid-session weight override', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
     expect(draft.lifts[0].sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([
-      45, 47.5, 47.5, 50,
+      55, 55, 55,
     ]);
 
     const logged = logSetOnDraft(draft, 0, work, {
@@ -83,21 +81,21 @@ describe('mid-session weight override', () => {
     });
 
     expect(logged.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([
-      42.5, 47.5, 47.5, 50,
+      42.5, 55, 55,
     ]);
     expect(logged.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.target_weight_kg)).toEqual([
-      45, 47.5, 47.5, 50,
+      55, 55, 55,
     ]);
   });
 
-  it('keeps leftover work targets after logging set 1 (T1 wave 45 / 47.5 / 47.5 / 50)', () => {
+  it('keeps leftover work targets after logging set 1 (T1 55 × 3×5)', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
     const planned = draft.lifts[0].sets.filter((s) => !s.warmup).map((s) => s.weight_kg);
-    expect(planned).toEqual([45, 47.5, 47.5, 50]);
+    expect(planned).toEqual([55, 55, 55]);
 
     const logged = logSetOnDraft(draft, 0, work, {
-      weight_kg: 45,
+      weight_kg: 55,
       reps: 5,
       rpe: 6.5,
       completed: true,
@@ -106,19 +104,18 @@ describe('mid-session weight override', () => {
 
     const workSets = logged.lifts[0]?.sets.filter((s) => !s.warmup) ?? [];
     expect(workSets[0]).toMatchObject({
-      weight_kg: 45,
+      weight_kg: 55,
       reps: 5,
       completed: true,
-      target_weight_kg: 45,
+      target_weight_kg: 55,
       target_reps: 5,
     });
     expect(workSets.slice(1).map((s) => ({ kg: s.weight_kg, target: s.target_weight_kg, done: s.completed }))).toEqual([
-      { kg: 47.5, target: 47.5, done: false },
-      { kg: 47.5, target: 47.5, done: false },
-      { kg: 50, target: 50, done: false },
+      { kg: 55, target: 55, done: false },
+      { kg: 55, target: 55, done: false },
     ]);
     expect(logged.lifts[0]?.sets[0]?.warmup).toBe(true);
-    expect(formatPlanLoad(workSets[1]!)).toBe('47.5 kg × 5');
+    expect(formatPlanLoad(workSets[1]!)).toBe('55 kg × 5');
   });
 
   it('opt-in apply-forward fills leftover working kg but leaves displayed targets', () => {
@@ -141,17 +138,16 @@ describe('mid-session weight override', () => {
     expect(workSets[0]).toMatchObject({
       weight_kg: 42.5,
       completed: true,
-      target_weight_kg: 45,
+      target_weight_kg: 55,
     });
     expect(loggedDiffersFromPlan(workSets[0]!)).toBe(true);
     expect(workSets.slice(1).map((s) => ({ kg: s.weight_kg, target: prescriptionWeightKg(s), done: s.completed }))).toEqual(
       [
-        { kg: 42.5, target: 47.5, done: false },
-        { kg: 42.5, target: 47.5, done: false },
-        { kg: 42.5, target: 50, done: false },
+        { kg: 42.5, target: 55, done: false },
+        { kg: 42.5, target: 55, done: false },
       ],
     );
-    expect(formatPlanLoad(workSets[3]!)).toBe('50 kg × 5+');
+    expect(formatPlanLoad(workSets[2]!)).toBe('55 kg × 5');
   });
 
   it('snapshots leftover working kg as the plan when older drafts omit targets', () => {
@@ -170,7 +166,7 @@ describe('mid-session weight override', () => {
     expect(logged.lifts[0]?.sets[work + 1]).toMatchObject({
       weight_kg: 40,
       completed: false,
-      target_weight_kg: 47.5,
+      target_weight_kg: 55,
       target_reps: 5,
     });
   });

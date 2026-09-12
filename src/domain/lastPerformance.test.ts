@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDraftSession } from './sessionFactory';
+import { createDraftSession, swapLiftExercise } from './sessionFactory';
 import {
   formatLastPerformance,
   lastMatchingPerformance,
@@ -129,5 +129,25 @@ describe('last matching performance', () => {
     expect(formatLastPerformance(lastMatchingPerformance([squat], 'squat_low_bar', 'A', '2026-09-07'))).toBe(
       'Last: 50 kg × 5',
     );
+    const cable = completeSession('D', '2026-08-28', 'tricep_pushdown_cable', [{ weight_kg: 12.5, reps: 12 }]);
+    expect(
+      formatLastPerformance(lastMatchingPerformance([cable], 'tricep_pushdown_cable', 'D', '2026-09-04')),
+    ).toBe('Last: 12.5 kg × 12 · Cable');
+  });
+
+  it('does not treat a historical band pushdown as last performance for the cable id', () => {
+    const draft = createDraftSession('D', '2026-08-28');
+    const triIndex = draft.lifts.findIndex((row) => row.exercise_id === 'tricep_pushdown_cable');
+    if (triIndex < 0) throw new Error('missing tricep slot');
+    const swapped = swapLiftExercise(draft, triIndex, 'tricep_pushdown_band');
+    swapped.status = 'complete';
+    const lift = swapped.lifts[triIndex];
+    lift.sets = [{ weight_kg: 0, reps: 12, rpe: 8, completed: true }];
+    expect(lastMatchingPerformance([swapped], 'tricep_pushdown_cable', 'D', '2026-09-04')).toBeNull();
+    expect(lastMatchingPerformance([swapped], 'tricep_pushdown_band', 'D', '2026-09-04')).toMatchObject({
+      exercise_id: 'tricep_pushdown_band',
+      weight_kg: 0,
+      reps: 12,
+    });
   });
 });

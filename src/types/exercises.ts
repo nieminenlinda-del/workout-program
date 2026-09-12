@@ -42,6 +42,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'dead_bug',
   'curl_db',
   'tricep_pushdown_band',
+  'tricep_pushdown_cable',
 ] as const;
 
 export const EXERCISE_IDS = [
@@ -60,19 +61,21 @@ export type ExerciseRole = 'primary' | 'sub' | 'accessory';
 export type MovementPattern = 'squat' | 'bench' | 'hinge' | 'row' | 'press' | 'pull' | 'core' | 'arm';
 
 /** Home-gym implements Linda can pick on accessory slots. */
-export const EQUIPMENT_IDS = ['barbell', 'dumbbells', 'bands', 'bodyweight'] as const;
+export const EQUIPMENT_IDS = ['barbell', 'cable', 'dumbbells', 'bands', 'bodyweight'] as const;
 export type Equipment = (typeof EQUIPMENT_IDS)[number];
 
 export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   barbell: 'Barbell',
+  cable: 'Cable',
   dumbbells: 'DBs',
   bands: 'Bands',
   bodyweight: 'BW',
 };
 
-/** Logger segmented control — Juggernaut-style Weights | DBs | BW | Bands. */
+/** Logger segmented control — Juggernaut-style Weights | DBs | BW | Bands. Cable stack is Weights. */
 export const EQUIPMENT_MODE_LABELS: Record<Equipment, string> = {
   barbell: 'Weights',
+  cable: 'Weights',
   dumbbells: 'DBs',
   bands: 'Bands',
   bodyweight: 'BW',
@@ -80,6 +83,7 @@ export const EQUIPMENT_MODE_LABELS: Record<Equipment, string> = {
 
 export const EQUIPMENT_ARIA: Record<Equipment, string> = {
   barbell: 'Barbell',
+  cable: 'Cable',
   dumbbells: 'Dumbbells',
   bands: 'Bands',
   bodyweight: 'Bodyweight',
@@ -288,6 +292,13 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'accessory',
     pattern: 'arm',
     equipment: 'bands',
+  },
+  tricep_pushdown_cable: {
+    id: 'tricep_pushdown_cable',
+    name: 'Cable rope pushdown',
+    role: 'accessory',
+    pattern: 'arm',
+    equipment: 'cable',
   },
 };
 

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCESSORY_EXERCISE_IDS,
+  EQUIPMENT_IDS,
+  EQUIPMENT_LABELS,
+  EQUIPMENT_MODE_LABELS,
   EXERCISE_CATALOG,
   EXERCISE_IDS,
   HOLD_SEC_LOG_MAX,
@@ -51,6 +54,7 @@ const REQUIRED_ACCESSORIES = [
   'dead_bug',
   'curl_db',
   'tricep_pushdown_band',
+  'tricep_pushdown_cable',
 ];
 
 describe('exercise catalog', () => {
@@ -64,8 +68,20 @@ describe('exercise catalog', () => {
     for (const id of EXERCISE_IDS) {
       expect(EXERCISE_CATALOG[id].id).toBe(id);
       expect(EXERCISE_CATALOG[id].name.length).toBeGreaterThan(1);
-      expect(EXERCISE_CATALOG[id].equipment).toMatch(/^(barbell|dumbbells|bands|bodyweight)$/);
+      expect(EXERCISE_CATALOG[id].equipment).toMatch(/^(barbell|cable|dumbbells|bands|bodyweight)$/);
     }
+  });
+
+  it('programs cable rope pushdown as a kg stack, not a band', () => {
+    expect(EXERCISE_CATALOG.tricep_pushdown_cable).toMatchObject({
+      name: 'Cable rope pushdown',
+      equipment: 'cable',
+      pattern: 'arm',
+    });
+    expect(EXERCISE_CATALOG.tricep_pushdown_band.equipment).toBe('bands');
+    expect([...EQUIPMENT_IDS]).toEqual(['barbell', 'cable', 'dumbbells', 'bands', 'bodyweight']);
+    expect(EQUIPMENT_LABELS.cable).toBe('Cable');
+    expect(EQUIPMENT_MODE_LABELS.cable).toBe('Weights');
   });
 
   it('does not program sumo, high-bar, close-grip, extra-wide, or feet-up primaries', () => {

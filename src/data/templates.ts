@@ -246,12 +246,12 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
       {
         slot_id: 'd-tri',
         role: 'optional',
-        exercise_id: 'tricep_pushdown_band',
-        alternatives: [],
+        exercise_id: 'tricep_pushdown_cable',
+        alternatives: ['tricep_pushdown_band'],
         optional: true,
         sets: [
-          { weight_kg: 0, reps: 12, rpe: 7, rest_sec: CORE_REST },
-          { weight_kg: 0, reps: 12, rpe: 7.5, rest_sec: CORE_REST },
+          { weight_kg: 12.5, reps: 12, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 12.5, reps: 12, rpe: 7.5, rest_sec: CORE_REST },
         ],
       },
     ],

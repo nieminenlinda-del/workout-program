@@ -37,6 +37,33 @@ describe('accessory equipment from slot alternatives', () => {
     expect(exerciseForEquipment(slot, 'bodyweight')).toBe('pull_up');
   });
 
+  it('maps Day D tricep cable vs bands and stamps cable on a new Friday draft', () => {
+    const slot = DAY_TEMPLATES.D.slots.find((s) => s.slot_id === 'd-tri');
+    if (!slot) throw new Error('missing d-tri');
+    expect(equipmentOptionsForSlot(slot)).toEqual(['cable', 'bands']);
+    expect(exerciseForEquipment(slot, 'cable')).toBe('tricep_pushdown_cable');
+    expect(exerciseForEquipment(slot, 'bands')).toBe('tricep_pushdown_band');
+    expect(exerciseEquipment('tricep_pushdown_cable')).toBe('cable');
+    const friday = createDraftSession('D', '2026-09-11');
+    const tri = friday.lifts.find((l) => l.exercise_id === 'tricep_pushdown_cable');
+    expect(tri).toMatchObject({
+      exercise_id: 'tricep_pushdown_cable',
+      name: 'Cable rope pushdown',
+      equipment: 'cable',
+    });
+    expect(tri?.sets.filter((s) => !s.warmup).map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
+      { weight_kg: 12.5, reps: 12 },
+      { weight_kg: 12.5, reps: 12 },
+    ]);
+    const triIndex = friday.lifts.findIndex((l) => l.exercise_id === 'tricep_pushdown_cable');
+    const swapped = swapLiftExercise(friday, triIndex, 'tricep_pushdown_band');
+    expect(swapped.lifts[triIndex]).toMatchObject({
+      exercise_id: 'tricep_pushdown_band',
+      name: 'Band tricep pushdown',
+      equipment: 'bands',
+    });
+  });
+
   it('does not offer an equipment picker on T1 squat', () => {
     const slot = DAY_TEMPLATES.A.slots[0];
     expect(slot?.role).toBe('T1');

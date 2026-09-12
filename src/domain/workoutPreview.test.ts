@@ -43,6 +43,12 @@ describe('planned session preview (template only)', () => {
     expect(uniqueAltNames(squatSlot.exercise_id, squatSlot.alternatives)).toEqual([
       'Goblet squat',
     ]);
+
+    const tri = plannedLiftSummary(DAY_TEMPLATES.D.slots[4]);
+    expect(tri.name).toBe('Cable rope pushdown');
+    expect(tri.optional).toBe(true);
+    expect(tri.alternatives).toEqual(['Band tricep pushdown']);
+    expect(tri.sets.filter((s) => !s.warmup).every((s) => s.weight_kg === 12.5 && s.reps === 12)).toBe(true);
   });
 
   it('reads seed templates only — preview rows have no session id, draft status, or logged sets', () => {

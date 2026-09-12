@@ -94,7 +94,7 @@ Working weights are placeholders, not a TM calculator. Documented TMs: squat **7
 | Mon A | `squat_low_bar` T1, `rdl`, `reverse_lunge` or `goblet_squat`, `plank` or `dead_bug` |
 | Tue B | `bench_regular` T1, `row_barbell` or `row_db`, `overhead_press`, `band_pull_apart` |
 | Thu C | `deadlift_conventional` T1, `hip_thrust` or `glute_bridge`, light `rdl`, `side_plank` |
-| Fri D | `bench_regular_volume`, `front_squat_light` or `goblet_squat`, `pull_up` or `pull_up_band`, optional `curl_db` / `tricep_pushdown_band` |
+| Fri D | `bench_regular_volume`, `front_squat_light` or `goblet_squat`, `pull_up` or `pull_up_band`, optional `curl_db` / `tricep_pushdown_cable` (or band) |
 
 Primaries are low-bar squat, regular bench, conventional deadlift only — no sumo / high-bar / close-grip as programmed T1s.
 

@@ -122,7 +122,7 @@ export function lastPerformanceByExercise(
   return map;
 }
 
-/** `Last: 50 kg × 5` or muted-copy `No prior log`. Accessory adds · DBs / Bands / Barbell. */
+/** `Last: 50 kg × 5` or muted-copy `No prior log`. Accessory adds · DBs / Bands / Cable / Barbell. */
 export function formatLastPerformance(perf: LastPerformance | null): string {
   if (!perf) return 'No prior log';
   const count = isTimedHold(perf.exercise_id) ? `${perf.reps}s` : String(perf.reps);

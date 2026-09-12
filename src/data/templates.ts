@@ -35,6 +35,7 @@ const CORE_REST = 60;
  * Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder).
  * Block A Week 1 T1 loads (Kraft, Sep 2026): squat 55 × 3×5, bench 40 × 3×5,
  * DL 70 × 3×5, Fri bench vol 40 × 2×5, all @ RPE 6–7. Front plank seed is 3 × 60s.
+ * Day D optional tricep is cable_rope_pushdown 2 × 10–12 @ 12.5 kg (band is an alt).
  * Changing these templates only affects new drafts — completed SessionLog rows stay as logged.
  */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
@@ -246,12 +247,12 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
       {
         slot_id: 'd-tri',
         role: 'optional',
-        exercise_id: 'tricep_pushdown_band',
-        alternatives: [],
+        exercise_id: 'cable_rope_pushdown',
+        alternatives: ['tricep_pushdown_band'],
         optional: true,
         sets: [
-          { weight_kg: 0, reps: 12, rpe: 7, rest_sec: CORE_REST },
-          { weight_kg: 0, reps: 12, rpe: 7.5, rest_sec: CORE_REST },
+          { weight_kg: 12.5, reps: 12, rpe: 7, rest_sec: CORE_REST },
+          { weight_kg: 12.5, reps: 12, rpe: 7.5, rest_sec: CORE_REST },
         ],
       },
     ],

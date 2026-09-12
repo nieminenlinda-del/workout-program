@@ -54,7 +54,7 @@ const REQUIRED_ACCESSORIES = [
   'dead_bug',
   'curl_db',
   'tricep_pushdown_band',
-  'tricep_pushdown_cable',
+  'cable_rope_pushdown',
 ];
 
 describe('exercise catalog', () => {
@@ -73,7 +73,7 @@ describe('exercise catalog', () => {
   });
 
   it('programs cable rope pushdown as a kg stack, not a band', () => {
-    expect(EXERCISE_CATALOG.tricep_pushdown_cable).toMatchObject({
+    expect(EXERCISE_CATALOG.cable_rope_pushdown).toMatchObject({
       name: 'Cable rope pushdown',
       equipment: 'cable',
       pattern: 'arm',

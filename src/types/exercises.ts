@@ -42,7 +42,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'dead_bug',
   'curl_db',
   'tricep_pushdown_band',
-  'tricep_pushdown_cable',
+  'cable_rope_pushdown',
 ] as const;
 
 export const EXERCISE_IDS = [
@@ -293,8 +293,9 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     pattern: 'arm',
     equipment: 'bands',
   },
-  tricep_pushdown_cable: {
-    id: 'tricep_pushdown_cable',
+  /** Home cable is downward-only — rope pushdown, not a face-pull / curl attachment. */
+  cable_rope_pushdown: {
+    id: 'cable_rope_pushdown',
     name: 'Cable rope pushdown',
     role: 'accessory',
     pattern: 'arm',

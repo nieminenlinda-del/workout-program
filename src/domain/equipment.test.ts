@@ -41,13 +41,13 @@ describe('accessory equipment from slot alternatives', () => {
     const slot = DAY_TEMPLATES.D.slots.find((s) => s.slot_id === 'd-tri');
     if (!slot) throw new Error('missing d-tri');
     expect(equipmentOptionsForSlot(slot)).toEqual(['cable', 'bands']);
-    expect(exerciseForEquipment(slot, 'cable')).toBe('tricep_pushdown_cable');
+    expect(exerciseForEquipment(slot, 'cable')).toBe('cable_rope_pushdown');
     expect(exerciseForEquipment(slot, 'bands')).toBe('tricep_pushdown_band');
-    expect(exerciseEquipment('tricep_pushdown_cable')).toBe('cable');
+    expect(exerciseEquipment('cable_rope_pushdown')).toBe('cable');
     const friday = createDraftSession('D', '2026-09-11');
-    const tri = friday.lifts.find((l) => l.exercise_id === 'tricep_pushdown_cable');
+    const tri = friday.lifts.find((l) => l.exercise_id === 'cable_rope_pushdown');
     expect(tri).toMatchObject({
-      exercise_id: 'tricep_pushdown_cable',
+      exercise_id: 'cable_rope_pushdown',
       name: 'Cable rope pushdown',
       equipment: 'cable',
     });
@@ -55,7 +55,7 @@ describe('accessory equipment from slot alternatives', () => {
       { weight_kg: 12.5, reps: 12 },
       { weight_kg: 12.5, reps: 12 },
     ]);
-    const triIndex = friday.lifts.findIndex((l) => l.exercise_id === 'tricep_pushdown_cable');
+    const triIndex = friday.lifts.findIndex((l) => l.exercise_id === 'cable_rope_pushdown');
     const swapped = swapLiftExercise(friday, triIndex, 'tricep_pushdown_band');
     expect(swapped.lifts[triIndex]).toMatchObject({
       exercise_id: 'tricep_pushdown_band',

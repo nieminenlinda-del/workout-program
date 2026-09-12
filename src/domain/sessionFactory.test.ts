@@ -52,11 +52,11 @@ describe('seed templates', () => {
     expect(ids).toContain('pull_up');
     expect(alts).toContain('pull_up_band');
     expect(ids).toContain('curl_db');
-    expect(ids).toContain('tricep_pushdown_cable');
+    expect(ids).toContain('cable_rope_pushdown');
     expect(alts).toContain('tricep_pushdown_band');
     expect(DAY_TEMPLATES.D.slots.filter((s) => s.optional).map((s) => s.exercise_id)).toEqual([
       'curl_db',
-      'tricep_pushdown_cable',
+      'cable_rope_pushdown',
     ]);
     expect(DAY_TEMPLATES.D.slots.find((s) => s.slot_id === 'd-tri')?.sets.map((s) => s.weight_kg)).toEqual([
       12.5, 12.5,
@@ -77,7 +77,7 @@ describe('session factory', () => {
     expect(squatWork.every((s) => !s.amrap)).toBe(true);
 
     const friday = createDraftSession('D', '2026-09-04');
-    const tri = friday.lifts.find((l) => l.exercise_id === 'tricep_pushdown_cable');
+    const tri = friday.lifts.find((l) => l.exercise_id === 'cable_rope_pushdown');
     expect(tri).toMatchObject({
       name: 'Cable rope pushdown',
       equipment: 'cable',

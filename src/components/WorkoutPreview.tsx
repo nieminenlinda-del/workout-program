@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react';
 import type { DayTemplate } from '../data/templates';
 import type { SessionLog } from '../types/session';
 import { formatClock } from '../domain/countdown';
-import { lastMatchingPerformance } from '../domain/lastPerformance';
-import { formatLoad, plannedLiftSummary } from '../domain/workoutPreview';
+import { formatLoad, plannedDayPreview } from '../domain/workoutPreview';
 import { LastPerformanceHint } from './LastPerformanceHint';
 
 export function WorkoutPreview({
@@ -16,12 +15,7 @@ export function WorkoutPreview({
   asOf: string;
 }) {
   const [openSlot, setOpenSlot] = useState<string | null>(null);
-  const lifts = template.slots.map(plannedLiftSummary);
-  const lastByExercise = useMemo(() => {
-    return template.slots.map((slot) =>
-      lastMatchingPerformance(history, slot.exercise_id, template.id, asOf),
-    );
-  }, [history, template, asOf]);
+  const lifts = useMemo(() => plannedDayPreview(template, history, asOf), [template, history, asOf]);
 
   return (
     <div className="workout-preview">
@@ -31,7 +25,7 @@ export function WorkoutPreview({
         timer.
       </p>
       <ol className="lift-preview">
-        {lifts.map((lift, index) => {
+        {lifts.map((lift) => {
           const expanded = openSlot === lift.slot_id;
           return (
             <li key={lift.slot_id} className={expanded ? 'preview-open' : undefined}>
@@ -53,7 +47,7 @@ export function WorkoutPreview({
                     {lift.scheme}
                     {lift.restLabel ? ` · ${lift.restLabel}` : ''}
                   </span>
-                  <LastPerformanceHint performance={lastByExercise[index] ?? null} />
+                  <LastPerformanceHint performance={lift.last} />
                 </span>
                 <span className="preview-toggle">{expanded ? 'Hide' : 'Open'}</span>
               </button>

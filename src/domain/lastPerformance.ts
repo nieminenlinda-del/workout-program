@@ -14,7 +14,7 @@ import type {
   TemplateDay,
 } from '../types/session';
 import { DAY_TEMPLATES } from '../data/templates';
-import { formatLoad } from './workoutPreview';
+import { formatLoad } from './formatLoad';
 import { slotExerciseIds } from './equipment';
 import { isWarmupSet } from './sets';
 import { canonicalTemplateDay } from './templateDay';

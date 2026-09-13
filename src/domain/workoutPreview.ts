@@ -1,6 +1,13 @@
-import { exerciseName, type SeedSet, type TemplateSlot } from '../data/templates';
+import { exerciseName, type DayTemplate, type SeedSet, type TemplateSlot } from '../data/templates';
 import { isTimedHold, type ExerciseId } from '../types/exercises';
+import type { SessionLog } from '../types/session';
 import { formatClock } from './countdown';
+import { formatLoad } from './formatLoad';
+import {
+  formatLastPerformance,
+  lastMatchingPerformance,
+  type LastPerformance,
+} from './lastPerformance';
 import { isWarmupSet, setDisplayLabel, workSets } from './sets';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
 
@@ -28,15 +35,20 @@ export interface PlannedLiftSummary {
   sets: PlannedSetLine[];
 }
 
+/** Template row plus the same Last: lookup used in-session. Still not a draft. */
+export interface PlannedLiftPreview extends PlannedLiftSummary {
+  exercise_id: ExerciseId;
+  last: LastPerformance | null;
+  lastLine: string;
+}
+
 /** Alternative names that differ from the programmed lift (read-only preview). */
 export function uniqueAltNames(primary: ExerciseId, alternatives: ExerciseId[]): string[] {
   const primaryName = exerciseName(primary);
   return [...new Set(alternatives.map(exerciseName).filter((name) => name !== primaryName))];
 }
 
-export function formatLoad(weightKg: number): string {
-  return weightKg > 0 ? `${weightKg} kg` : 'BW';
-}
+export { formatLoad } from './formatLoad';
 
 /** Compact work-set scheme, e.g. `4 × 5+` or `3 × 8, 2 × 6`. Warmups omitted. */
 export function formatSetScheme(sets: SeedSet[], timed = false): string {
@@ -109,4 +121,25 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
       warmup: isWarmupSet(set),
     })),
   };
+}
+
+/**
+ * Read-only upcoming preview: seed template + prior-log Last: lines.
+ * Uses `lastMatchingPerformance` (same-day family, Week 1 → Week 2, `date < asOf`).
+ * Does not call `createDraftSession` or write IndexedDB.
+ */
+export function plannedDayPreview(
+  template: DayTemplate,
+  logs: readonly SessionLog[] = [],
+  asOf: string,
+): PlannedLiftPreview[] {
+  return template.slots.map((slot) => {
+    const last = lastMatchingPerformance(logs, slot.exercise_id, template.id, asOf);
+    return {
+      ...plannedLiftSummary(slot),
+      exercise_id: slot.exercise_id,
+      last,
+      lastLine: formatLastPerformance(last),
+    };
+  });
 }

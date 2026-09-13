@@ -128,11 +128,11 @@ Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-l
 
 `src/domain/lastPerformance.ts` reads completed IndexedDB sessions (`repo.listComplete()`). No backend.
 
-**Match:** same `exercise_id`, prefer the same canonical template day (A–D) — that is the previous occurrence of this day, usually ~7 days earlier. If that day has never been logged, fall back to the same exercise on any day. Only sessions with `date < asOf` count.
+**Match:** exact `exercise_id` first, then other IDs in the same template slot (default + `alternatives` — e.g. Day D cable ↔ band). Prefer the same canonical template day (A–D); if that day has never been logged, fall back to any day. Only sessions with calendar `date < asOf` count (no ISO-week cutoff — Week 1 is last week for a Week 2 draft or Sunday preview).
 
 **Top work set:** among completed **work** sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Sets with `warmup: true` are excluded. Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
 
-Shown on the Today preview, each in-session lift card, and the set logger.
+Shown on the Today **preview** (`plannedDayPreview` — template + `listComplete()` history, no draft), each in-session lift card, and the set logger. Preview and in-session share `lastMatchingPerformance`.
 
 ## Manual weight override (Phase 1)
 

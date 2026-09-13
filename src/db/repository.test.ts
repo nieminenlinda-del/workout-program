@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createIndexedDbRepository, resetDbConnection } from './indexedDbRepository';
 import { createMemoryRepository } from './memoryRepository';
-import { asSessionLog } from './repository';
+import { asSessionLog, isCompleteSession } from './repository';
 import { createDraftSession } from '../domain/sessionFactory';
+import { isWarmupSet } from '../domain/sets';
 
 describe('memory repository', () => {
   it('round-trips a completed SessionLog', async () => {
@@ -46,5 +47,23 @@ describe('IndexedDB repository', () => {
     expect(list).toHaveLength(1);
     expect(list[0]?.session_id).toBe(draft.session_id);
     expect(list[0]?.lifts[0]?.sets[0]?.completed).toBe(true);
+  });
+});
+
+describe('complete-session listing', () => {
+  it('treats missing status as complete and ignores explicit drafts', async () => {
+    const week1 = createDraftSession('A', '2026-09-07');
+    week1.lifts[0].sets = week1.lifts[0].sets.map((set) =>
+      isWarmupSet(set) ? set : { ...set, completed: true },
+    );
+    const { status: _status, ...legacy } = week1;
+    expect(isCompleteSession(legacy)).toBe(true);
+    expect(isCompleteSession({ status: 'complete' })).toBe(true);
+    expect(isCompleteSession({ status: 'draft' })).toBe(false);
+
+    const draftRow = createDraftSession('B', '2026-09-08');
+    const repo = createMemoryRepository([legacy as typeof week1, draftRow]);
+    const listed = await repo.listComplete();
+    expect(listed.map((row) => row.date)).toEqual(['2026-09-07']);
   });
 });

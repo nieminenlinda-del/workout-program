@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { SessionDraft } from '../types/session';
-import type { SessionRepository } from './repository';
+import { isCompleteSession, sortSessionsNewestFirst, type SessionRepository } from './repository';
 
 const DB_NAME = 'linda-lift';
 const DB_VERSION = 1;
@@ -57,14 +57,14 @@ export function createIndexedDbRepository(): SessionRepository {
     },
     async listRecent(limit = 20) {
       const db = await getDb();
-      const all = await db.getAll('sessions');
-      return all
-        .sort((a, b) => b.date.localeCompare(a.date) || b.updated_at.localeCompare(a.updated_at))
-        .slice(0, limit);
+      return sortSessionsNewestFirst(await db.getAll('sessions')).slice(0, limit);
     },
     async listComplete(limit = 20) {
-      const all = await this.listRecent(100);
-      return all.filter((s) => s.status === 'complete').slice(0, limit);
+      const db = await getDb();
+      return sortSessionsNewestFirst((await db.getAll('sessions')).filter(isCompleteSession)).slice(
+        0,
+        limit,
+      );
     },
     async getDraft() {
       const db = await getDb();

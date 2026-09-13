@@ -1,10 +1,10 @@
 import type { SessionDraft, SessionLog } from '../types/session';
-import type { SessionRepository } from './repository';
+import { isCompleteSession, sortSessionsNewestFirst, type SessionRepository } from './repository';
 
-export function createMemoryRepository(seed: SessionDraft[] = []): SessionRepository {
+export function createMemoryRepository(seed: Array<SessionDraft | SessionLog> = []): SessionRepository {
   const sessions = new Map<string, SessionDraft>();
   let draft: SessionDraft | undefined;
-  for (const row of seed) sessions.set(row.session_id, row);
+  for (const row of seed) sessions.set(row.session_id, row as SessionDraft);
 
   const stamp = (session: SessionDraft | SessionLog, status: SessionDraft['status']): SessionDraft => ({
     ...session,
@@ -24,13 +24,13 @@ export function createMemoryRepository(seed: SessionDraft[] = []): SessionReposi
       return sessions.get(sessionId);
     },
     async listRecent(limit = 20) {
-      return [...sessions.values()]
-        .sort((a, b) => b.date.localeCompare(a.date) || b.updated_at.localeCompare(a.updated_at))
-        .slice(0, limit);
+      return sortSessionsNewestFirst([...sessions.values()]).slice(0, limit);
     },
     async listComplete(limit = 20) {
-      const all = await this.listRecent(100);
-      return all.filter((s) => s.status === 'complete').slice(0, limit);
+      return sortSessionsNewestFirst([...sessions.values()].filter(isCompleteSession)).slice(
+        0,
+        limit,
+      );
     },
     async getDraft() {
       return draft;

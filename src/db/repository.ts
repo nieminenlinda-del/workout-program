@@ -22,3 +22,16 @@ export function asSessionLog(row: SessionDraft | SessionLog): SessionLog {
     notes: row.notes,
   };
 }
+
+/** Rows in the sessions store are finished logs. Only an explicit draft is excluded. */
+export function isCompleteSession(session: object): boolean {
+  return !('status' in session) || session.status !== 'draft';
+}
+
+export function sortSessionsNewestFirst<T extends { date: string; updated_at?: string }>(
+  rows: readonly T[],
+): T[] {
+  return [...rows].sort(
+    (a, b) => b.date.localeCompare(a.date) || (b.updated_at ?? '').localeCompare(a.updated_at ?? ''),
+  );
+}

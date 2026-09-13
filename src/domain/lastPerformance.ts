@@ -13,7 +13,9 @@ import type {
   SessionLog,
   TemplateDay,
 } from '../types/session';
+import { DAY_TEMPLATES } from '../data/templates';
 import { formatLoad } from './workoutPreview';
+import { slotExerciseIds } from './equipment';
 import { isWarmupSet } from './sets';
 import { canonicalTemplateDay } from './templateDay';
 
@@ -25,10 +27,16 @@ import { canonicalTemplateDay } from './templateDay';
  * in session order. Sets flagged `warmup` are ignored (empty-bar ladders must
  * not become “last week”). Bodyweight work is `0 kg` / BW and still counts.
  *
- * **Session match:** most recent completed log with `date < asOf` that contains
- * the same `exercise_id`. Prefer the same canonical template day (A–D) —
- * that is the previous occurrence of this day, typically ~7 days earlier.
- * If that day has never been logged, fall back to the same exercise on any day.
+ * **Session match:** most recent log with calendar date **before** `asOf`.
+ * There is no ISO-week / mesocycle / “same week only” filter — Week 1 Friday
+ * (2026-09-11) is a prior log for a Week 2 Monday draft (2026-09-14) and for
+ * a Sunday preview (`asOf` 2026-09-13). Prefer the same canonical template
+ * day (A–D); if that day has never been logged, fall back to any day.
+ *
+ * **Lift match:** exact `exercise_id` first, then other IDs in the same
+ * template slot (default + `alternatives`). That is how a Day D cable
+ * pushdown still sees last Friday’s `tricep_pushdown_band` (or BW) log.
+ * Historical SessionLog rows are not rewritten.
  */
 export interface LastPerformance {
   exercise_id: ExerciseId;
@@ -37,6 +45,13 @@ export interface LastPerformance {
   weight_kg: number;
   reps: number;
   equipment?: Equipment;
+}
+
+/** Default + alternatives for the slot that contains this id on the given day. */
+export function slotFamilyIds(exerciseId: ExerciseId, templateDay: TemplateDay): ExerciseId[] {
+  const day = canonicalTemplateDay(templateDay);
+  const slot = DAY_TEMPLATES[day].slots.find((row) => slotExerciseIds(row).includes(exerciseId));
+  return slot ? slotExerciseIds(slot) : [exerciseId];
 }
 
 export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
@@ -58,29 +73,47 @@ export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
   return best;
 }
 
-function liftForExercise(lifts: readonly LoggedLift[], exerciseId: ExerciseId): LoggedLift | undefined {
-  return lifts.find((lift) => lift.exercise_id === exerciseId);
+/** Leading YYYY-MM-DD, or empty when the value is not a calendar date. */
+export function calendarYmd(value: string | undefined | null): string {
+  const match = String(value ?? '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? '';
+}
+
+function liftForExercise(
+  lifts: readonly LoggedLift[],
+  exerciseId: ExerciseId,
+  family: readonly ExerciseId[],
+): LoggedLift | undefined {
+  const exact = lifts.find((lift) => lift.exercise_id === exerciseId);
+  if (exact) return exact;
+  return lifts.find((lift) => family.includes(lift.exercise_id));
 }
 
 function sessionDateBefore(session: SessionLog, asOf: string): boolean {
-  return session.date.slice(0, 10) < asOf.slice(0, 10);
+  const sessionDay = calendarYmd(session.date);
+  const asOfDay = calendarYmd(asOf);
+  if (!sessionDay) return false;
+  // Unparseable asOf must not hide every prior log (Week 1 would vanish).
+  if (!asOfDay) return true;
+  return sessionDay < asOfDay;
 }
 
 function fromSession(
   session: SessionLog,
   exerciseId: ExerciseId,
+  family: readonly ExerciseId[],
 ): LastPerformance | null {
-  const lift = liftForExercise(session.lifts, exerciseId);
+  const lift = liftForExercise(session.lifts, exerciseId, family);
   if (!lift) return null;
   const top = topWorkSet(lift.sets);
   if (!top) return null;
   return {
-    exercise_id: exerciseId,
+    exercise_id: lift.exercise_id,
     template_day: canonicalTemplateDay(session.template_day),
-    date: session.date.slice(0, 10),
+    date: calendarYmd(session.date) || session.date.slice(0, 10),
     weight_kg: top.weight_kg,
     reps: top.reps,
-    equipment: lift.equipment ?? exerciseEquipment(exerciseId),
+    equipment: lift.equipment ?? exerciseEquipment(lift.exercise_id),
   };
 }
 
@@ -91,18 +124,19 @@ export function lastMatchingPerformance(
   asOf: string,
 ): LastPerformance | null {
   const day = canonicalTemplateDay(templateDay);
+  const family = slotFamilyIds(exerciseId, day);
   const prior = logs.filter((row) => sessionDateBefore(row, asOf));
-  // Newest first so the first hit is the previous occurrence.
+  // Newest first so the first hit is the previous occurrence (last week, not last year).
   const newestFirst = [...prior].sort((a, b) => b.date.localeCompare(a.date));
 
   for (const session of newestFirst) {
     if (canonicalTemplateDay(session.template_day) !== day) continue;
-    const match = fromSession(session, exerciseId);
+    const match = fromSession(session, exerciseId, family);
     if (match) return match;
   }
 
   for (const session of newestFirst) {
-    const match = fromSession(session, exerciseId);
+    const match = fromSession(session, exerciseId, family);
     if (match) return match;
   }
 

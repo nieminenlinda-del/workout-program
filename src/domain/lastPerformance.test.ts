@@ -4,9 +4,13 @@ import {
   formatLastPerformance,
   lastMatchingPerformance,
   lastPerformanceByExercise,
+  slotFamilyIds,
   topWorkSet,
 } from './lastPerformance';
+import type { ExerciseId } from '../types/exercises';
 import type { SessionLog } from '../types/session';
+import { createMemoryRepository } from '../db/memoryRepository';
+import { isWarmupSet } from './sets';
 
 function completeSession(
   day: 'A' | 'B' | 'C' | 'D',
@@ -135,19 +139,150 @@ describe('last matching performance', () => {
     ).toBe('Last: 12.5 kg × 12 · Cable');
   });
 
-  it('does not treat a historical band pushdown as last performance for the cable id', () => {
-    const draft = createDraftSession('D', '2026-08-28');
+  it('falls back to the same slot family so a band (or BW) log is last week for cable', () => {
+    const draft = createDraftSession('D', '2026-09-11');
     const triIndex = draft.lifts.findIndex((row) => row.exercise_id === 'cable_rope_pushdown');
     if (triIndex < 0) throw new Error('missing tricep slot');
     const swapped = swapLiftExercise(draft, triIndex, 'tricep_pushdown_band');
     swapped.status = 'complete';
     const lift = swapped.lifts[triIndex];
     lift.sets = [{ weight_kg: 0, reps: 12, rpe: 8, completed: true }];
-    expect(lastMatchingPerformance([swapped], 'cable_rope_pushdown', 'D', '2026-09-04')).toBeNull();
-    expect(lastMatchingPerformance([swapped], 'tricep_pushdown_band', 'D', '2026-09-04')).toMatchObject({
+    expect(slotFamilyIds('cable_rope_pushdown', 'D')).toEqual([
+      'cable_rope_pushdown',
+      'tricep_pushdown_band',
+    ]);
+    const fromBand = lastMatchingPerformance([swapped], 'cable_rope_pushdown', 'D', '2026-09-14');
+    expect(fromBand).toMatchObject({
+      exercise_id: 'tricep_pushdown_band',
+      weight_kg: 0,
+      reps: 12,
+      date: '2026-09-11',
+    });
+    expect(formatLastPerformance(fromBand)).toBe('Last: BW × 12 · Bands');
+    expect(lastMatchingPerformance([swapped], 'tricep_pushdown_band', 'D', '2026-09-14')).toMatchObject({
       exercise_id: 'tricep_pushdown_band',
       weight_kg: 0,
       reps: 12,
     });
+  });
+
+  it('prefers an exact-id match over a slot alternative in the same session', () => {
+    const draft = createDraftSession('B', '2026-09-08');
+    const row = draft.lifts.find((lift) => lift.exercise_id === 'row_barbell');
+    if (!row) throw new Error('missing row');
+    row.sets = [
+      { weight_kg: 40, reps: 8, rpe: 8, completed: true },
+      { weight_kg: 0, reps: 10, rpe: 8, completed: true },
+    ];
+    draft.lifts.push({
+      name: 'DB row',
+      exercise_id: 'row_db',
+      equipment: 'dumbbells',
+      sets: [{ weight_kg: 16, reps: 10, rpe: 8, completed: true }],
+    });
+    draft.status = 'complete';
+    expect(lastMatchingPerformance([draft], 'row_barbell', 'B', '2026-09-15')).toMatchObject({
+      exercise_id: 'row_barbell',
+      weight_kg: 40,
+      reps: 8,
+    });
+  });
+});
+
+function completeAllWorkSets(day: 'A' | 'B' | 'C' | 'D', date: string): SessionLog {
+  const draft = createDraftSession(day, date);
+  draft.status = 'complete';
+  for (const lift of draft.lifts) {
+    lift.sets = lift.sets.map((set) =>
+      isWarmupSet(set) ? set : { ...set, completed: true },
+    );
+  }
+  return draft;
+}
+
+describe('week 1 logs are last week for week 2', () => {
+  const week1 = [
+    completeAllWorkSets('A', '2026-09-07'),
+    completeAllWorkSets('B', '2026-09-08'),
+    completeAllWorkSets('C', '2026-09-10'),
+    completeAllWorkSets('D', '2026-09-11'),
+  ];
+
+  it('shows squat / bench / deadlift / accessories on a Week 2 Day A draft (Mon 14th)', () => {
+    const squat = lastMatchingPerformance(week1, 'squat_low_bar', 'A', '2026-09-14');
+    expect(squat).toMatchObject({ date: '2026-09-07', weight_kg: 55, reps: 5, template_day: 'A' });
+    expect(formatLastPerformance(squat)).toBe('Last: 55 kg × 5');
+
+    expect(lastMatchingPerformance(week1, 'rdl', 'A', '2026-09-14')).toMatchObject({
+      date: '2026-09-07',
+      weight_kg: 50,
+      reps: 8,
+    });
+    expect(lastMatchingPerformance(week1, 'reverse_lunge', 'A', '2026-09-14')).toMatchObject({
+      date: '2026-09-07',
+      weight_kg: 12,
+    });
+    expect(formatLastPerformance(lastMatchingPerformance(week1, 'plank', 'A', '2026-09-14'))).toBe(
+      'Last: BW × 60s',
+    );
+
+    expect(lastMatchingPerformance(week1, 'bench_regular', 'B', '2026-09-14')).toMatchObject({
+      date: '2026-09-08',
+      weight_kg: 40,
+    });
+    expect(lastMatchingPerformance(week1, 'deadlift_conventional', 'C', '2026-09-14')).toMatchObject({
+      date: '2026-09-10',
+      weight_kg: 70,
+    });
+    expect(lastMatchingPerformance(week1, 'cable_rope_pushdown', 'D', '2026-09-14')).toMatchObject({
+      date: '2026-09-11',
+      weight_kg: 12.5,
+      reps: 12,
+    });
+  });
+
+  it('shows the same Week 1 Last: lines on a Sunday preview (asOf 2026-09-13)', () => {
+    expect(lastMatchingPerformance(week1, 'squat_low_bar', 'A', '2026-09-13')).toMatchObject({
+      date: '2026-09-07',
+      weight_kg: 55,
+    });
+    expect(lastMatchingPerformance(week1, 'bench_regular', 'B', '2026-09-13')).toMatchObject({
+      date: '2026-09-08',
+      weight_kg: 40,
+    });
+    expect(lastMatchingPerformance(week1, 'deadlift_conventional', 'C', '2026-09-13')).toMatchObject({
+      date: '2026-09-10',
+      weight_kg: 70,
+    });
+    expect(lastMatchingPerformance(week1, 'front_squat_light', 'D', '2026-09-13')).toMatchObject({
+      date: '2026-09-11',
+      weight_kg: 30,
+    });
+    expect(lastMatchingPerformance(week1, 'pull_up', 'D', '2026-09-13')).toMatchObject({
+      date: '2026-09-11',
+      weight_kg: 0,
+      reps: 6,
+    });
+  });
+
+  it('loads Week 1 through listComplete and still matches a Week 2 asOf', async () => {
+    const withoutStatus = { ...week1[0] };
+    delete (withoutStatus as { status?: string }).status;
+    const repo = createMemoryRepository([withoutStatus, week1[1], week1[2], week1[3]]);
+    const history = await repo.listComplete(60);
+    expect(history).toHaveLength(4);
+    expect(lastMatchingPerformance(history, 'squat_low_bar', 'A', '2026-09-14')?.weight_kg).toBe(55);
+    expect(lastMatchingPerformance(history, 'bench_regular', 'B', '2026-09-14')?.weight_kg).toBe(40);
+    expect(lastMatchingPerformance(history, 'deadlift_conventional', 'C', '2026-09-14')?.weight_kg).toBe(
+      70,
+    );
+  });
+
+  it('does not require the prior log to share an ISO week with asOf', () => {
+    const ids: ExerciseId[] = ['squat_low_bar', 'rdl', 'reverse_lunge', 'plank'];
+    const map = lastPerformanceByExercise(week1, 'A', '2026-09-14', ids);
+    for (const id of ids) {
+      expect(map.get(id), id).not.toBeNull();
+    }
   });
 });

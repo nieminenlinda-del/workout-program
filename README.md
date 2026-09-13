@@ -50,7 +50,7 @@ Pushes to `main` deploy via [`.github/workflows/deploy-pages.yml`](./.github/wor
 
 ## Phase 1 flow
 
-1. **Today** — default **Monday / Day A** squat template. Pick A–D (Mon/Tue/Thu/Fri).
+1. **Today** — default **Monday / Day A** squat template. Pick A–D (Mon/Tue/Thu/Fri). The read-only preview shows last week’s top work set on each movement (`Last: 55 kg × 5`) from completed logs — Start is not required.
 2. **Readiness** — sleep, soreness, energy, pain, motivation (1–10). Auto light `GREEN|YELLOW|RED` (override allowed). Pain flag.
 3. **Workout** — seed lifts (T1 + Day D bench volume compute a Kraft warmup ladder from work weight W, labeled W1…), swap listed alternatives, override kg mid-session (working-weight stepper + set logger). Logging a set does **not** replace leftover planned kg; each row keeps its `Plan` until that set is logged. Opt-in can prefill leftover logger inputs with this kg. Last matching **work** set shows on the lift (`Last: 50 kg × 5` or `No prior log`). Log each set (`weight_kg`, `reps`, `rpe`, `completed`, optional `amrap` / `warmup`).
 4. **Rest timer** — starts after a completed set using that set’s `rest_sec` (T1 longer, accessory/core shorter). Pause/resume, +15s / +30s, or skip to log the next set. Recovers from lock/background via wall-clock; buzzes + beeps when time is up (vibration does not need audio). Speaks 30s / 10s / done via Web Speech (Swedish `sv-SE` if the phone has that voice, else English — never Finnish). Completing the set is the iPhone gesture that unlocks speech; leave **Voice on**. Keep the screen awake through the rest (don’t lock) for the first check. Voice on/off on the rest card.

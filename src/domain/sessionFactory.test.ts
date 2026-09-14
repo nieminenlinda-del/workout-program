@@ -74,6 +74,13 @@ describe('session factory', () => {
     const squatWork = draft.lifts[0].sets.filter((s) => !s.warmup);
     expect(squatWork.map((s) => s.target_weight_kg)).toEqual([55, 55, 55]);
     expect(squatWork.map((s) => s.target_reps)).toEqual([5, 5, 5]);
+    const week1 = createDraftSession('A', '2026-09-07');
+    const week1Work = week1.lifts[0].sets.filter((s) => !s.warmup);
+    expect(week1Work.map((s) => s.target_weight_kg)).toEqual([47.5, 47.5, 47.5]);
+    const week2 = createDraftSession('A', '2026-09-14');
+    const week2Work = week2.lifts[0].sets.filter((s) => !s.warmup);
+    expect(week2Work.map((s) => s.target_weight_kg)).toEqual([57.5, 57.5, 57.5]);
+    expect(week2Work.map((s) => s.target_reps)).toEqual([4, 4, 4]);
     expect(squatWork.every((s) => !s.amrap)).toBe(true);
 
     const friday = createDraftSession('D', '2026-09-04');
@@ -107,9 +114,9 @@ describe('session factory', () => {
     const dl = createDraftSession('C', '2026-09-10').lifts[0].sets.filter((s) => s.warmup);
     expect(squat.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
       { weight_kg: 20, reps: 5 },
-      { weight_kg: 27.5, reps: 5 },
-      { weight_kg: 37.5, reps: 3 },
-      { weight_kg: 47.5, reps: 2 },
+      { weight_kg: 25, reps: 5 },
+      { weight_kg: 32.5, reps: 3 },
+      { weight_kg: 40, reps: 2 },
     ]);
     expect(bench.map((s) => ({ weight_kg: s.weight_kg, reps: s.reps }))).toEqual([
       { weight_kg: 20, reps: 5 },

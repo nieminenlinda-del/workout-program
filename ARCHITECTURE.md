@@ -76,7 +76,20 @@ The UI file picker posts zip/xml to `src/health/parse/worker.ts`, which stream-u
 
 ### Calendar (hook only)
 
-`getMesocycleContext(date)` maps the 2026 test cycle. It is a **label/calendar helper**, not load selection.
+`getMesocycleContext(date)` maps the 2026 test cycle (block, phase, week index).
+Load selection for Block A T1s is a separate locked table (`src/domain/programWeek.ts`), not the Phase 2 engine.
+
+**Week formula:** start date inclusive; `weekIndex = floor((asOf − start) / 7 days) + 1` on UTC calendar dates. Block A `2026-09-07` → week 1; `2026-09-14` → week 2 of 4.
+
+**Block A T1 table (Kraft, TMs S72.5 / B52.5 / D90) — not auto +2.5:**
+
+| Week | Mon A squat | Tue B bench | Thu C DL | Fri D bench vol |
+| --- | --- | --- | --- | --- |
+| 1 (rebase) | 47.5 × 3×5 | 40 × 3×5 | 70 × 3×5 | 40 × 2×5 |
+| 2 (locked) | **57.5 × 3×4** @ RPE ≤7 (55 if first set off) | 40 × 3×5 | 70 × 3×4 | 40 × 2×5 |
+| 3–4 | hold week 2 | hold | hold | hold |
+
+Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Accessories stay on the seed template. Off-block / Block B–C use the static seed T1s.
 
 | Block | Window | Default phase |
 | --- | --- | --- |
@@ -130,7 +143,9 @@ Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-l
 
 **Match:** exact `exercise_id` first, then other IDs in the same template slot (default + `alternatives` — e.g. Day D cable ↔ band). Prefer the same canonical template day (A–D); if that day has never been logged, fall back to any day. Only sessions with calendar `date < asOf` count (no ISO-week cutoff — Week 1 is last week for a Week 2 draft or Sunday preview).
 
-**Top work set:** among completed **work** sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Sets with `warmup: true` are excluded. Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
+**Top work set:** among logged **work** sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Sets with `warmup: true` are excluded. Explicit `completed: false` is skipped; **missing** `completed` counts (legacy rows, same idea as missing session `status`). Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
+
+If `listComplete()` is empty (this PWA’s IndexedDB has no saved sessions — e.g. Safari vs home-screen store), every lift stays **No prior log**. That is empty history, not a week-boundary filter.
 
 Shown on the Today **preview** (`plannedDayPreview` — template + `listComplete()` history, no draft), each in-session lift card, and the set logger. Preview and in-session share `lastMatchingPerformance`.
 
@@ -151,7 +166,7 @@ T1 squat / bench / deadlift and Day D bench volume get a Kraft ladder **before**
 3. **~70% W × 3**
 4. **~85% W × 1–2** (drop the single if W − this ≤ 5 kg)
 
-Week 1: squat 55 → 20×5 / 27.5×5 / 37.5×3 / 47.5×2; bench 40 → 20×5 / 27.5×5 / 35×3; DL 70 → 20×5 / 40×5 / 50×3 / 60×2. Squat W=50 → 20×5 / 25×5 / 35×3 / 42.5×2. Day D bench volume uses the same bench algorithm (W=40). UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged. Existing saved sessions are not rewritten if Monday squat already logged at 47.5.
+Week 1 rebase squat **47.5** → 20×5 / 25×5 / 32.5×3 / 40×2; Week 2 squat **57.5** → 20×5 / 30×5 / 40×3 / 50×2; bench 40 → 20×5 / 27.5×5 / 35×3; DL 70 → 20×5 / 40×5 / 50×3 / 60×2. The collapsed preview shows **work kg first** (`57.5 kg · 3 × 4`) then an optional W trail — the last warmup must not look like the work set. Day D bench volume uses the same bench algorithm (W=40). UI labels **W1, W2…**. Warmups are logged but do **not** count as work sets for last-week lookup or Phase 2. Accessories stay warmup-free. Start is unchanged. Existing saved sessions are not rewritten.
 
 `shortLadder` (bar + last intermediate) exists for a later yellow / low-readiness day. Sessions still attach the full ladder.
 
@@ -177,11 +192,14 @@ Recommended algorithm (Juggernaut/Vire-style, to be written later):
 4. Respect `readiness.light`: GREEN default wave, YELLOW cap volume, RED suggest substitution from the slot’s `alternatives` (subs/accessories list) — still no sumo/high-bar/close-grip primaries.
 5. Emit the **next** day’s `lifts` in the same `LoggedLift` shape so the existing workout UI can render them.
 
-The seed templates in `src/data/templates.ts` should become the fallback when the engine has no history (week 1).
+The seed templates in `src/data/templates.ts` are slot/accessory fallback. Block A T1
+kg/reps come from the Kraft week table. The Phase 2 engine is still a stub.
 
 ### UI integration point
 
-Today, `createDraftSession(templateDay)` copies static slots into a draft.
+`createDraftSession(templateDay, date)` copies slots into a draft, then overlays
+Block A T1 kg/reps from the Kraft week table (`src/domain/programWeek.ts`).
+Preview uses the same overlay so Start matches the collapsed plan.
 
 Phase 2 should replace that factory call with:
 

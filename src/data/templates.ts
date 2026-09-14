@@ -16,6 +16,8 @@ export interface TemplateSlot {
   exercise_id: ExerciseId;
   alternatives: ExerciseId[];
   optional?: boolean;
+  /** Coaching line (e.g. Week 2 squat soft-cap). */
+  note?: string;
   sets: SeedSet[];
 }
 
@@ -32,10 +34,12 @@ const ACC_REST = 90;
 const CORE_REST = 60;
 
 /**
- * Static 4-day seed. Warmups for T1 / Day D bench are computed from W (see warmupLadder).
- * Block A Week 1 T1 loads (Kraft, Sep 2026): squat 55 × 3×5, bench 40 × 3×5,
- * DL 70 × 3×5, Fri bench vol 40 × 2×5, all @ RPE 6–7. Front plank seed is 3 × 60s.
- * Day D optional tricep is cable_rope_pushdown 2 × 10–12 @ 12.5 kg (band is an alt).
+ * Static 4-day seed (slot structure + accessories). T1 kg/reps on Block A dates
+ * come from `applyProgramWeek` (Kraft week table), not these numbers.
+ * Seed T1s are the unused PR #8 programmed line (squat 55 × 3×5, bench 40,
+ * DL 70, Fri 40 × 2×5) used only off-block / other blocks.
+ * Front plank seed is 3 × 60s. Day D optional tricep is cable_rope_pushdown
+ * 2 × 10–12 @ 12.5 kg (band is an alt).
  * Changing these templates only affects new drafts — completed SessionLog rows stay as logged.
  */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {

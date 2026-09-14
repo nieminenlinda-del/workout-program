@@ -312,6 +312,12 @@ button {
   font-size: 13px;
 }
 
+.preview-note {
+  color: var(--amber);
+  font-size: 12px;
+  font-style: normal;
+}
+
 .last-log {
   display: block;
   margin: 2px 0 0;

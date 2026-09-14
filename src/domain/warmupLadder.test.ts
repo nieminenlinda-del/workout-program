@@ -52,7 +52,16 @@ describe('Kraft warmup ladder', () => {
     expect(warmupLadder(22.5, 'squat').every((s) => s.weight_kg < 22.5)).toBe(true);
   });
 
-  it('squat W=55 (Week 1 seed): 20×5 → 27.5×5 → 37.5×3 → 47.5×2', () => {
+  it('squat W=57.5 (Week 2 work): 20×5 → 30×5 → 40×3 → 50×2', () => {
+    expect(warmupLadder(57.5, 'squat')).toEqual([
+      { weight_kg: 20, reps: 5 },
+      { weight_kg: 30, reps: 5 },
+      { weight_kg: 40, reps: 3 },
+      { weight_kg: 50, reps: 2 },
+    ]);
+  });
+
+  it('squat W=55 (seed fallback): 20×5 → 27.5×5 → 37.5×3 → 47.5×2', () => {
     expect(warmupLadder(55, 'squat')).toEqual([
       { weight_kg: 20, reps: 5 },
       { weight_kg: 27.5, reps: 5 },

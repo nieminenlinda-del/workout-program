@@ -45,7 +45,8 @@ export function HomeScreen({
             className={`phase-chip ${meso.training_mode === 'strength_peak' ? 'peak' : ''}`}
             title="Phase 2 calendar hook — engine not implemented"
           >
-            Block {meso.block} · {meso.phase.replaceAll('_', ' ')} ·{' '}
+            Block {meso.block} · {meso.phase.replaceAll('_', ' ')}
+            {meso.weekIndex ? ` · week ${meso.weekIndex}` : ''} ·{' '}
             {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>

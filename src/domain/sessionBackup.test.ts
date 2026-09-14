@@ -37,7 +37,7 @@ describe('history visibility copy', () => {
   });
 });
 
-describe('Week 1 Last: reference seed', () => {
+describe('Restore Week 1 weights', () => {
   it('writes known T1s and paints Last: 47.5 kg × 5 on 14 Sep squat without changing W2 loads', async () => {
     const rows = week1LastReferenceSessions();
     expect(rows.map((row) => row.session_id)).toEqual([

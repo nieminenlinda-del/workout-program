@@ -1,6 +1,15 @@
 import { useRef, useState } from 'react';
 import type { ImportMode } from '../domain/sessionBackup';
 
+export const RESTORE_WEEK1_BUTTON = 'Restore Week 1 weights';
+export const RESTORE_WEEK1_DONE = 'Restored Week 1 weights';
+export const RESTORE_WEEK1_CONFIRM =
+  'Restore Week 1 weights? This writes known Week 1 T1s into this PWA’s Session log so Last: works. Same ids are replaced; other logs stay. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
+export const RESTORE_WEEK1_HELPER_COMPACT =
+  'Last: needs past sessions in this PWA’s Session log. Home-screen store ≠ Safari. Restore Week 1 weights writes known Week 1 T1s here so Last: works — it does not change Week 2 squat 57.5.';
+export const RESTORE_WEEK1_HELPER =
+  'Export this install’s completed sessions as JSON (same idea as Ravinto meal backup). Import merges by session id. Restore Week 1 weights writes known Week 1 T1s into this PWA’s Session log so Last: works. Home-screen store ≠ Safari. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
+
 export function SessionBackupCard({
   historyCount,
   showExport,
@@ -61,9 +70,7 @@ export function SessionBackupCard({
       <p className="kicker">{compact ? 'This install' : 'Backup'}</p>
       <h2>{compact ? 'Session log empty' : 'Session JSON'}</h2>
       <p className="muted">
-        {compact
-          ? 'Last: needs past sessions in this PWA’s IndexedDB. Safari and Add to Home Screen are separate stores — exporting from one and importing here (or seeding Week 1 Last: reference) fills this log.'
-          : 'Export this install’s completed sessions as JSON (same idea as Ravinto meal backup). Import merges by session id. Seed writes known Week 1 T1s as a Last: reference — not a claim that those accessory numbers were logged in the gym.'}
+        {compact ? RESTORE_WEEK1_HELPER_COMPACT : RESTORE_WEEK1_HELPER}
       </p>
       {historyCount === 0 && !compact ? (
         <p className="history-empty-note">
@@ -86,20 +93,15 @@ export function SessionBackupCard({
           className="btn btn-primary btn-block"
           disabled={busy}
           onClick={() =>
-            void run('Seeded Week 1 Last: reference', () => {
-              if (
-                historyCount > 0 &&
-                !window.confirm(
-                  'Write the 4 Week 1 Last: reference sessions into this install? Same ids are replaced; other logs stay. Accessories are template placeholders, not gym-logged numbers.',
-                )
-              ) {
+            void run(RESTORE_WEEK1_DONE, () => {
+              if (historyCount > 0 && !window.confirm(RESTORE_WEEK1_CONFIRM)) {
                 return Promise.resolve(0);
               }
               return onSeed();
             })
           }
         >
-          {busy ? 'Working…' : 'Seed Week 1 Last: reference'}
+          {busy ? 'Working…' : RESTORE_WEEK1_BUTTON}
         </button>
         <button
           type="button"

@@ -3,6 +3,7 @@ import type { DayTemplate } from '../data/templates';
 import type { SessionLog } from '../types/session';
 import { formatClock } from '../domain/countdown';
 import { formatLoad, plannedDayPreview } from '../domain/workoutPreview';
+import { historyVisibilityLine, lastLogGapLine } from '../domain/sessionBackup';
 import { LastPerformanceHint } from './LastPerformanceHint';
 
 export function WorkoutPreview({
@@ -16,10 +17,17 @@ export function WorkoutPreview({
 }) {
   const [openSlot, setOpenSlot] = useState<string | null>(null);
   const lifts = useMemo(() => plannedDayPreview(template, history, asOf), [template, history, asOf]);
+  const historyCount = history.length;
+  const matchedCount = lifts.filter((lift) => lift.last).length;
+  const empty = historyCount === 0;
+  const gap = lastLogGapLine(historyCount, matchedCount);
 
   return (
     <div className="workout-preview">
       <p className="kicker">Preview</p>
+      <p className={empty || gap ? 'history-empty-note' : 'muted preview-lede'}>
+        {gap ?? historyVisibilityLine(historyCount)}
+      </p>
       <p className="muted preview-lede">
         Browse today’s plan. Start is a separate action — this does not log a session or start a
         timer.

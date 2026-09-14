@@ -1,19 +1,27 @@
 import type { SessionDraft } from '../types/session';
 import { LightBadge } from '../components/LightBadge';
+import { SessionBackupCard } from '../components/SessionBackupCard';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 import { completedSetCount } from '../domain/sessionFactory';
 import { setDisplayLabel } from '../domain/sets';
 import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isTimedHold } from '../types/exercises';
 import { liftEquipment } from '../domain/equipment';
+import { isWeek1ReferenceSession, type ImportMode } from '../domain/sessionBackup';
 
 export function HistoryScreen({
   sessions,
   onBack,
   onOpen,
+  onExport,
+  onImportSessions,
+  onSeedWeek1,
 }: {
   sessions: SessionDraft[];
   onBack: () => void;
   onOpen: (session: SessionDraft) => void;
+  onExport: () => void;
+  onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
+  onSeedWeek1: () => Promise<number>;
 }) {
   return (
     <main className="screen">
@@ -38,7 +46,10 @@ export function HistoryScreen({
               <li key={s.session_id}>
                 <button type="button" className="history-row" onClick={() => onOpen(s)}>
                   <div>
-                    <p className="kicker">{formatDisplayDate(s.date)}</p>
+                    <p className="kicker">
+                      {formatDisplayDate(s.date)}
+                      {isWeek1ReferenceSession(s.session_id) ? ' · Reference' : ''}
+                    </p>
                     <strong>{TEMPLATE_DAY_LABELS[day]}</strong>
                     <p className="muted">
                       {progress.done}/{progress.total} sets
@@ -51,6 +62,14 @@ export function HistoryScreen({
           })}
         </ul>
       )}
+
+      <SessionBackupCard
+        showExport
+        historyCount={sessions.length}
+        onExport={onExport}
+        onImport={onImportSessions}
+        onSeed={onSeedWeek1}
+      />
     </main>
   );
 }

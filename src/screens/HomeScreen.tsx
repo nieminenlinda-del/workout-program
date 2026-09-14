@@ -1,7 +1,9 @@
 import { TemplatePicker } from '../components/TemplatePicker';
 import { WorkoutPreview } from '../components/WorkoutPreview';
+import { SessionBackupCard } from '../components/SessionBackupCard';
 import { DAY_TEMPLATES } from '../data/templates';
 import { getMesocycleContext } from '../domain/phase2Calendar';
+import { historyVisibilityLine, type ImportMode } from '../domain/sessionBackup';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
 import type { CanonicalTemplateDay, SessionDraft, SessionLog } from '../types/session';
 import { SEED_TRAINING_MAXES } from '../types/phase2';
@@ -18,6 +20,8 @@ export function HomeScreen({
   onHistory,
   onInterval,
   onHealth,
+  onImportSessions,
+  onSeedWeek1,
 }: {
   date: string;
   templateDay: CanonicalTemplateDay;
@@ -30,6 +34,8 @@ export function HomeScreen({
   onHistory: () => void;
   onInterval: () => void;
   onHealth: () => void;
+  onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
+  onSeedWeek1: () => Promise<number>;
 }) {
   const template = DAY_TEMPLATES[templateDay];
   const meso = getMesocycleContext(date);
@@ -40,6 +46,9 @@ export function HomeScreen({
         <p className="brand">Linda Lift</p>
         <h1>Today’s session</h1>
         <p className="muted">{formatDisplayDate(date)}</p>
+        <p className={historyCount === 0 ? 'history-empty-note' : 'muted preview-lede'}>
+          {historyVisibilityLine(historyCount)}
+        </p>
         {meso.block && meso.phase ? (
           <p
             className={`phase-chip ${meso.training_mode === 'strength_peak' ? 'peak' : ''}`}
@@ -84,6 +93,14 @@ export function HomeScreen({
         <h2 className="template-heading">{template.title}</h2>
         <p className="muted">{template.focus}</p>
         <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
+        {historyCount === 0 ? (
+          <SessionBackupCard
+            compact
+            historyCount={historyCount}
+            onImport={onImportSessions}
+            onSeed={onSeedWeek1}
+          />
+        ) : null}
         <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
           {draft ? 'Replace draft & start' : 'Start session'}
         </button>
@@ -95,7 +112,7 @@ export function HomeScreen({
       </p>
 
       <button type="button" className="btn btn-ghost btn-block" onClick={onHistory}>
-        Session log{historyCount ? ` (${historyCount})` : ''}
+        Session log ({historyCount})
       </button>
       <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>
         Interval timer

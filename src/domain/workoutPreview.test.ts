@@ -16,6 +16,7 @@ import {
 import { warmupLadder } from './warmupLadder';
 import { DEFAULT_READINESS } from '../types/session';
 import type { ExerciseId } from '../types/exercises';
+import { historyVisibilityLine, lastLogGapLine } from './sessionBackup';
 
 function completeAllWorkSets(day: 'A' | 'B' | 'C' | 'D', date: string): SessionLog {
   const draft = createDraftSession(day, date);
@@ -151,9 +152,14 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
     expect(history).toHaveLength(4);
 
     const createDraft = vi.spyOn(await import('./sessionFactory'), 'createDraftSession');
-    const preview = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-13');
-    expect(preview[0]?.lastLine).toBe('Last: 47.5 kg × 5');
-    expect(preview[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
+    const preview = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-14');
+    expect(preview.map((row) => row.lastLine)).toEqual([
+      'Last: 47.5 kg × 5',
+      'Last: 50 kg × 8 · Barbell',
+      'Last: 12 kg × 8 · DBs',
+      'Last: BW × 60s',
+    ]);
+    expect(preview[0]?.workLabel).toBe('57.5 kg · 3 × 4');
     expect(createDraft).not.toHaveBeenCalled();
     createDraft.mockRestore();
   });
@@ -182,6 +188,8 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
     const preview = plannedDayPreview(DAY_TEMPLATES.A, [], '2026-09-13');
     expect(preview.every((row) => row.lastLine === 'No prior log')).toBe(true);
     expect(preview[0]).not.toHaveProperty('session_id');
+    expect(historyVisibilityLine(0)).toMatch(/empty on this install \(0\)/);
+    expect(lastLogGapLine(2, 0)).toMatch(/logged work sets/);
   });
 
   it('shows Last: from a 2026-09-07 complete squat log that omits status and set.completed', () => {

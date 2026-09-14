@@ -11,6 +11,11 @@ import { useRepository, useSessionFlow, type AppView } from './hooks/useSessionF
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
 import { canonicalTemplateDay, todayIsoDate } from './domain/templateDay';
 import type { CanonicalTemplateDay } from './types/session';
+import {
+  buildSessionBackup,
+  downloadJson,
+  sessionBackupFilename,
+} from './domain/sessionBackup';
 
 export default function App() {
   const repo = useRepository();
@@ -79,6 +84,8 @@ export default function App() {
           onHistory={() => flow.setView('history')}
           onInterval={() => openInterval('home')}
           onHealth={() => flow.setView('health')}
+          onImportSessions={(text, mode) => flow.importSessions(text, mode)}
+          onSeedWeek1={() => flow.seedWeek1()}
         />
       ) : null}
 
@@ -117,6 +124,12 @@ export default function App() {
           sessions={flow.history}
           onBack={() => flow.setView('home')}
           onOpen={flow.openDetail}
+          onExport={() => {
+            const backup = buildSessionBackup(flow.history);
+            downloadJson(sessionBackupFilename(date), backup);
+          }}
+          onImportSessions={(text, mode) => flow.importSessions(text, mode)}
+          onSeedWeek1={() => flow.seedWeek1()}
         />
       ) : null}
 

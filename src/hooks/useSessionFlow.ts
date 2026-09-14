@@ -6,6 +6,11 @@ import { createDraftSession } from '../domain/sessionFactory';
 import type { TemplateDay } from '../types/session';
 import { todayIsoDate } from '../domain/templateDay';
 import { refreshDraftWarmups } from '../domain/warmupLadder';
+import {
+  importSessionBackupText,
+  seedWeek1LastReference,
+  type ImportMode,
+} from '../domain/sessionBackup';
 
 export type AppView =
   | 'home'
@@ -120,6 +125,21 @@ export function useSessionFlow(repo: SessionRepository) {
     setView('detail');
   }, []);
 
+  const importSessions = useCallback(
+    async (text: string, mode: ImportMode = 'merge') => {
+      const result = await importSessionBackupText(repo, text, mode);
+      await refreshHistory();
+      return result.sessions;
+    },
+    [repo, refreshHistory],
+  );
+
+  const seedWeek1 = useCallback(async () => {
+    const count = await seedWeek1LastReference(repo);
+    await refreshHistory();
+    return count;
+  }, [repo, refreshHistory]);
+
   return {
     view,
     setView,
@@ -136,5 +156,7 @@ export function useSessionFlow(repo: SessionRepository) {
     completeSession,
     openDetail,
     refreshHistory,
+    importSessions,
+    seedWeek1,
   };
 }

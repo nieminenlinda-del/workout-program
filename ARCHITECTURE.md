@@ -145,7 +145,7 @@ Do not add `training_mode` / `program_mode` to `SessionLog` or the Phase 1 set-l
 
 **Top work set:** among logged **work** sets of the matching lift, highest `weight_kg`; ties → highest `reps`; still tied → last such set. Sets with `warmup: true` are excluded. Explicit `completed: false` is skipped; **missing** `completed` counts (legacy rows, same idea as missing session `status`). Display `Last: 50 kg × 5` (or `Last: BW × 6`). First sessions show muted `No prior log`.
 
-If `listComplete()` is empty (this PWA’s IndexedDB has no saved sessions — e.g. Safari vs home-screen store), every lift stays **No prior log**. That is empty history, not a week-boundary filter.
+If `listComplete()` is empty (this PWA’s IndexedDB has no saved sessions — e.g. Safari vs home-screen store), every lift stays **No prior log**. That is empty history, not a week-boundary filter. Home and preview surface the session count (`historyCount`) with a clear empty-install line. **Session JSON** export/import (Ravinto-style `linda-lift-sessions` backup) and **Seed Week 1 Last: reference** (known T1s: squat 47.5×3×5, bench 40×3×5, DL 70×3×5, Fri bench 40×2×5; accessories are template placeholders) write rows into *this* store so Last: can resolve.
 
 Shown on the Today **preview** (`plannedDayPreview` — template + `listComplete()` history, no draft), each in-session lift card, and the set logger. Preview and in-session share `lastMatchingPerformance`.
 

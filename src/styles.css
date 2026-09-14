@@ -331,6 +331,36 @@ button {
   color: var(--muted);
 }
 
+.history-empty-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--amber);
+  border-radius: 12px;
+  background: rgba(232, 160, 74, 0.1);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 650;
+}
+
+.workout-preview .history-empty-note {
+  margin: 0;
+}
+
+.recovery-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--amber);
+  border-radius: 14px;
+  background: rgba(232, 160, 74, 0.08);
+}
+
+.recovery-block h2 {
+  font-size: 22px;
+}
+
 .preview-toggle {
   align-self: center;
   font-size: 12px;

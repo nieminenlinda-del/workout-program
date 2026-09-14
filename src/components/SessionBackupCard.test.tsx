@@ -7,6 +7,8 @@ import {
   RESTORE_WEEK1_DONE,
   RESTORE_WEEK1_HELPER,
   RESTORE_WEEK1_HELPER_COMPACT,
+  RESTORE_WEEK1_TITLE_EMPTY,
+  RESTORE_WEEK1_TITLE_MISSING_LAST,
   SessionBackupCard,
 } from './SessionBackupCard';
 
@@ -72,7 +74,68 @@ describe('SessionBackupCard Restore Week 1 weights', () => {
     );
     expect(button).toBeTruthy();
     expect(container.textContent).toContain(RESTORE_WEEK1_HELPER_COMPACT);
+    expect(container.textContent).toContain(RESTORE_WEEK1_TITLE_EMPTY);
+    expect(container.textContent).not.toContain(RESTORE_WEEK1_TITLE_MISSING_LAST);
     expect(container.textContent).not.toMatch(/Seed Week 1 Last: reference/);
+  });
+
+  it('compact card with Session log (1) says Last: missing, not Session log empty', () => {
+    const { container, root } = mount(
+      <SessionBackupCard
+        compact
+        historyCount={1}
+        onImport={async () => 0}
+        onSeed={async () => 4}
+      />,
+    );
+    nodes.push({ container, root });
+
+    const button = [...container.querySelectorAll('button')].find(
+      (el) => el.textContent === RESTORE_WEEK1_BUTTON,
+    );
+    expect(button).toBeTruthy();
+    expect(container.textContent).toContain(RESTORE_WEEK1_TITLE_MISSING_LAST);
+    expect(container.textContent).not.toContain(RESTORE_WEEK1_TITLE_EMPTY);
+    expect(container.textContent).toContain(RESTORE_WEEK1_HELPER_COMPACT);
+  });
+
+  it('confirms then seeds when this install already has sessions', async () => {
+    const onSeed = vi.fn(async () => 4);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { container, root } = mount(
+      <SessionBackupCard compact historyCount={1} onImport={async () => 0} onSeed={onSeed} />,
+    );
+    nodes.push({ container, root });
+
+    const button = [...container.querySelectorAll('button')].find(
+      (el) => el.textContent === RESTORE_WEEK1_BUTTON,
+    );
+    await act(async () => {
+      button?.click();
+    });
+    expect(confirm).toHaveBeenCalledWith(RESTORE_WEEK1_CONFIRM);
+    expect(onSeed).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain('Restored Week 1 weights: 4 sessions on this install.');
+    confirm.mockRestore();
+  });
+
+  it('skips seed when restore confirm is cancelled', async () => {
+    const onSeed = vi.fn(async () => 4);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { container, root } = mount(
+      <SessionBackupCard compact historyCount={1} onImport={async () => 0} onSeed={onSeed} />,
+    );
+    nodes.push({ container, root });
+
+    const button = [...container.querySelectorAll('button')].find(
+      (el) => el.textContent === RESTORE_WEEK1_BUTTON,
+    );
+    await act(async () => {
+      button?.click();
+    });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onSeed).not.toHaveBeenCalled();
+    confirm.mockRestore();
   });
 
   it('keeps onSeed as the restore action', async () => {

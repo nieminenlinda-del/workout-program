@@ -3,7 +3,8 @@ import { WorkoutPreview } from '../components/WorkoutPreview';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { DAY_TEMPLATES } from '../data/templates';
 import { getMesocycleContext } from '../domain/phase2Calendar';
-import { historyVisibilityLine, type ImportMode } from '../domain/sessionBackup';
+import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
+import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
 import type { CanonicalTemplateDay, SessionDraft, SessionLog } from '../types/session';
 import { SEED_TRAINING_MAXES } from '../types/phase2';
@@ -39,6 +40,9 @@ export function HomeScreen({
 }) {
   const template = DAY_TEMPLATES[templateDay];
   const meso = getMesocycleContext(date);
+  const offerWeek1Restore = shouldOfferHomeWeek1Restore(
+    plannedDayPreview(template, history, date),
+  );
 
   return (
     <main className="screen">
@@ -46,8 +50,10 @@ export function HomeScreen({
         <p className="brand">Linda Lift</p>
         <h1>Today’s session</h1>
         <p className="muted">{formatDisplayDate(date)}</p>
-        <p className={historyCount === 0 ? 'history-empty-note' : 'muted preview-lede'}>
-          {historyVisibilityLine(historyCount)}
+        <p className={historyCount === 0 || offerWeek1Restore ? 'history-empty-note' : 'muted preview-lede'}>
+          {offerWeek1Restore && historyCount > 0
+            ? (lastLogGapLine(historyCount, 0) ?? historyVisibilityLine(historyCount))
+            : historyVisibilityLine(historyCount)}
         </p>
         {meso.block && meso.phase ? (
           <p
@@ -93,7 +99,7 @@ export function HomeScreen({
         <h2 className="template-heading">{template.title}</h2>
         <p className="muted">{template.focus}</p>
         <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
-        {historyCount === 0 ? (
+        {offerWeek1Restore ? (
           <SessionBackupCard
             compact
             historyCount={historyCount}

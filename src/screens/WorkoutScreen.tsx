@@ -185,14 +185,18 @@ export function WorkoutScreen({
               </button>
             ) : null}
 
-            {expanded && !timed && unloggedWork.length > 0 ? (
+            {expanded && unloggedWork.length > 0 ? (
               <NumberStepper
-                label="Working weight"
+                label={timed || liftEquipment(lift) === 'bodyweight' ? 'Added weight' : 'Working weight'}
                 value={workingKg}
                 onChange={(kg) => onChange(overrideUnloggedLiftWeight(draft, liftIndex, kg))}
                 step={2.5}
                 suffix="kg"
-                hint="Edits leftover work sets. Unused warmups follow the new W."
+                hint={
+                  timed
+                    ? '0 is bodyweight. Add kg for a plate or vest on leftover holds.'
+                    : 'Edits leftover work sets. Unused warmups follow the new W.'
+                }
               />
             ) : null}
 

@@ -120,6 +120,10 @@ describe('last matching performance', () => {
     expect(formatLastPerformance(lastMatchingPerformance([plank], 'plank', 'A', '2026-09-07'))).toBe(
       'Last: BW × 60s',
     );
+    const weightedPlank = completeSession('A', '2026-08-31', 'plank', [{ weight_kg: 5, reps: 60 }]);
+    expect(
+      formatLastPerformance(lastMatchingPerformance([weightedPlank], 'plank', 'A', '2026-09-07')),
+    ).toBe('Last: 5 kg × 60s');
     const map = lastPerformanceByExercise([pull], 'D', '2026-09-04', ['pull_up', 'curl_db']);
     expect(map.get('pull_up')?.reps).toBe(6);
     expect(map.get('curl_db')).toBeNull();

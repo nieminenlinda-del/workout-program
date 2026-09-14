@@ -161,3 +161,11 @@ export function plannedDayPreview(
     };
   });
 }
+
+/** Home restore card: T1 Last: missing, even if Session log (1) exists. */
+export function shouldOfferHomeWeek1Restore(
+  preview: readonly Pick<PlannedLiftPreview, 'role' | 'last'>[],
+): boolean {
+  const t1 = preview.find((row) => row.role === 'T1');
+  return t1 == null || t1.last == null;
+}

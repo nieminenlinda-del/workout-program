@@ -51,6 +51,7 @@ export function SetLogger({
   const planKg = prescriptionWeightKg(initial);
   const overridden = weight !== planKg;
   const warmup = Boolean(initial.warmup);
+  const addedLoad = equipment === 'bodyweight' || timed;
 
   return (
     <div className="sheet-backdrop" role="presentation" onClick={onCancel}>
@@ -87,38 +88,28 @@ export function SetLogger({
           />
         )}
 
-        {timed ? null : (
-          <>
-            <NumberStepper
-              label={
-                equipment === 'bodyweight'
-                  ? 'Added weight'
-                  : overridden
-                    ? 'Weight — overridden'
-                    : 'Weight'
-              }
-              value={weight}
-              onChange={setWeight}
-              step={2.5}
-              suffix="kg"
-              hint={
-                equipment === 'bodyweight'
-                  ? '0 is bodyweight. Add kg for a plate or vest.'
-                  : equipment === 'barbell'
-                    ? `Total on the bar, including the ${bar} kg bar. Steppers are 2.5 kg.`
-                    : 'Tap the number to type. Steppers are 2.5 kg. Not locked to the plan.'
-              }
-            />
-            <div className="micro-steps">
-              <button type="button" className="chip" onClick={() => setWeight((w) => Math.max(0, Math.round((w - 1.25) * 100) / 100))}>
-                −1.25
-              </button>
-              <button type="button" className="chip" onClick={() => setWeight((w) => Math.round((w + 1.25) * 100) / 100)}>
-                +1.25
-              </button>
-            </div>
-          </>
-        )}
+        <NumberStepper
+          label={addedLoad ? 'Added weight' : overridden ? 'Weight — overridden' : 'Weight'}
+          value={weight}
+          onChange={setWeight}
+          step={2.5}
+          suffix="kg"
+          hint={
+            addedLoad
+              ? '0 is bodyweight. Add kg for a plate or vest — timed holds can be weighted.'
+              : equipment === 'barbell'
+                ? `Total on the bar, including the ${bar} kg bar. Steppers are 2.5 kg.`
+                : 'Tap the number to type. Steppers are 2.5 kg. Not locked to the plan.'
+          }
+        />
+        <div className="micro-steps">
+          <button type="button" className="chip" onClick={() => setWeight((w) => Math.max(0, Math.round((w - 1.25) * 100) / 100))}>
+            −1.25
+          </button>
+          <button type="button" className="chip" onClick={() => setWeight((w) => Math.round((w + 1.25) * 100) / 100)}>
+            +1.25
+          </button>
+        </div>
 
         <NumberStepper
           label={timed ? 'Hold' : 'Reps'}
@@ -181,7 +172,7 @@ export function SetLogger({
           </button>
         )}
 
-        {timed || !hasLaterSameKind ? null : (
+        {!hasLaterSameKind ? null : (
           <button
             type="button"
             className={`toggle ${applyRemaining ? 'on apply-on' : ''}`}
@@ -206,14 +197,14 @@ export function SetLogger({
               unlockTimerAudio();
               onComplete(
                 {
-                  weight_kg: timed ? 0 : weight,
+                  weight_kg: weight,
                   reps,
                   rpe,
                   completed: true,
                   amrap: timed ? false : amrap,
                   warmup,
                 },
-                timed ? false : applyRemaining,
+                applyRemaining,
               );
             }}
           >

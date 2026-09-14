@@ -35,9 +35,18 @@ export const WEEK1_REFERENCE_DAYS: readonly { day: CanonicalTemplateDay; date: s
 /** Reconstructed Mon 14 Sep 2026 Day A after a wiped home-screen IndexedDB. */
 export const MON14_DAY_A_DATE = '2026-09-14';
 export const MON14_DAY_A_SESSION_ID = 'linda-lift-seed-2026-09-14-A';
+export const MON14_DAY_A_SQUAT_KG = 57.5;
+export const MON14_DAY_A_SQUAT_REPS = 4;
+export const MON14_DAY_A_SQUAT_RPE = 7;
+export const MON14_DAY_A_RDL_KG = 50;
+export const MON14_DAY_A_RDL_REPS = 8;
+export const MON14_DAY_A_RDL_RPE = 6;
+export const MON14_DAY_A_LUNGE_KG = 37.5;
+export const MON14_DAY_A_LUNGE_REPS = 8;
+export const MON14_DAY_A_LUNGE_RPE = 7;
 export const MON14_DAY_A_PLANK_KG = 5;
 export const MON14_DAY_A_NOTES =
-  'Mon 14 Day A reference / reconstructed (recovery). Known: squat 57.5×3×4 soft GREEN, plank 5 kg timed hold. Other lifts (RDL, reverse lunge) are Week 2 template placeholders — not gym-logged numbers.';
+  'Mon 14 Day A reference / reconstructed (recovery). Known gym-logged: squat 57.5×3×4 @7 soft GREEN, RDL 50×8×3 @6, reverse lunge 37.5×8×3 @7, plank 5 kg timed hold.';
 
 export const A2HS_EMPTY_STORE_LINE =
   'Add to Home Screen again uses a new empty store; export JSON before deleting the icon.';
@@ -302,8 +311,9 @@ export function historyHasMon14DayA(
 }
 
 /**
- * Known Mon 14 Day A: W2 squat 57.5×3×4, plank 5 kg, other lifts from the
- * Week 2 template. Soft GREEN. Labeled reference / reconstructed — not exact gym accessories.
+ * Known gym-logged Mon 14 Day A: squat 57.5×3×4 @7 soft GREEN, RDL 50×8×3 @6,
+ * reverse lunge 37.5×8×3 @7, plank 5 kg. Labeled reference / reconstructed.
+ * Does not change Week 2 program prescriptions.
  */
 export function mon14DayAReferenceSession(): SessionDraft {
   const draft = createDraftSession('A', MON14_DAY_A_DATE);
@@ -314,6 +324,39 @@ export function mon14DayAReferenceSession(): SessionDraft {
   for (const lift of draft.lifts) {
     lift.sets = lift.sets.map((set) => {
       if (isWarmupSet(set)) return set;
+      if (lift.exercise_id === 'squat_low_bar') {
+        return {
+          ...set,
+          weight_kg: MON14_DAY_A_SQUAT_KG,
+          reps: MON14_DAY_A_SQUAT_REPS,
+          rpe: MON14_DAY_A_SQUAT_RPE,
+          target_weight_kg: MON14_DAY_A_SQUAT_KG,
+          target_reps: MON14_DAY_A_SQUAT_REPS,
+          completed: true,
+        };
+      }
+      if (lift.exercise_id === 'rdl') {
+        return {
+          ...set,
+          weight_kg: MON14_DAY_A_RDL_KG,
+          reps: MON14_DAY_A_RDL_REPS,
+          rpe: MON14_DAY_A_RDL_RPE,
+          target_weight_kg: MON14_DAY_A_RDL_KG,
+          target_reps: MON14_DAY_A_RDL_REPS,
+          completed: true,
+        };
+      }
+      if (lift.exercise_id === 'reverse_lunge') {
+        return {
+          ...set,
+          weight_kg: MON14_DAY_A_LUNGE_KG,
+          reps: MON14_DAY_A_LUNGE_REPS,
+          rpe: MON14_DAY_A_LUNGE_RPE,
+          target_weight_kg: MON14_DAY_A_LUNGE_KG,
+          target_reps: MON14_DAY_A_LUNGE_REPS,
+          completed: true,
+        };
+      }
       if (lift.exercise_id === 'plank') {
         return {
           ...set,

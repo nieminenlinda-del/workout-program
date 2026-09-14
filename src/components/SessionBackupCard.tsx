@@ -14,13 +14,13 @@ export const IMPORT_SESSION_JSON_BUTTON = 'Import session JSON';
 export const RESTORE_WEEK1_CONFIRM =
   'Restore Week 1 weights? This writes known Week 1 T1s into this PWA’s Session log so Last: works. Same ids are replaced; other logs stay. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
 export const RESTORE_MON14_CONFIRM =
-  'Restore today’s Mon 14 Day A? This writes a reconstructed Day A dated 14 Sep 2026 (squat 57.5×3×4 soft GREEN, plank 5 kg, other lifts from the Week 2 template). Same id is replaced. Accessories are template placeholders, not gym-logged numbers. Does not change Week 2 squat 57.5.';
+  'Restore today’s Mon 14 Day A? This writes a reconstructed Day A dated 14 Sep 2026 (squat 57.5×3×4 @7 soft GREEN, RDL 50×8×3 @6, reverse lunge 37.5×8×3 @7, plank +5 kg 120s/120s/60s @7). Same id is replaced. Known gym-logged numbers. Does not change Week 2 squat 57.5.';
 export const RESTORE_WEEK1_HELPER_COMPACT =
   'Last: needs matching prior work in this PWA’s Session log — a saved session that is not Week 1 T1s still shows No prior log. Home-screen store ≠ Safari. Restore Week 1 weights writes known Week 1 T1s here so Last: works — it does not change Week 2 squat 57.5.';
 export const RESTORE_EMPTY_HELPER_COMPACT =
   `This install’s Session log is empty (0). iOS standalone IndexedDB is local only — there is no server backup. Restore Week 1 weights (Last: for this week), restore today’s Mon 14 Day A (reconstructed gym day), or import session JSON below. ${A2HS_EMPTY_STORE_LINE} Does not change Week 2 squat 57.5.`;
 export const RESTORE_WEEK1_HELPER =
-  `Export this install’s completed sessions as JSON (same idea as Ravinto meal backup). Import merges by session id. Restore Week 1 weights writes known Week 1 T1s so Last: works. Restore today’s Mon 14 Day A writes a reconstructed Day A (squat 57.5×3×4, plank 5 kg; other lifts are Week 2 template placeholders). Home-screen store ≠ Safari. ${A2HS_EMPTY_STORE_LINE} Does not change Week 2 squat 57.5.`;
+  `Export this install’s completed sessions as JSON (same idea as Ravinto meal backup). Import merges by session id. Restore Week 1 weights writes known Week 1 T1s so Last: works. Restore today’s Mon 14 Day A writes a reconstructed Day A (squat 57.5×3×4 @7, RDL 50×8×3 @6, reverse lunge 37.5×8×3 @7, plank +5 kg 120s/120s/60s @7). Home-screen store ≠ Safari. ${A2HS_EMPTY_STORE_LINE} Does not change Week 2 squat 57.5.`;
 export const RESTORE_EMPTY_NOTE =
   `Session log empty on this install (0) — Restore Week 1 weights, restore today’s Mon 14 Day A, or import session JSON here. Last: cannot fill in. ${A2HS_EMPTY_STORE_LINE}`;
 

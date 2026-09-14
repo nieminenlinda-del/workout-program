@@ -15,9 +15,20 @@ import {
   importSessionBackupText,
   lastLogGapLine,
   MON14_DAY_A_DATE,
+  MON14_DAY_A_LUNGE_KG,
+  MON14_DAY_A_LUNGE_REPS,
+  MON14_DAY_A_LUNGE_RPE,
   MON14_DAY_A_NOTES,
   MON14_DAY_A_PLANK_KG,
+  MON14_DAY_A_PLANK_RPE,
+  MON14_DAY_A_PLANK_SECONDS,
+  MON14_DAY_A_RDL_KG,
+  MON14_DAY_A_RDL_REPS,
+  MON14_DAY_A_RDL_RPE,
   MON14_DAY_A_SESSION_ID,
+  MON14_DAY_A_SQUAT_KG,
+  MON14_DAY_A_SQUAT_REPS,
+  MON14_DAY_A_SQUAT_RPE,
   mon14DayAReferenceSession,
   parseSessionBackupJson,
   seedMon14DayAReference,
@@ -100,31 +111,71 @@ describe('Restore today’s Mon 14 Day A', () => {
     expect(row.readiness.light).toBe('GREEN');
     expect(row.notes).toBe(MON14_DAY_A_NOTES);
     expect(row.notes).toMatch(/reference \/ reconstructed/i);
-    expect(row.notes).toMatch(/placeholders/i);
+    expect(row.notes).toMatch(/gym-logged/i);
+    expect(row.notes).toMatch(/RDL 50×8×3 @6/);
+    expect(row.notes).toMatch(/reverse lunge 37\.5×8×3 @7/);
+    expect(row.notes).toMatch(/plank \+5 kg 120s\/120s\/60s @7/);
+    expect(row.notes).not.toMatch(/placeholders/i);
 
     const squat = row.lifts.find((lift) => lift.exercise_id === 'squat_low_bar');
     const squatWork = squat?.sets.filter((set) => !isWarmupSet(set)) ?? [];
     expect(squatWork).toHaveLength(3);
-    expect(squatWork.every((set) => set.weight_kg === 57.5 && set.reps === 4 && set.completed)).toBe(
-      true,
-    );
+    expect(
+      squatWork.every(
+        (set) =>
+          set.weight_kg === MON14_DAY_A_SQUAT_KG &&
+          set.reps === MON14_DAY_A_SQUAT_REPS &&
+          set.rpe === MON14_DAY_A_SQUAT_RPE &&
+          set.completed,
+      ),
+    ).toBe(true);
 
     const plank = row.lifts.find((lift) => lift.exercise_id === 'plank');
     const plankWork = plank?.sets.filter((set) => !isWarmupSet(set)) ?? [];
-    expect(plankWork.length).toBeGreaterThan(0);
+    expect(plankWork).toHaveLength(MON14_DAY_A_PLANK_SECONDS.length);
+    expect(plankWork.map((set) => set.reps)).toEqual([...MON14_DAY_A_PLANK_SECONDS]);
     expect(
-      plankWork.every((set) => set.weight_kg === MON14_DAY_A_PLANK_KG && set.reps === 60 && set.completed),
+      plankWork.every(
+        (set) =>
+          set.weight_kg === MON14_DAY_A_PLANK_KG &&
+          set.rpe === MON14_DAY_A_PLANK_RPE &&
+          set.completed,
+      ),
     ).toBe(true);
 
     const rdl = row.lifts.find((lift) => lift.exercise_id === 'rdl');
     const rdlWork = rdl?.sets.filter((set) => !isWarmupSet(set)) ?? [];
-    expect(rdlWork.every((set) => set.weight_kg === 50 && set.reps === 8 && set.completed)).toBe(true);
+    expect(rdlWork).toHaveLength(3);
+    expect(
+      rdlWork.every(
+        (set) =>
+          set.weight_kg === MON14_DAY_A_RDL_KG &&
+          set.reps === MON14_DAY_A_RDL_REPS &&
+          set.rpe === MON14_DAY_A_RDL_RPE &&
+          set.completed,
+      ),
+    ).toBe(true);
 
     const lunge = row.lifts.find((lift) => lift.exercise_id === 'reverse_lunge');
     const lungeWork = lunge?.sets.filter((set) => !isWarmupSet(set)) ?? [];
-    expect(lungeWork.every((set) => set.weight_kg === 12 && set.reps === 8 && set.completed)).toBe(
-      true,
-    );
+    expect(lungeWork).toHaveLength(3);
+    expect(
+      lungeWork.every(
+        (set) =>
+          set.weight_kg === MON14_DAY_A_LUNGE_KG &&
+          set.reps === MON14_DAY_A_LUNGE_REPS &&
+          set.rpe === MON14_DAY_A_LUNGE_RPE &&
+          set.completed,
+      ),
+    ).toBe(true);
+
+    const hingeSlot = DAY_TEMPLATES.A.slots.find((slot) => slot.exercise_id === 'rdl');
+    expect(hingeSlot?.sets.map((set) => set.rpe)).toEqual([7, 7, 7.5]);
+    const lungeSlot = DAY_TEMPLATES.A.slots.find((slot) => slot.exercise_id === 'reverse_lunge');
+    expect(lungeSlot?.sets.every((set) => set.weight_kg === 12 && set.reps === 8)).toBe(true);
+    const plankSlot = DAY_TEMPLATES.A.slots.find((slot) => slot.exercise_id === 'plank');
+    expect(plankSlot?.sets.map((set) => set.reps)).toEqual([60, 60, 60]);
+    expect(plankSlot?.sets.every((set) => set.weight_kg === 0)).toBe(true);
 
     const repo = createMemoryRepository();
     expect(await seedMon14DayAReference(repo)).toBe(1);
@@ -140,8 +191,8 @@ describe('Restore today’s Mon 14 Day A', () => {
     expect(nextWeek[0]?.workLabel).toBe('57.5 kg · 3 × 4');
     expect(nextWeek[0]?.lastLine).toBe('Last: 57.5 kg × 4');
     expect(nextWeek[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
-    expect(nextWeek[2]?.lastLine).toBe('Last: 12 kg × 8 · DBs');
-    expect(nextWeek[3]?.lastLine).toBe('Last: 5 kg × 60s');
+    expect(nextWeek[2]?.lastLine).toBe('Last: 37.5 kg × 8 · DBs');
+    expect(nextWeek[3]?.lastLine).toBe('Last: 5 kg × 120s');
   });
 });
 

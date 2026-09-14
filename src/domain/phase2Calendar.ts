@@ -6,6 +6,7 @@ import {
   TEST_LIFT_ORDER,
   programModeFrom,
 } from '../types/phase2';
+import { weekIndexFromStart } from './programWeek';
 
 function isoDate(value: string | Date): string {
   if (typeof value === 'string') return value.slice(0, 10);
@@ -59,6 +60,7 @@ export function getMesocycleContext(
   return {
     asOf: date,
     block: window?.block ?? null,
+    weekIndex: window ? weekIndexFromStart(date, window.start) : null,
     phase,
     window,
     isTestDay,

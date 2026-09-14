@@ -43,10 +43,11 @@ export function WorkoutPreview({
                   ) : null}
                   {lift.optional ? <em className="alt"> (optional)</em> : null}
                   <span className="preview-scheme">
-                    {lift.warmupLabel ? `${lift.warmupLabel} · ` : ''}
-                    {lift.scheme}
+                    {lift.workLabel || lift.scheme}
+                    {lift.warmupLabel ? ` · ${lift.warmupLabel}` : ''}
                     {lift.restLabel ? ` · ${lift.restLabel}` : ''}
                   </span>
+                  {lift.note ? <span className="preview-note">{lift.note}</span> : null}
                   <LastPerformanceHint performance={lift.last} />
                 </span>
                 <span className="preview-toggle">{expanded ? 'Hide' : 'Open'}</span>

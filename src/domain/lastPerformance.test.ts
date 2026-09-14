@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDraftSession, swapLiftExercise } from './sessionFactory';
 import {
+  calendarYmd,
   formatLastPerformance,
   lastMatchingPerformance,
   lastPerformanceByExercise,
@@ -210,8 +211,8 @@ describe('week 1 logs are last week for week 2', () => {
 
   it('shows squat / bench / deadlift / accessories on a Week 2 Day A draft (Mon 14th)', () => {
     const squat = lastMatchingPerformance(week1, 'squat_low_bar', 'A', '2026-09-14');
-    expect(squat).toMatchObject({ date: '2026-09-07', weight_kg: 55, reps: 5, template_day: 'A' });
-    expect(formatLastPerformance(squat)).toBe('Last: 55 kg × 5');
+    expect(squat).toMatchObject({ date: '2026-09-07', weight_kg: 47.5, reps: 5, template_day: 'A' });
+    expect(formatLastPerformance(squat)).toBe('Last: 47.5 kg × 5');
 
     expect(lastMatchingPerformance(week1, 'rdl', 'A', '2026-09-14')).toMatchObject({
       date: '2026-09-07',
@@ -244,7 +245,7 @@ describe('week 1 logs are last week for week 2', () => {
   it('shows the same Week 1 Last: lines on a Sunday preview (asOf 2026-09-13)', () => {
     expect(lastMatchingPerformance(week1, 'squat_low_bar', 'A', '2026-09-13')).toMatchObject({
       date: '2026-09-07',
-      weight_kg: 55,
+      weight_kg: 47.5,
     });
     expect(lastMatchingPerformance(week1, 'bench_regular', 'B', '2026-09-13')).toMatchObject({
       date: '2026-09-08',
@@ -271,7 +272,7 @@ describe('week 1 logs are last week for week 2', () => {
     const repo = createMemoryRepository([withoutStatus, week1[1], week1[2], week1[3]]);
     const history = await repo.listComplete(60);
     expect(history).toHaveLength(4);
-    expect(lastMatchingPerformance(history, 'squat_low_bar', 'A', '2026-09-14')?.weight_kg).toBe(55);
+    expect(lastMatchingPerformance(history, 'squat_low_bar', 'A', '2026-09-14')?.weight_kg).toBe(47.5);
     expect(lastMatchingPerformance(history, 'bench_regular', 'B', '2026-09-14')?.weight_kg).toBe(40);
     expect(lastMatchingPerformance(history, 'deadlift_conventional', 'C', '2026-09-14')?.weight_kg).toBe(
       70,
@@ -284,5 +285,35 @@ describe('week 1 logs are last week for week 2', () => {
     for (const id of ids) {
       expect(map.get(id), id).not.toBeNull();
     }
+  });
+
+  it('treats missing set.completed as logged (legacy complete rows)', () => {
+    const row = completeAllWorkSets('A', '2026-09-07');
+    const legacy: SessionLog = {
+      session_id: row.session_id,
+      date: row.date,
+      template_day: row.template_day,
+      readiness: row.readiness,
+      pain_flag: row.pain_flag,
+      notes: row.notes,
+      lifts: row.lifts.map((lift) => ({
+        ...lift,
+        sets: lift.sets.map((set) => {
+          const { completed: _completed, ...rest } = set;
+          return rest as (typeof lift.sets)[number];
+        }),
+      })),
+    };
+    expect(lastMatchingPerformance([legacy], 'squat_low_bar', 'A', '2026-09-14')).toMatchObject({
+      date: '2026-09-07',
+      weight_kg: 47.5,
+      reps: 5,
+    });
+  });
+
+  it('parses timestamp and unpadded calendar dates', () => {
+    expect(calendarYmd('2026-09-07T18:00:00.000Z')).toBe('2026-09-07');
+    expect(calendarYmd('2026-9-7')).toBe('2026-09-07');
+    expect(calendarYmd('Mon 14 Sep')).toBe('');
   });
 });

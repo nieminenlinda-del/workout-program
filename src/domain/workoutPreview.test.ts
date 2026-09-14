@@ -8,10 +8,14 @@ import {
   formatLoad,
   formatRestLabel,
   formatSetScheme,
+  formatWorkLabel,
   plannedDayPreview,
   plannedLiftSummary,
   uniqueAltNames,
 } from './workoutPreview';
+import { warmupLadder } from './warmupLadder';
+import { DEFAULT_READINESS } from '../types/session';
+import type { ExerciseId } from '../types/exercises';
 
 function completeAllWorkSets(day: 'A' | 'B' | 'C' | 'D', date: string): SessionLog {
   const draft = createDraftSession(day, date);
@@ -36,6 +40,7 @@ describe('planned session preview (template only)', () => {
     const squat = plannedLiftSummary(DAY_TEMPLATES.A.slots[0]);
     expect(squat.name).toBe('Low-bar squat');
     expect(squat.scheme).toBe('3 × 5');
+    expect(squat.workLabel).toBe('55 kg · 3 × 5');
     expect(squat.warmupLabel).toBe('W 20 kg → 27.5 kg → 37.5 kg → 47.5 kg');
     expect(squat.restLabel).toBe('3:00 rest');
     expect(squat.sets.filter((s) => s.warmup)).toHaveLength(4);
@@ -99,6 +104,7 @@ describe('planned session preview (template only)', () => {
     expect(formatLoad(0)).toBe('BW');
     expect(formatLoad(47.5)).toBe('47.5 kg');
     expect(formatRestLabel(90)).toBe('1:30 rest');
+    expect(formatWorkLabel(DAY_TEMPLATES.A.slots[0].sets)).toBe('55 kg · 3 × 5');
     const plank = plannedLiftSummary(DAY_TEMPLATES.A.slots[3]);
     expect(plank.name).toBe('Plank');
     expect(plank.timed).toBe(true);
@@ -113,14 +119,14 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
       const preview = plannedDayPreview(DAY_TEMPLATES.A, week1, asOf);
       expect(preview.map((row) => row.slot_id)).toEqual(DAY_TEMPLATES.A.slots.map((s) => s.slot_id));
       expect(preview.map((row) => row.lastLine)).toEqual([
-        'Last: 55 kg × 5',
+        'Last: 47.5 kg × 5',
         'Last: 50 kg × 8 · Barbell',
         'Last: 12 kg × 8 · DBs',
         'Last: BW × 60s',
       ]);
       expect(preview[0]?.last).toMatchObject({
         date: '2026-09-07',
-        weight_kg: 55,
+        weight_kg: 47.5,
         reps: 5,
         exercise_id: 'squat_low_bar',
       });
@@ -129,6 +135,13 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
         expect(row).not.toHaveProperty('status');
       }
     }
+    const sunday = plannedDayPreview(DAY_TEMPLATES.A, week1, '2026-09-13');
+    expect(sunday[0]?.workLabel).toBe('47.5 kg · 3 × 5');
+    const monday = plannedDayPreview(DAY_TEMPLATES.A, week1, '2026-09-14');
+    expect(monday[0]?.workLabel).toBe('57.5 kg · 3 × 4');
+    expect(monday[0]?.warmupLabel).toBe(
+      `W ${warmupLadder(57.5, 'squat').map((s) => `${s.weight_kg} kg`).join(' → ')}`,
+    );
   });
 
   it('loads Week 1 through listComplete and still paints Last: without starting', async () => {
@@ -139,7 +152,7 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
 
     const createDraft = vi.spyOn(await import('./sessionFactory'), 'createDraftSession');
     const preview = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-13');
-    expect(preview[0]?.lastLine).toBe('Last: 55 kg × 5');
+    expect(preview[0]?.lastLine).toBe('Last: 47.5 kg × 5');
     expect(preview[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
     expect(createDraft).not.toHaveBeenCalled();
     createDraft.mockRestore();
@@ -169,5 +182,40 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
     const preview = plannedDayPreview(DAY_TEMPLATES.A, [], '2026-09-13');
     expect(preview.every((row) => row.lastLine === 'No prior log')).toBe(true);
     expect(preview[0]).not.toHaveProperty('session_id');
+  });
+
+  it('shows Last: from a 2026-09-07 complete squat log that omits status and set.completed', () => {
+    const week1 = {
+      session_id: 'w1-a-legacy',
+      date: '2026-09-07',
+      template_day: 'A' as const,
+      readiness: DEFAULT_READINESS,
+      pain_flag: false,
+      notes: '',
+      lifts: [
+        {
+          name: 'Low-bar squat',
+          exercise_id: 'squat_low_bar' as ExerciseId,
+          sets: [
+            { weight_kg: 47.5, reps: 5, rpe: 7 },
+            { weight_kg: 47.5, reps: 5, rpe: 7 },
+            { weight_kg: 47.5, reps: 5, rpe: 8 },
+          ],
+        },
+        {
+          name: 'Romanian deadlift',
+          exercise_id: 'rdl' as ExerciseId,
+          sets: [
+            { weight_kg: 50, reps: 8, rpe: 7 },
+            { weight_kg: 50, reps: 8, rpe: 7 },
+            { weight_kg: 50, reps: 8, rpe: 7.5 },
+          ],
+        },
+      ],
+    };
+    const preview = plannedDayPreview(DAY_TEMPLATES.A, [week1 as SessionLog], '2026-09-14');
+    expect(preview[0]?.lastLine).toBe('Last: 47.5 kg × 5');
+    expect(preview[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
+    expect(preview[0]?.workLabel).toBe('57.5 kg · 3 × 4');
   });
 });

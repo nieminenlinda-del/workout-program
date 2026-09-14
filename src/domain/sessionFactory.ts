@@ -6,7 +6,7 @@ import type {
   TemplateDay,
 } from '../types/session';
 import { DEFAULT_READINESS } from '../types/session';
-import { DAY_TEMPLATES } from '../data/templates';
+import { dayTemplateForDate } from './programWeek';
 import { canonicalTemplateDay, todayIsoDate } from './templateDay';
 import { withComputedLight } from './readiness';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
@@ -18,8 +18,8 @@ export function newSessionId(): string {
   return `ses_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-export function liftsFromTemplate(day: CanonicalTemplateDay): LoggedLift[] {
-  const template = DAY_TEMPLATES[day];
+export function liftsFromTemplate(day: CanonicalTemplateDay, asOf = todayIsoDate()): LoggedLift[] {
+  const template = dayTemplateForDate(day, asOf);
   return template.slots.map((slot) => {
     const meta = EXERCISE_CATALOG[slot.exercise_id];
     return {
@@ -54,7 +54,7 @@ export function createDraftSession(
     date,
     template_day: canonical,
     readiness: withComputedLight(DEFAULT_READINESS),
-    lifts: liftsFromTemplate(canonical),
+    lifts: liftsFromTemplate(canonical, date),
     pain_flag: false,
     notes: '',
     status: 'draft',

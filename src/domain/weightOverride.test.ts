@@ -9,6 +9,12 @@ function firstWorkIndex(draft: ReturnType<typeof createDraftSession>, lift = 0):
   return i;
 }
 
+function workKg(draft: ReturnType<typeof createDraftSession>, lift = 0): number {
+  const set = draft.lifts[lift]?.sets.find((s) => !s.warmup);
+  if (!set) throw new Error('no work set');
+  return set.weight_kg;
+}
+
 describe('mid-session weight override', () => {
   it('changes one set without restarting the draft or touching other lifts', () => {
     const draft = createDraftSession('A', '2026-09-07');
@@ -30,6 +36,7 @@ describe('mid-session weight override', () => {
   it('copies the override onto later unlogged work sets only — not warmups', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
+    const W = workKg(draft);
     draft.lifts[0].sets[work] = {
       ...draft.lifts[0].sets[work],
       weight_kg: 45,
@@ -46,7 +53,7 @@ describe('mid-session weight override', () => {
     ]);
     expect(
       next.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.target_weight_kg),
-    ).toEqual([55, 52.5, 52.5]);
+    ).toEqual([W, 52.5, 52.5]);
   });
 
   it('working-weight stepper skips warmups and logged work sets', () => {
@@ -68,9 +75,8 @@ describe('mid-session weight override', () => {
   it('logging set 1 at a different kg does not change leftover prescribed weights', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
-    expect(draft.lifts[0].sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([
-      55, 55, 55,
-    ]);
+    const W = workKg(draft);
+    expect(draft.lifts[0].sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([W, W, W]);
 
     const logged = logSetOnDraft(draft, 0, work, {
       weight_kg: 42.5,
@@ -81,21 +87,22 @@ describe('mid-session weight override', () => {
     });
 
     expect(logged.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([
-      42.5, 55, 55,
+      42.5, W, W,
     ]);
     expect(logged.lifts[0]?.sets.filter((s) => !s.warmup).map((s) => s.target_weight_kg)).toEqual([
-      55, 55, 55,
+      W, W, W,
     ]);
   });
 
-  it('keeps leftover work targets after logging set 1 (T1 55 × 3×5)', () => {
+  it('keeps leftover work targets after logging set 1', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
+    const W = workKg(draft);
     const planned = draft.lifts[0].sets.filter((s) => !s.warmup).map((s) => s.weight_kg);
-    expect(planned).toEqual([55, 55, 55]);
+    expect(planned).toEqual([W, W, W]);
 
     const logged = logSetOnDraft(draft, 0, work, {
-      weight_kg: 55,
+      weight_kg: W,
       reps: 5,
       rpe: 6.5,
       completed: true,
@@ -104,23 +111,24 @@ describe('mid-session weight override', () => {
 
     const workSets = logged.lifts[0]?.sets.filter((s) => !s.warmup) ?? [];
     expect(workSets[0]).toMatchObject({
-      weight_kg: 55,
+      weight_kg: W,
       reps: 5,
       completed: true,
-      target_weight_kg: 55,
+      target_weight_kg: W,
       target_reps: 5,
     });
     expect(workSets.slice(1).map((s) => ({ kg: s.weight_kg, target: s.target_weight_kg, done: s.completed }))).toEqual([
-      { kg: 55, target: 55, done: false },
-      { kg: 55, target: 55, done: false },
+      { kg: W, target: W, done: false },
+      { kg: W, target: W, done: false },
     ]);
     expect(logged.lifts[0]?.sets[0]?.warmup).toBe(true);
-    expect(formatPlanLoad(workSets[1]!)).toBe('55 kg × 5');
+    expect(formatPlanLoad(workSets[1]!)).toBe(`${W} kg × 5`);
   });
 
   it('opt-in apply-forward fills leftover working kg but leaves displayed targets', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
+    const W = workKg(draft);
     const logged = logSetOnDraft(
       draft,
       0,
@@ -138,21 +146,22 @@ describe('mid-session weight override', () => {
     expect(workSets[0]).toMatchObject({
       weight_kg: 42.5,
       completed: true,
-      target_weight_kg: 55,
+      target_weight_kg: W,
     });
     expect(loggedDiffersFromPlan(workSets[0]!)).toBe(true);
     expect(workSets.slice(1).map((s) => ({ kg: s.weight_kg, target: prescriptionWeightKg(s), done: s.completed }))).toEqual(
       [
-        { kg: 42.5, target: 55, done: false },
-        { kg: 42.5, target: 55, done: false },
+        { kg: 42.5, target: W, done: false },
+        { kg: 42.5, target: W, done: false },
       ],
     );
-    expect(formatPlanLoad(workSets[2]!)).toBe('55 kg × 5');
+    expect(formatPlanLoad(workSets[2]!)).toBe(`${W} kg × 5`);
   });
 
   it('snapshots leftover working kg as the plan when older drafts omit targets', () => {
     const draft = createDraftSession('A', '2026-09-07');
     const work = firstWorkIndex(draft);
+    const W = workKg(draft);
     const later = draft.lifts[0].sets[work + 1];
     later.target_weight_kg = undefined;
     later.target_reps = undefined;
@@ -166,7 +175,7 @@ describe('mid-session weight override', () => {
     expect(logged.lifts[0]?.sets[work + 1]).toMatchObject({
       weight_kg: 40,
       completed: false,
-      target_weight_kg: 55,
+      target_weight_kg: W,
       target_reps: 5,
     });
   });

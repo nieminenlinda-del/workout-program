@@ -8,6 +8,7 @@ import {
   lastMatchingPerformance,
   type LastPerformance,
 } from './lastPerformance';
+import { applyProgramWeek } from './programWeek';
 import { isWarmupSet, setDisplayLabel, workSets } from './sets';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
 
@@ -29,8 +30,11 @@ export interface PlannedLiftSummary {
   alternatives: string[];
   optional: boolean;
   scheme: string;
+  /** `57.5 kg · 3 × 4` — work kg first so the collapsed line is not a warmup trail. */
+  workLabel: string;
   warmupLabel: string | null;
   restLabel: string | null;
+  note: string | null;
   timed: boolean;
   sets: PlannedSetLine[];
 }
@@ -96,6 +100,16 @@ export function formatWarmupLabel(sets: SeedSet[]): string | null {
   return `W ${kg.join(' → ')}`;
 }
 
+/** Collapsed work line, e.g. `57.5 kg · 3 × 4`. Mixed kg falls back to the scheme only. */
+export function formatWorkLabel(sets: SeedSet[], timed = false): string {
+  const work = workSets(sets);
+  const scheme = formatSetScheme(sets, timed);
+  if (work.length === 0) return scheme;
+  const first = work[0].weight_kg;
+  if (work.some((s) => s.weight_kg !== first)) return scheme;
+  return `${formatLoad(first)} · ${scheme}`;
+}
+
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
   const sets = attachWarmups(slot.sets, warmupKindFor(slot.exercise_id));
   const restSec = uniformRestSeconds(sets);
@@ -107,8 +121,10 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
     scheme: formatSetScheme(sets, timed),
+    workLabel: formatWorkLabel(sets, timed),
     warmupLabel: formatWarmupLabel(sets),
     restLabel: restSec != null ? formatRestLabel(restSec) : null,
+    note: slot.note ?? null,
     timed,
     sets: sets.map((set, index) => ({
       setNumber: index + 1,
@@ -124,7 +140,8 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
 }
 
 /**
- * Read-only upcoming preview: seed template + prior-log Last: lines.
+ * Read-only upcoming preview: week-aware template + prior-log Last: lines.
+ * Uses the same Block A T1 overlay as `createDraftSession` so Start matches Preview.
  * Uses `lastMatchingPerformance` (same-day family, Week 1 → Week 2, `date < asOf`).
  * Does not call `createDraftSession` or write IndexedDB.
  */
@@ -133,8 +150,9 @@ export function plannedDayPreview(
   logs: readonly SessionLog[] = [],
   asOf: string,
 ): PlannedLiftPreview[] {
-  return template.slots.map((slot) => {
-    const last = lastMatchingPerformance(logs, slot.exercise_id, template.id, asOf);
+  const resolved = applyProgramWeek(template, asOf);
+  return resolved.slots.map((slot) => {
+    const last = lastMatchingPerformance(logs, slot.exercise_id, resolved.id, asOf);
     return {
       ...plannedLiftSummary(slot),
       exercise_id: slot.exercise_id,

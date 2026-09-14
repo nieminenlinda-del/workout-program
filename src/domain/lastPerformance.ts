@@ -54,10 +54,15 @@ export function slotFamilyIds(exerciseId: ExerciseId, templateDay: TemplateDay):
   return slot ? slotExerciseIds(slot) : [exerciseId];
 }
 
+/** True for logged work. Explicit `completed: false` stays out; missing counts (legacy). */
+export function isLoggedWorkSet(set: LoggedSet): boolean {
+  return !isWarmupSet(set) && set.completed !== false;
+}
+
 export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
   let best: LoggedSet | null = null;
   for (const set of sets) {
-    if (!set.completed || isWarmupSet(set)) continue;
+    if (!isLoggedWorkSet(set)) continue;
     if (!best) {
       best = set;
       continue;
@@ -73,10 +78,17 @@ export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
   return best;
 }
 
-/** Leading YYYY-MM-DD, or empty when the value is not a calendar date. */
+/**
+ * Leading calendar day, or empty when the value is not a date.
+ * Accepts `YYYY-MM-DD`, unpadded `YYYY-M-D`, and a trailing timestamp
+ * (`2026-09-07T18:00:00.000Z`). Do not Date.parse ISO dates — UTC midnight
+ * becomes the previous local day west of UTC.
+ */
 export function calendarYmd(value: string | undefined | null): string {
-  const match = String(value ?? '').match(/^(\d{4}-\d{2}-\d{2})/);
-  return match?.[1] ?? '';
+  const raw = String(value ?? '').trim();
+  const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!match) return '';
+  return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
 }
 
 function liftForExercise(

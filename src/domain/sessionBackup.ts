@@ -13,6 +13,9 @@ import {
 import type { SessionRepository } from '../db/repository';
 import { createDraftSession } from './sessionFactory';
 import { isWarmupSet } from './sets';
+import { withComputedLight } from './readiness';
+import { canonicalTemplateDay } from './templateDay';
+import { calendarYmd } from './lastPerformance';
 
 export const BACKUP_SCHEMA = 'linda-lift-sessions';
 export const BACKUP_SCHEMA_VERSION = 1;
@@ -28,6 +31,16 @@ export const WEEK1_REFERENCE_DAYS: readonly { day: CanonicalTemplateDay; date: s
   { day: 'C', date: '2026-09-10' },
   { day: 'D', date: '2026-09-11' },
 ];
+
+/** Reconstructed Mon 14 Sep 2026 Day A after a wiped home-screen IndexedDB. */
+export const MON14_DAY_A_DATE = '2026-09-14';
+export const MON14_DAY_A_SESSION_ID = 'linda-lift-seed-2026-09-14-A';
+export const MON14_DAY_A_PLANK_KG = 5;
+export const MON14_DAY_A_NOTES =
+  'Mon 14 Day A reference / reconstructed (recovery). Known: squat 57.5×3×4 soft GREEN, plank 5 kg timed hold. Other lifts (RDL, reverse lunge) are Week 2 template placeholders — not gym-logged numbers.';
+
+export const A2HS_EMPTY_STORE_LINE =
+  'Add to Home Screen again uses a new empty store; export JSON before deleting the icon.';
 
 export class SessionBackupError extends Error {
   constructor(message: string) {
@@ -231,9 +244,7 @@ export function week1LastReferenceSessions(): SessionDraft[] {
     draft.session_id = week1ReferenceSessionId(day);
     draft.status = 'complete';
     draft.notes = WEEK1_REFERENCE_NOTES;
-    for (const lift of draft.lifts) {
-      lift.sets = lift.sets.map((set) => (isWarmupSet(set) ? set : { ...set, completed: true }));
-    }
+    markWorkSetsComplete(draft);
     return draft;
   });
 }
@@ -267,9 +278,67 @@ export async function seedWeek1LastReference(repo: SessionRepository): Promise<n
   return rows.length;
 }
 
+function markWorkSetsComplete(draft: SessionDraft): void {
+  for (const lift of draft.lifts) {
+    lift.sets = lift.sets.map((set) => (isWarmupSet(set) ? set : { ...set, completed: true }));
+  }
+}
+
+export function isMon14DayAReferenceSession(sessionId: string): boolean {
+  return sessionId === MON14_DAY_A_SESSION_ID;
+}
+
+export function isReconstructedReferenceSession(sessionId: string): boolean {
+  return isWeek1ReferenceSession(sessionId) || isMon14DayAReferenceSession(sessionId);
+}
+
+export function historyHasMon14DayA(
+  history: readonly Pick<SessionLog, 'date' | 'template_day'>[],
+): boolean {
+  return history.some(
+    (row) =>
+      calendarYmd(row.date) === MON14_DAY_A_DATE && canonicalTemplateDay(row.template_day) === 'A',
+  );
+}
+
+/**
+ * Known Mon 14 Day A: W2 squat 57.5×3×4, plank 5 kg, other lifts from the
+ * Week 2 template. Soft GREEN. Labeled reference / reconstructed — not exact gym accessories.
+ */
+export function mon14DayAReferenceSession(): SessionDraft {
+  const draft = createDraftSession('A', MON14_DAY_A_DATE);
+  draft.session_id = MON14_DAY_A_SESSION_ID;
+  draft.status = 'complete';
+  draft.notes = MON14_DAY_A_NOTES;
+  draft.readiness = withComputedLight(DEFAULT_READINESS, 'GREEN');
+  for (const lift of draft.lifts) {
+    lift.sets = lift.sets.map((set) => {
+      if (isWarmupSet(set)) return set;
+      if (lift.exercise_id === 'plank') {
+        return {
+          ...set,
+          weight_kg: MON14_DAY_A_PLANK_KG,
+          target_weight_kg: MON14_DAY_A_PLANK_KG,
+          completed: true,
+        };
+      }
+      return { ...set, completed: true };
+    });
+  }
+  return draft;
+}
+
+export async function seedMon14DayAReference(repo: SessionRepository): Promise<number> {
+  await repo.save(mon14DayAReferenceSession());
+  return 1;
+}
+
 export function historyVisibilityLine(historyCount: number): string {
   if (historyCount <= 0) {
-    return 'Session log empty on this install (0) — Last: needs past sessions here (PWA ≠ Safari).';
+    return (
+      'Session log empty on this install (0). Restore Week 1 weights, restore today’s Mon 14 Day A, or import session JSON here — Last: cannot fill in from a wiped store. ' +
+      A2HS_EMPTY_STORE_LINE
+    );
   }
   return `Last: from ${historyCount} session${historyCount === 1 ? '' : 's'} on this install.`;
 }

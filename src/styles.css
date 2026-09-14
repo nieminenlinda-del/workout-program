@@ -361,6 +361,15 @@ button {
   font-size: 22px;
 }
 
+.recovery-block-empty {
+  border-width: 2px;
+  background: rgba(232, 160, 74, 0.16);
+}
+
+.recovery-block-empty h2 {
+  font-size: 24px;
+}
+
 .preview-toggle {
   align-self: center;
   font-size: 12px;

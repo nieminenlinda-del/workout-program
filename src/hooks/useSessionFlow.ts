@@ -8,6 +8,7 @@ import { todayIsoDate } from '../domain/templateDay';
 import { refreshDraftWarmups } from '../domain/warmupLadder';
 import {
   importSessionBackupText,
+  seedMon14DayAReference,
   seedWeek1LastReference,
   type ImportMode,
 } from '../domain/sessionBackup';
@@ -140,6 +141,12 @@ export function useSessionFlow(repo: SessionRepository) {
     return count;
   }, [repo, refreshHistory]);
 
+  const seedMon14 = useCallback(async () => {
+    const count = await seedMon14DayAReference(repo);
+    await refreshHistory();
+    return count;
+  }, [repo, refreshHistory]);
+
   return {
     view,
     setView,
@@ -158,5 +165,6 @@ export function useSessionFlow(repo: SessionRepository) {
     refreshHistory,
     importSessions,
     seedWeek1,
+    seedMon14,
   };
 }

@@ -4,7 +4,7 @@ import type { ImportMode } from '../domain/sessionBackup';
 export const RESTORE_WEEK1_BUTTON = 'Restore Week 1 weights';
 export const RESTORE_WEEK1_DONE = 'Restored Week 1 weights';
 export const RESTORE_WEEK1_CONFIRM =
-  'Write known Week 1 T1s into this PWA’s Session log so Last: works? Same ids are replaced; other logs stay. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
+  'Restore Week 1 weights? This writes known Week 1 T1s into this PWA’s Session log so Last: works. Same ids are replaced; other logs stay. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
 export const RESTORE_WEEK1_HELPER_COMPACT =
   'Last: needs past sessions in this PWA’s Session log. Home-screen store ≠ Safari. Restore Week 1 weights writes known Week 1 T1s here so Last: works — it does not change Week 2 squat 57.5.';
 export const RESTORE_WEEK1_HELPER =

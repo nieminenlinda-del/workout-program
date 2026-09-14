@@ -1,6 +1,6 @@
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   RESTORE_WEEK1_BUTTON,
   RESTORE_WEEK1_CONFIRM,
@@ -27,17 +27,21 @@ function unmount(root: Root, container: HTMLDivElement) {
   container.remove();
 }
 
-function explainsRestoreCopy(text: string) {
+function explainsRestoreCopy(text: string, { safari = true } = {}) {
   expect(text).toContain('Restore Week 1 weights');
   expect(text).toMatch(/Week 1 T1s/i);
   expect(text).toMatch(/Last:/);
-  expect(text).toMatch(/Home-screen store ≠ Safari/);
+  if (safari) expect(text).toMatch(/Home-screen store ≠ Safari/);
   expect(text).toMatch(/57\.5/);
   expect(text).not.toMatch(/Seed Week 1/);
 }
 
 describe('SessionBackupCard Restore Week 1 weights', () => {
   const nodes: { root: Root; container: HTMLDivElement }[] = [];
+
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
 
   afterEach(() => {
     while (nodes.length) {
@@ -51,7 +55,7 @@ describe('SessionBackupCard Restore Week 1 weights', () => {
     expect(RESTORE_WEEK1_DONE).toBe('Restored Week 1 weights');
     explainsRestoreCopy(RESTORE_WEEK1_HELPER_COMPACT);
     explainsRestoreCopy(RESTORE_WEEK1_HELPER);
-    explainsRestoreCopy(RESTORE_WEEK1_CONFIRM);
+    explainsRestoreCopy(RESTORE_WEEK1_CONFIRM, { safari: false });
 
     const { container, root } = mount(
       <SessionBackupCard

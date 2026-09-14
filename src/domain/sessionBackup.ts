@@ -45,8 +45,10 @@ export const MON14_DAY_A_LUNGE_KG = 37.5;
 export const MON14_DAY_A_LUNGE_REPS = 8;
 export const MON14_DAY_A_LUNGE_RPE = 7;
 export const MON14_DAY_A_PLANK_KG = 5;
+export const MON14_DAY_A_PLANK_RPE = 7;
+export const MON14_DAY_A_PLANK_SECONDS = [120, 120, 60] as const;
 export const MON14_DAY_A_NOTES =
-  'Mon 14 Day A reference / reconstructed (recovery). Known gym-logged: squat 57.5×3×4 @7 soft GREEN, RDL 50×8×3 @6, reverse lunge 37.5×8×3 @7, plank 5 kg timed hold.';
+  'Mon 14 Day A reference / reconstructed (recovery). Known gym-logged: squat 57.5×3×4 @7 soft GREEN, RDL 50×8×3 @6, reverse lunge 37.5×8×3 @7, plank +5 kg 120s/120s/60s @7.';
 
 export const A2HS_EMPTY_STORE_LINE =
   'Add to Home Screen again uses a new empty store; export JSON before deleting the icon.';
@@ -312,8 +314,8 @@ export function historyHasMon14DayA(
 
 /**
  * Known gym-logged Mon 14 Day A: squat 57.5×3×4 @7 soft GREEN, RDL 50×8×3 @6,
- * reverse lunge 37.5×8×3 @7, plank 5 kg. Labeled reference / reconstructed.
- * Does not change Week 2 program prescriptions.
+ * reverse lunge 37.5×8×3 @7, plank +5 kg 120s/120s/60s @7.
+ * Labeled reference / reconstructed. Does not change Week 2 program prescriptions.
  */
 export function mon14DayAReferenceSession(): SessionDraft {
   const draft = createDraftSession('A', MON14_DAY_A_DATE);
@@ -322,8 +324,11 @@ export function mon14DayAReferenceSession(): SessionDraft {
   draft.notes = MON14_DAY_A_NOTES;
   draft.readiness = withComputedLight(DEFAULT_READINESS, 'GREEN');
   for (const lift of draft.lifts) {
+    let workIndex = 0;
     lift.sets = lift.sets.map((set) => {
       if (isWarmupSet(set)) return set;
+      const index = workIndex;
+      workIndex += 1;
       if (lift.exercise_id === 'squat_low_bar') {
         return {
           ...set,
@@ -358,10 +363,14 @@ export function mon14DayAReferenceSession(): SessionDraft {
         };
       }
       if (lift.exercise_id === 'plank') {
+        const seconds = MON14_DAY_A_PLANK_SECONDS[index] ?? MON14_DAY_A_PLANK_SECONDS[2];
         return {
           ...set,
           weight_kg: MON14_DAY_A_PLANK_KG,
+          reps: seconds,
+          rpe: MON14_DAY_A_PLANK_RPE,
           target_weight_kg: MON14_DAY_A_PLANK_KG,
+          target_reps: seconds,
           completed: true,
         };
       }

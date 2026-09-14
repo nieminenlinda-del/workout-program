@@ -103,9 +103,11 @@ describe('SessionBackupCard Restore Week 1 weights', () => {
     expect(RESTORE_WEEK1_HELPER).toMatch(/Mon 14 Day A/);
     expect(RESTORE_WEEK1_HELPER).toMatch(/RDL 50×8×3 @6/);
     expect(RESTORE_WEEK1_HELPER).toMatch(/reverse lunge 37\.5×8×3 @7/);
+    expect(RESTORE_WEEK1_HELPER).toMatch(/plank \+5 kg 120s\/120s\/60s @7/);
     expect(RESTORE_WEEK1_HELPER).not.toMatch(/other lifts are Week 2 template placeholders/);
     expect(RESTORE_MON14_CONFIRM).toMatch(/RDL 50×8×3 @6/);
     expect(RESTORE_MON14_CONFIRM).toMatch(/reverse lunge 37\.5×8×3 @7/);
+    expect(RESTORE_MON14_CONFIRM).toMatch(/plank \+5 kg 120s\/120s\/60s @7/);
     expect(RESTORE_MON14_CONFIRM).toMatch(/gym-logged/);
     expect(RESTORE_MON14_CONFIRM).not.toMatch(/Accessories are template placeholders/);
 

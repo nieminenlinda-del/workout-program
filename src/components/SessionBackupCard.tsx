@@ -3,10 +3,12 @@ import type { ImportMode } from '../domain/sessionBackup';
 
 export const RESTORE_WEEK1_BUTTON = 'Restore Week 1 weights';
 export const RESTORE_WEEK1_DONE = 'Restored Week 1 weights';
+export const RESTORE_WEEK1_TITLE_EMPTY = 'Session log empty';
+export const RESTORE_WEEK1_TITLE_MISSING_LAST = 'Last: missing on this install';
 export const RESTORE_WEEK1_CONFIRM =
   'Restore Week 1 weights? This writes known Week 1 T1s into this PWA’s Session log so Last: works. Same ids are replaced; other logs stay. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
 export const RESTORE_WEEK1_HELPER_COMPACT =
-  'Last: needs past sessions in this PWA’s Session log. Home-screen store ≠ Safari. Restore Week 1 weights writes known Week 1 T1s here so Last: works — it does not change Week 2 squat 57.5.';
+  'Last: needs matching prior work in this PWA’s Session log — a saved session that is not Week 1 T1s still shows No prior log. Home-screen store ≠ Safari. Restore Week 1 weights writes known Week 1 T1s here so Last: works — it does not change Week 2 squat 57.5.';
 export const RESTORE_WEEK1_HELPER =
   'Export this install’s completed sessions as JSON (same idea as Ravinto meal backup). Import merges by session id. Restore Week 1 weights writes known Week 1 T1s into this PWA’s Session log so Last: works. Home-screen store ≠ Safari. Does not change Week 2 squat 57.5. Accessories are template placeholders, not gym-logged numbers.';
 
@@ -68,7 +70,13 @@ export function SessionBackupCard({
   return (
     <section className={compact ? 'recovery-block' : 'card'}>
       <p className="kicker">{compact ? 'This install' : 'Backup'}</p>
-      <h2>{compact ? 'Session log empty' : 'Session JSON'}</h2>
+      <h2>
+        {compact
+          ? historyCount === 0
+            ? RESTORE_WEEK1_TITLE_EMPTY
+            : RESTORE_WEEK1_TITLE_MISSING_LAST
+          : 'Session JSON'}
+      </h2>
       <p className="muted">
         {compact ? RESTORE_WEEK1_HELPER_COMPACT : RESTORE_WEEK1_HELPER}
       </p>

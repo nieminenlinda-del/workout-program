@@ -38,6 +38,7 @@ describe('set prescription', () => {
       formatPlanLoad({ weight_kg: 0, reps: 30, target_weight_kg: 0, target_reps: 30 }, true),
     ).toBe('BW × 30s');
     expect(formatLoggedLoad({ weight_kg: 0, reps: 60, amrap: false }, true)).toBe('BW × 60s');
+    expect(formatLoggedLoad({ weight_kg: 5, reps: 60, amrap: false }, true)).toBe('5 kg × 60s');
   });
 
   it('flags a logged set only when actual kg/reps left the plan', () => {

@@ -12,6 +12,7 @@ import {
   plannedDayPreview,
   plannedLiftSummary,
   uniqueAltNames,
+  shouldOfferHomeWeek1Restore,
 } from './workoutPreview';
 import { warmupLadder } from './warmupLadder';
 import { DEFAULT_READINESS } from '../types/session';
@@ -110,6 +111,7 @@ describe('planned session preview (template only)', () => {
     expect(plank.name).toBe('Plank');
     expect(plank.timed).toBe(true);
     expect(plank.scheme).toBe('3 × 60s');
+    expect(plank.workLabel).toBe('BW · 3 × 60s');
   });
 });
 
@@ -225,5 +227,25 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
     expect(preview[0]?.lastLine).toBe('Last: 47.5 kg × 5');
     expect(preview[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
     expect(preview[0]?.workLabel).toBe('57.5 kg · 3 × 4');
+  });
+
+  it('offers home Restore when Session log (1) does not paint T1 Last:', () => {
+    expect(shouldOfferHomeWeek1Restore(plannedDayPreview(DAY_TEMPLATES.A, [], '2026-09-14'))).toBe(
+      true,
+    );
+    expect(
+      shouldOfferHomeWeek1Restore(plannedDayPreview(DAY_TEMPLATES.A, week1Logs(), '2026-09-14')),
+    ).toBe(false);
+
+    const otherDay = completeAllWorkSets('B', '2026-09-08');
+    const unmatched = plannedDayPreview(DAY_TEMPLATES.A, [otherDay], '2026-09-14');
+    expect(unmatched[0]?.lastLine).toBe('No prior log');
+    expect(shouldOfferHomeWeek1Restore(unmatched)).toBe(true);
+    expect(unmatched[0]?.workLabel).toBe('57.5 kg · 3 × 4');
+
+    const sameDaySquat = completeAllWorkSets('A', '2026-09-14');
+    expect(
+      shouldOfferHomeWeek1Restore(plannedDayPreview(DAY_TEMPLATES.A, [sameDaySquat], '2026-09-14')),
+    ).toBe(true);
   });
 });

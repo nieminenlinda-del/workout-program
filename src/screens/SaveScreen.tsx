@@ -1,6 +1,8 @@
 import type { SessionDraft } from '../types/session';
 import { completedSetCount } from '../domain/sessionFactory';
 import { isWarmupSet, workSets } from '../domain/sets';
+import { formatLoggedLoad } from '../domain/setPrescription';
+import { isTimedHold } from '../types/exercises';
 import { LightBadge } from '../components/LightBadge';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 
@@ -56,7 +58,7 @@ export function SaveScreen({
               <strong>{lift.name}</strong>
               <span>
                 {doneWork.length}/{work.length || lift.sets.length}
-                {top ? ` · ${top.weight_kg}×${top.reps}` : ''}
+                {top ? ` · ${formatLoggedLoad(top, isTimedHold(lift.exercise_id))}` : ''}
               </span>
             </li>
           );

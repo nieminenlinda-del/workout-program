@@ -6,7 +6,7 @@ import { completedSetCount } from '../domain/sessionFactory';
 import { setDisplayLabel } from '../domain/sets';
 import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isTimedHold } from '../types/exercises';
 import { liftEquipment } from '../domain/equipment';
-import { isWeek1ReferenceSession, type ImportMode } from '../domain/sessionBackup';
+import { isReconstructedReferenceSession, type ImportMode } from '../domain/sessionBackup';
 
 export function HistoryScreen({
   sessions,
@@ -15,6 +15,7 @@ export function HistoryScreen({
   onExport,
   onImportSessions,
   onSeedWeek1,
+  onSeedMon14,
 }: {
   sessions: SessionDraft[];
   onBack: () => void;
@@ -22,6 +23,7 @@ export function HistoryScreen({
   onExport: () => void;
   onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
   onSeedWeek1: () => Promise<number>;
+  onSeedMon14: () => Promise<number>;
 }) {
   return (
     <main className="screen">
@@ -34,9 +36,14 @@ export function HistoryScreen({
       </header>
 
       {sessions.length === 0 ? (
-        <section className="card">
-          <p className="muted">No saved sessions yet. Finish today’s workout to persist one.</p>
-        </section>
+        <SessionBackupCard
+          showExport
+          historyCount={0}
+          onExport={onExport}
+          onImport={onImportSessions}
+          onSeed={onSeedWeek1}
+          onSeedMon14={onSeedMon14}
+        />
       ) : (
         <ul className="history-list">
           {sessions.map((s) => {
@@ -48,7 +55,9 @@ export function HistoryScreen({
                   <div>
                     <p className="kicker">
                       {formatDisplayDate(s.date)}
-                      {isWeek1ReferenceSession(s.session_id) ? ' · Reference' : ''}
+                      {isReconstructedReferenceSession(s.session_id)
+                        ? ' · Reference / reconstructed'
+                        : ''}
                     </p>
                     <strong>{TEMPLATE_DAY_LABELS[day]}</strong>
                     <p className="muted">
@@ -63,13 +72,16 @@ export function HistoryScreen({
         </ul>
       )}
 
-      <SessionBackupCard
-        showExport
-        historyCount={sessions.length}
-        onExport={onExport}
-        onImport={onImportSessions}
-        onSeed={onSeedWeek1}
-      />
+      {sessions.length > 0 ? (
+        <SessionBackupCard
+          showExport
+          historyCount={sessions.length}
+          onExport={onExport}
+          onImport={onImportSessions}
+          onSeed={onSeedWeek1}
+          onSeedMon14={onSeedMon14}
+        />
+      ) : null}
     </main>
   );
 }

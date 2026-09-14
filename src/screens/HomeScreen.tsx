@@ -23,6 +23,7 @@ export function HomeScreen({
   onHealth,
   onImportSessions,
   onSeedWeek1,
+  onSeedMon14,
 }: {
   date: string;
   templateDay: CanonicalTemplateDay;
@@ -37,12 +38,23 @@ export function HomeScreen({
   onHealth: () => void;
   onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
   onSeedWeek1: () => Promise<number>;
+  onSeedMon14: () => Promise<number>;
 }) {
   const template = DAY_TEMPLATES[templateDay];
   const meso = getMesocycleContext(date);
   const offerWeek1Restore = shouldOfferHomeWeek1Restore(
     plannedDayPreview(template, history, date),
   );
+
+  const recoveryCard = offerWeek1Restore ? (
+    <SessionBackupCard
+      compact
+      historyCount={historyCount}
+      onImport={onImportSessions}
+      onSeed={onSeedWeek1}
+      onSeedMon14={onSeedMon14}
+    />
+  ) : null;
 
   return (
     <main className="screen">
@@ -99,14 +111,7 @@ export function HomeScreen({
         <h2 className="template-heading">{template.title}</h2>
         <p className="muted">{template.focus}</p>
         <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
-        {offerWeek1Restore ? (
-          <SessionBackupCard
-            compact
-            historyCount={historyCount}
-            onImport={onImportSessions}
-            onSeed={onSeedWeek1}
-          />
-        ) : null}
+        {recoveryCard}
         <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
           {draft ? 'Replace draft & start' : 'Start session'}
         </button>

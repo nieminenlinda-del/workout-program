@@ -5,14 +5,22 @@ import { createDraftSession } from './sessionFactory';
 import { isWarmupSet } from './sets';
 import { plannedDayPreview } from './workoutPreview';
 import {
+  A2HS_EMPTY_STORE_LINE,
   BACKUP_SCHEMA,
   BACKUP_SCHEMA_VERSION,
   buildSessionBackup,
+  historyHasMon14DayA,
   historyVisibilityLine,
   importSessionBackup,
   importSessionBackupText,
   lastLogGapLine,
+  MON14_DAY_A_DATE,
+  MON14_DAY_A_NOTES,
+  MON14_DAY_A_PLANK_KG,
+  MON14_DAY_A_SESSION_ID,
+  mon14DayAReferenceSession,
   parseSessionBackupJson,
+  seedMon14DayAReference,
   seedWeek1LastReference,
   sessionBackupFilename,
   week1LastReferenceSessions,
@@ -20,10 +28,13 @@ import {
 } from './sessionBackup';
 
 describe('history visibility copy', () => {
-  it('names an empty install and surfaces the zero count', () => {
-    expect(historyVisibilityLine(0)).toBe(
-      'Session log empty on this install (0) — Last: needs past sessions here (PWA ≠ Safari).',
-    );
+  it('names an empty install and surfaces restore, import, and the home-screen wipe warning', () => {
+    const empty = historyVisibilityLine(0);
+    expect(empty).toMatch(/Session log empty on this install \(0\)/);
+    expect(empty).toMatch(/Restore Week 1 weights/);
+    expect(empty).toMatch(/Mon 14 Day A/);
+    expect(empty).toMatch(/import session JSON/i);
+    expect(empty).toContain(A2HS_EMPTY_STORE_LINE);
     expect(historyVisibilityLine(4)).toBe('Last: from 4 sessions on this install.');
     expect(historyVisibilityLine(1)).toBe('Last: from 1 session on this install.');
   });
@@ -76,6 +87,61 @@ describe('Restore Week 1 weights', () => {
     expect(
       plannedDayPreview(DAY_TEMPLATES.D, history, '2026-09-14')[0]?.lastLine,
     ).toBe('Last: 40 kg × 5');
+  });
+});
+
+describe('Restore today’s Mon 14 Day A', () => {
+  it('writes a reconstructed Day A on 2026-09-14 without changing W2 program loads', async () => {
+    const row = mon14DayAReferenceSession();
+    expect(row.session_id).toBe(MON14_DAY_A_SESSION_ID);
+    expect(row.date).toBe(MON14_DAY_A_DATE);
+    expect(row.template_day).toBe('A');
+    expect(row.status).toBe('complete');
+    expect(row.readiness.light).toBe('GREEN');
+    expect(row.notes).toBe(MON14_DAY_A_NOTES);
+    expect(row.notes).toMatch(/reference \/ reconstructed/i);
+    expect(row.notes).toMatch(/placeholders/i);
+
+    const squat = row.lifts.find((lift) => lift.exercise_id === 'squat_low_bar');
+    const squatWork = squat?.sets.filter((set) => !isWarmupSet(set)) ?? [];
+    expect(squatWork).toHaveLength(3);
+    expect(squatWork.every((set) => set.weight_kg === 57.5 && set.reps === 4 && set.completed)).toBe(
+      true,
+    );
+
+    const plank = row.lifts.find((lift) => lift.exercise_id === 'plank');
+    const plankWork = plank?.sets.filter((set) => !isWarmupSet(set)) ?? [];
+    expect(plankWork.length).toBeGreaterThan(0);
+    expect(
+      plankWork.every((set) => set.weight_kg === MON14_DAY_A_PLANK_KG && set.reps === 60 && set.completed),
+    ).toBe(true);
+
+    const rdl = row.lifts.find((lift) => lift.exercise_id === 'rdl');
+    const rdlWork = rdl?.sets.filter((set) => !isWarmupSet(set)) ?? [];
+    expect(rdlWork.every((set) => set.weight_kg === 50 && set.reps === 8 && set.completed)).toBe(true);
+
+    const lunge = row.lifts.find((lift) => lift.exercise_id === 'reverse_lunge');
+    const lungeWork = lunge?.sets.filter((set) => !isWarmupSet(set)) ?? [];
+    expect(lungeWork.every((set) => set.weight_kg === 12 && set.reps === 8 && set.completed)).toBe(
+      true,
+    );
+
+    const repo = createMemoryRepository();
+    expect(await seedMon14DayAReference(repo)).toBe(1);
+    const history = await repo.listComplete(60);
+    expect(history).toHaveLength(1);
+    expect(historyHasMon14DayA(history)).toBe(true);
+
+    const sameDay = plannedDayPreview(DAY_TEMPLATES.A, history, MON14_DAY_A_DATE);
+    expect(sameDay[0]?.workLabel).toBe('57.5 kg · 3 × 4');
+    expect(sameDay[0]?.lastLine).toBe('No prior log');
+
+    const nextWeek = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-21');
+    expect(nextWeek[0]?.workLabel).toBe('57.5 kg · 3 × 4');
+    expect(nextWeek[0]?.lastLine).toBe('Last: 57.5 kg × 4');
+    expect(nextWeek[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
+    expect(nextWeek[2]?.lastLine).toBe('Last: 12 kg × 8 · DBs');
+    expect(nextWeek[3]?.lastLine).toBe('Last: 5 kg × 60s');
   });
 });
 

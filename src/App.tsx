@@ -86,6 +86,7 @@ export default function App() {
           onHealth={() => flow.setView('health')}
           onImportSessions={(text, mode) => flow.importSessions(text, mode)}
           onSeedWeek1={() => flow.seedWeek1()}
+          onSeedMon14={() => flow.seedMon14()}
         />
       ) : null}
 
@@ -130,6 +131,7 @@ export default function App() {
           }}
           onImportSessions={(text, mode) => flow.importSessions(text, mode)}
           onSeedWeek1={() => flow.seedWeek1()}
+          onSeedMon14={() => flow.seedMon14()}
         />
       ) : null}
 

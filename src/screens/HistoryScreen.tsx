@@ -4,9 +4,10 @@ import { SessionBackupCard } from '../components/SessionBackupCard';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 import { completedSetCount } from '../domain/sessionFactory';
 import { setDisplayLabel } from '../domain/sets';
-import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isTimedHold } from '../types/exercises';
+import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isAssistedLoad, isTimedHold } from '../types/exercises';
 import { liftEquipment } from '../domain/equipment';
 import { isReconstructedReferenceSession, type ImportMode } from '../domain/sessionBackup';
+import { formatLoad } from '../domain/formatLoad';
 
 export function HistoryScreen({
   sessions,
@@ -121,7 +122,8 @@ export function DetailScreen({
           <ul className="detail-sets">
             {lift.sets.map((set, i) => (
               <li key={i} className={set.completed ? '' : 'dim'}>
-                {setDisplayLabel(lift.sets, i)}. {set.weight_kg > 0 ? `${set.weight_kg} kg` : 'BW'} × {set.reps}
+                {setDisplayLabel(lift.sets, i)}.{' '}
+                {formatLoad(set.weight_kg, isAssistedLoad(lift.exercise_id))} × {set.reps}
                 {isTimedHold(lift.exercise_id) ? 's' : ''}
                 {set.amrap ? ' AMRAP' : ''} @ {set.rpe} RPE
                 {set.completed ? '' : ' (not logged)'}

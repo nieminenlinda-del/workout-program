@@ -2,6 +2,7 @@ import {
   EQUIPMENT_LABELS,
   EXERCISE_CATALOG,
   exerciseEquipment,
+  isAssistedLoad,
   isTimedHold,
   type Equipment,
   type ExerciseId,
@@ -24,8 +25,9 @@ import { canonicalTemplateDay } from './templateDay';
  *
  * **Top work set rule:** among completed sets of the matching lift, pick the
  * highest `weight_kg`; ties go to highest `reps`; still tied → last such set
- * in session order. Sets flagged `warmup` are ignored (empty-bar ladders must
- * not become “last week”). Bodyweight work is `0 kg` / BW and still counts.
+ * in session order. Assisted vertical pulls invert kg (lowest assistance is
+ * hardest). Sets flagged `warmup` are ignored (empty-bar ladders must not
+ * become “last week”). Bodyweight work is `0 kg` / BW and still counts.
  *
  * **Session match:** most recent log with calendar date **before** `asOf`.
  * There is no ISO-week / mesocycle / “same week only” filter — Week 1 Friday
@@ -59,7 +61,7 @@ export function isLoggedWorkSet(set: LoggedSet): boolean {
   return !isWarmupSet(set) && set.completed !== false;
 }
 
-export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
+export function topWorkSet(sets: readonly LoggedSet[], assisted = false): LoggedSet | null {
   let best: LoggedSet | null = null;
   for (const set of sets) {
     if (!isLoggedWorkSet(set)) continue;
@@ -67,7 +69,12 @@ export function topWorkSet(sets: readonly LoggedSet[]): LoggedSet | null {
       best = set;
       continue;
     }
-    if (set.weight_kg > best.weight_kg) {
+    if (assisted) {
+      if (set.weight_kg < best.weight_kg) {
+        best = set;
+        continue;
+      }
+    } else if (set.weight_kg > best.weight_kg) {
       best = set;
       continue;
     }
@@ -117,7 +124,7 @@ function fromSession(
 ): LastPerformance | null {
   const lift = liftForExercise(session.lifts, exerciseId, family);
   if (!lift) return null;
-  const top = topWorkSet(lift.sets);
+  const top = topWorkSet(lift.sets, isAssistedLoad(lift.exercise_id));
   if (!top) return null;
   return {
     exercise_id: lift.exercise_id,
@@ -172,7 +179,7 @@ export function lastPerformanceByExercise(
 export function formatLastPerformance(perf: LastPerformance | null): string {
   if (!perf) return 'No prior log';
   const count = isTimedHold(perf.exercise_id) ? `${perf.reps}s` : String(perf.reps);
-  const load = `Last: ${formatLoad(perf.weight_kg)} × ${count}`;
+  const load = `Last: ${formatLoad(perf.weight_kg, isAssistedLoad(perf.exercise_id))} × ${count}`;
   if (!perf.equipment || perf.equipment === 'bodyweight') return load;
   if (EXERCISE_CATALOG[perf.exercise_id]?.role === 'primary') return load;
   return `${load} · ${EQUIPMENT_LABELS[perf.equipment]}`;

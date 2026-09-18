@@ -112,6 +112,20 @@ describe('planned session preview (template only)', () => {
     expect(plank.timed).toBe(true);
     expect(plank.scheme).toBe('3 × 60s');
     expect(plank.workLabel).toBe('BW · 3 × 60s');
+    const pull = plannedLiftSummary(DAY_TEMPLATES.D.slots.find((s) => s.slot_id === 'd-pull')!);
+    expect(pull.name).toBe('Pull-up');
+    expect(pull.assisted).toBe(false);
+    expect(pull.workLabel).toBe('BW · 3 × 6+');
+    expect(pull.alternatives).toEqual([
+      'Cable-assisted pull-up',
+      'Band-assisted pull-up',
+      'Band lat pulldown',
+    ]);
+    expect(pull.note).toMatch(/assistance/i);
+    expect(formatLoad(10, true)).toBe('10 kg assist');
+    expect(formatWorkLabel([{ weight_kg: 10, reps: 6, rpe: 7, rest_sec: 90 }], false, true)).toBe(
+      '10 kg assist · 1 × 6',
+    );
   });
 });
 
@@ -182,6 +196,31 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
       exercise_id: 'tricep_pushdown_band',
       weight_kg: 0,
       reps: 12,
+      date: '2026-09-11',
+    });
+  });
+
+  it('shows cable-assisted pull-up Last: on the Day D pull slot', () => {
+    const draft = createDraftSession('D', '2026-09-11');
+    const pullIndex = draft.lifts.findIndex((row) => row.exercise_id === 'pull_up');
+    if (pullIndex < 0) throw new Error('missing pull-up slot');
+    const swapped = swapLiftExercise(draft, pullIndex, 'pull_up_cable');
+    swapped.status = 'complete';
+    swapped.lifts[pullIndex].sets = [
+      { weight_kg: 10, reps: 6, rpe: 7, completed: true, amrap: true },
+      { weight_kg: 15, reps: 6, rpe: 7, completed: true, amrap: true },
+      { weight_kg: 15, reps: 6, rpe: 8, completed: true, amrap: true },
+    ];
+
+    const preview = plannedDayPreview(DAY_TEMPLATES.D, [swapped], '2026-09-13');
+    const pull = preview.find((row) => row.exercise_id === 'pull_up');
+    expect(pull?.name).toBe('Pull-up');
+    expect(pull?.workLabel).toBe('BW · 3 × 6+');
+    expect(pull?.lastLine).toBe('Last: 10 kg assist × 6 · Cable');
+    expect(pull?.last).toMatchObject({
+      exercise_id: 'pull_up_cable',
+      weight_kg: 10,
+      reps: 6,
       date: '2026-09-11',
     });
   });

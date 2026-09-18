@@ -4,6 +4,7 @@ import {
   clampBarKg,
   DEFAULT_BAR_KG,
   equipmentOptionsForSlot,
+  equipmentPickerLabel,
   exerciseForEquipment,
   setLiftBarKg,
   slotAllowsEquipmentPicker,
@@ -29,12 +30,16 @@ describe('accessory equipment from slot alternatives', () => {
     expect(exerciseForEquipment(slot, 'dumbbells', 'squat_goblet')).toBe('squat_goblet');
   });
 
-  it('maps Day D pull-up bodyweight vs bands', () => {
+  it('maps Day D pull-up bodyweight vs cable assistance vs bands', () => {
     const slot = DAY_TEMPLATES.D.slots.find((s) => s.slot_id === 'd-pull');
     if (!slot) throw new Error('missing d-pull');
-    expect(equipmentOptionsForSlot(slot)).toEqual(['bands', 'bodyweight']);
+    expect(equipmentOptionsForSlot(slot)).toEqual(['cable', 'bands', 'bodyweight']);
+    expect(exerciseForEquipment(slot, 'cable')).toBe('pull_up_cable');
     expect(exerciseForEquipment(slot, 'bands')).toBe('pull_up_band');
     expect(exerciseForEquipment(slot, 'bodyweight')).toBe('pull_up');
+    expect(exerciseEquipment('pull_up_cable')).toBe('cable');
+    expect(equipmentPickerLabel('cable', ['cable', 'bands', 'bodyweight'])).toBe('Cable');
+    expect(equipmentPickerLabel('cable', ['cable', 'bands'])).toBe('Weights');
   });
 
   it('maps Day D tricep cable vs bands and stamps cable on a new Friday draft', () => {

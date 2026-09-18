@@ -39,6 +39,13 @@ describe('set prescription', () => {
     ).toBe('BW × 30s');
     expect(formatLoggedLoad({ weight_kg: 0, reps: 60, amrap: false }, true)).toBe('BW × 60s');
     expect(formatLoggedLoad({ weight_kg: 5, reps: 60, amrap: false }, true)).toBe('5 kg × 60s');
+    expect(formatLoggedLoad({ weight_kg: 10, reps: 6, amrap: true }, false, true)).toBe(
+      '10 kg assist × 6+',
+    );
+    expect(formatLoggedLoad({ weight_kg: 0, reps: 6, amrap: true }, false, true)).toBe('BW × 6+');
+    expect(formatPlanLoad({ weight_kg: 15, reps: 6, target_weight_kg: 15, target_reps: 6 }, false, true)).toBe(
+      '15 kg assist × 6',
+    );
   });
 
   it('flags a logged set only when actual kg/reps left the plan', () => {

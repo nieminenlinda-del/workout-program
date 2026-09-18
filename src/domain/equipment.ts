@@ -2,6 +2,7 @@ import type { SessionDraft } from '../types/session';
 import {
   EQUIPMENT_IDS,
   EQUIPMENT_LABELS,
+  EQUIPMENT_MODE_LABELS,
   exerciseEquipment,
   type Equipment,
   type ExerciseId,
@@ -46,6 +47,18 @@ export function liftEquipment(lift: { exercise_id: ExerciseId; equipment?: Equip
 
 export function equipmentChipLabel(equipment: Equipment): string {
   return EQUIPMENT_LABELS[equipment];
+}
+
+/**
+ * Juggernaut-style Weights | DBs | BW | Bands. When BW is also an option
+ * (pull-ups), cable is labeled Cable so it is not read as added weight.
+ */
+export function equipmentPickerLabel(
+  equipment: Equipment,
+  options: readonly Equipment[] = [],
+): string {
+  if (equipment === 'cable' && options.includes('bodyweight')) return EQUIPMENT_LABELS.cable;
+  return EQUIPMENT_MODE_LABELS[equipment];
 }
 
 export const BAR_KG_OPTIONS = [10, 15, 20] as const;

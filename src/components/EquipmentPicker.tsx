@@ -1,5 +1,5 @@
-import { EQUIPMENT_ARIA, EQUIPMENT_MODE_LABELS, type Equipment } from '../types/exercises';
-import { BAR_KG_OPTIONS } from '../domain/equipment';
+import { EQUIPMENT_ARIA, type Equipment } from '../types/exercises';
+import { BAR_KG_OPTIONS, equipmentPickerLabel } from '../domain/equipment';
 
 export function EquipmentPicker({
   options,
@@ -29,7 +29,7 @@ export function EquipmentPicker({
           className={`chip ${value === eq ? 'selected' : ''}`}
           onClick={() => onChange(eq)}
         >
-          {EQUIPMENT_MODE_LABELS[eq]}
+          {equipmentPickerLabel(eq, options)}
         </button>
       ))}
     </div>

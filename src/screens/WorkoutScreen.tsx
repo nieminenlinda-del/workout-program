@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
-import { isTimedHold, type ExerciseId } from '../types/exercises';
+import { isAssistedLoad, isTimedHold, type ExerciseId } from '../types/exercises';
 import { DAY_TEMPLATES, exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
@@ -125,6 +125,7 @@ export function WorkoutScreen({
         const warmupDone = warmups.filter((s) => s.completed).length;
         const unloggedWork = work.filter((s) => !s.completed);
         const timed = isTimedHold(lift.exercise_id);
+        const assisted = isAssistedLoad(lift.exercise_id);
         const workingKg = unloggedWork[0]
           ? prescriptionWeightKg(unloggedWork[0])
           : (work[work.length - 1]?.weight_kg ?? 0);
@@ -187,15 +188,23 @@ export function WorkoutScreen({
 
             {expanded && unloggedWork.length > 0 ? (
               <NumberStepper
-                label={timed || liftEquipment(lift) === 'bodyweight' ? 'Added weight' : 'Working weight'}
+                label={
+                  assisted
+                    ? 'Assistance'
+                    : timed || liftEquipment(lift) === 'bodyweight'
+                      ? 'Added weight'
+                      : 'Working weight'
+                }
                 value={workingKg}
                 onChange={(kg) => onChange(overrideUnloggedLiftWeight(draft, liftIndex, kg))}
                 step={2.5}
                 suffix="kg"
                 hint={
-                  timed
-                    ? '0 is bodyweight. Add kg for a plate or vest on leftover holds.'
-                    : 'Edits leftover work sets. Unused warmups follow the new W.'
+                  assisted
+                    ? 'Kg that helps you up (cable plates). 0 is unassisted. Leftover sets can differ.'
+                    : timed
+                      ? '0 is bodyweight. Add kg for a plate or vest on leftover holds.'
+                      : 'Edits leftover work sets. Unused warmups follow the new W.'
                 }
               />
             ) : null}
@@ -215,16 +224,17 @@ export function WorkoutScreen({
                       {set.completed ? (
                         <>
                           <span>
-                            {formatLoggedLoad(set, timed)}
+                            {formatLoggedLoad(set, timed, assisted)}
                             <em> @ {set.rpe} RPE</em>
                           </span>
                           {loggedDiffersFromPlan(set) ? (
-                            <span className="set-plan">plan {formatPlanLoad(set, timed)}</span>
+                            <span className="set-plan">plan {formatPlanLoad(set, timed, assisted)}</span>
                           ) : null}
                         </>
                       ) : (
                         <span>
-                          <span className="set-plan-label">Plan</span> {formatPlanLoad(set, timed)}
+                          <span className="set-plan-label">Plan</span>{' '}
+                          {formatPlanLoad(set, timed, assisted)}
                           <em> @ {set.rpe} RPE</em>
                         </span>
                       )}
@@ -262,6 +272,7 @@ export function WorkoutScreen({
           lastPerformance={lastByExercise.get(activeLift.exercise_id) ?? null}
           hasLaterSameKind={laterSameKindUnlogged(activeLift.sets, active.setIndex)}
           timed={isTimedHold(activeLift.exercise_id)}
+          assisted={isAssistedLoad(activeLift.exercise_id)}
           equipmentOptions={activeEquipOptions}
           equipment={liftEquipment(activeLift)}
           onEquipment={(eq) => {

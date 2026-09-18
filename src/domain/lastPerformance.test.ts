@@ -129,6 +129,47 @@ describe('last matching performance', () => {
     expect(map.get('curl_db')).toBeNull();
   });
 
+  it('formats cable-assisted pull-ups as assist kg and picks the least assistance', () => {
+    expect(
+      topWorkSet(
+        [
+          { weight_kg: 10, reps: 6, rpe: 7, completed: true },
+          { weight_kg: 15, reps: 6, rpe: 7, completed: true },
+          { weight_kg: 15, reps: 6, rpe: 8, completed: true },
+        ],
+        true,
+      ),
+    ).toMatchObject({ weight_kg: 10, reps: 6 });
+
+    const draft = createDraftSession('D', '2026-08-28');
+    const idx = draft.lifts.findIndex((row) => row.exercise_id === 'pull_up');
+    if (idx < 0) throw new Error('missing pull-up');
+    const swapped = swapLiftExercise(draft, idx, 'pull_up_cable');
+    swapped.status = 'complete';
+    swapped.lifts[idx].sets = [
+      { weight_kg: 10, reps: 6, rpe: 7, completed: true, amrap: true },
+      { weight_kg: 15, reps: 6, rpe: 7, completed: true, amrap: true },
+      { weight_kg: 15, reps: 6, rpe: 8, completed: true, amrap: true },
+    ];
+    const last = lastMatchingPerformance([swapped], 'pull_up', 'D', '2026-09-04');
+    expect(last).toMatchObject({
+      exercise_id: 'pull_up_cable',
+      weight_kg: 10,
+      reps: 6,
+      equipment: 'cable',
+    });
+    expect(formatLastPerformance(last)).toBe('Last: 10 kg assist × 6 · Cable');
+
+    const unassisted = completeSession('D', '2026-08-21', 'pull_up', [{ weight_kg: 0, reps: 4 }]);
+    expect(
+      formatLastPerformance(lastMatchingPerformance([unassisted], 'pull_up', 'D', '2026-08-28')),
+    ).toBe('Last: BW × 4');
+    const weighted = completeSession('D', '2026-08-14', 'pull_up', [{ weight_kg: 5, reps: 3 }]);
+    expect(
+      formatLastPerformance(lastMatchingPerformance([weighted], 'pull_up', 'D', '2026-08-21')),
+    ).toBe('Last: 5 kg × 3');
+  });
+
   it('names the accessory implement on last-week copy, not on T1 squat', () => {
     const row = completeSession('B', '2026-09-01', 'row_barbell', [{ weight_kg: 40, reps: 8 }]);
     expect(formatLastPerformance(lastMatchingPerformance([row], 'row_barbell', 'B', '2026-09-08'))).toBe(

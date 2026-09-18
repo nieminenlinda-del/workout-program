@@ -8,9 +8,9 @@ import {
 } from '../domain/timerVoice';
 
 /**
- * Speaks 30s / 10s once per `cycleKey`. RestTimer / interval ticks pass the
- * current remaining seconds here; each change calls `nextVoiceThreshold(prev, next)`.
- * 0s is spoken by the caller (natural finish / phase change) so Skip stays silent.
+ * Plays mixable 30s / 10s cues once per `cycleKey`. RestTimer / interval ticks
+ * pass remaining seconds here; each change calls `nextVoiceThreshold(prev, next)`.
+ * 0s is cued by the caller (natural finish / phase change) so Skip stays silent.
  */
 export function useSpokenCountdown(
   remainingSec: number,

@@ -1,5 +1,5 @@
 import { exerciseName, type DayTemplate, type SeedSet, type TemplateSlot } from '../data/templates';
-import { isTimedHold, type ExerciseId } from '../types/exercises';
+import { isAssistedLoad, isTimedHold, type ExerciseId } from '../types/exercises';
 import type { SessionLog } from '../types/session';
 import { formatClock } from './countdown';
 import { formatLoad } from './formatLoad';
@@ -36,6 +36,7 @@ export interface PlannedLiftSummary {
   restLabel: string | null;
   note: string | null;
   timed: boolean;
+  assisted: boolean;
   sets: PlannedSetLine[];
 }
 
@@ -101,19 +102,20 @@ export function formatWarmupLabel(sets: SeedSet[]): string | null {
 }
 
 /** Collapsed work line, e.g. `57.5 kg · 3 × 4`. Mixed kg falls back to the scheme only. */
-export function formatWorkLabel(sets: SeedSet[], timed = false): string {
+export function formatWorkLabel(sets: SeedSet[], timed = false, assisted = false): string {
   const work = workSets(sets);
   const scheme = formatSetScheme(sets, timed);
   if (work.length === 0) return scheme;
   const first = work[0].weight_kg;
   if (work.some((s) => s.weight_kg !== first)) return scheme;
-  return `${formatLoad(first)} · ${scheme}`;
+  return `${formatLoad(first, assisted)} · ${scheme}`;
 }
 
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
   const sets = attachWarmups(slot.sets, warmupKindFor(slot.exercise_id));
   const restSec = uniformRestSeconds(sets);
   const timed = isTimedHold(slot.exercise_id);
+  const assisted = isAssistedLoad(slot.exercise_id);
   return {
     slot_id: slot.slot_id,
     role: slot.role,
@@ -121,11 +123,12 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
     scheme: formatSetScheme(sets, timed),
-    workLabel: formatWorkLabel(sets, timed),
+    workLabel: formatWorkLabel(sets, timed, assisted),
     warmupLabel: formatWarmupLabel(sets),
     restLabel: restSec != null ? formatRestLabel(restSec) : null,
     note: slot.note ?? null,
     timed,
+    assisted,
     sets: sets.map((set, index) => ({
       setNumber: index + 1,
       label: setDisplayLabel(sets, index),

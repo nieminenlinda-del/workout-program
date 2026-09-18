@@ -32,6 +32,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'row_db',
   'overhead_press',
   'pull_up',
+  'pull_up_cable',
   'pull_up_band',
   'lat_pulldown_band',
   'face_pull_band',
@@ -99,6 +100,11 @@ export interface ExerciseMeta {
   timed?: boolean;
   /** How this catalog ID is typically loaded. Used to swap slot alternatives. */
   equipment: Equipment;
+  /**
+   * `weight_kg` is assistance that helps the lift (cable plates / band), not
+   * added resistance. Unassisted / bodyweight is still `0`.
+   */
+  assisted?: boolean;
 }
 
 export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
@@ -246,12 +252,22 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     equipment: 'barbell',
   },
   pull_up: { id: 'pull_up', name: 'Pull-up', role: 'accessory', pattern: 'pull', equipment: 'bodyweight' },
+  /** Downward home cable + plates — kg is assistance, not extra load. */
+  pull_up_cable: {
+    id: 'pull_up_cable',
+    name: 'Cable-assisted pull-up',
+    role: 'accessory',
+    pattern: 'pull',
+    equipment: 'cable',
+    assisted: true,
+  },
   pull_up_band: {
     id: 'pull_up_band',
     name: 'Band-assisted pull-up',
     role: 'accessory',
     pattern: 'pull',
     equipment: 'bands',
+    assisted: true,
   },
   lat_pulldown_band: {
     id: 'lat_pulldown_band',
@@ -321,4 +337,9 @@ export function logCountMax(exerciseId: ExerciseId): number {
 
 export function exerciseEquipment(exerciseId: ExerciseId): Equipment {
   return EXERCISE_CATALOG[exerciseId].equipment;
+}
+
+/** True when `weight_kg` is help (cable/band), not added resistance. */
+export function isAssistedLoad(exerciseId: ExerciseId): boolean {
+  return Boolean(EXERCISE_CATALOG[exerciseId]?.assisted);
 }

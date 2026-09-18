@@ -50,6 +50,7 @@ describe('seed templates', () => {
     expect(ids).toContain('front_squat_light');
     expect(alts).toContain('goblet_squat');
     expect(ids).toContain('pull_up');
+    expect(alts).toContain('pull_up_cable');
     expect(alts).toContain('pull_up_band');
     expect(ids).toContain('curl_db');
     expect(ids).toContain('cable_rope_pushdown');
@@ -99,6 +100,14 @@ describe('session factory', () => {
       completed: false,
       amrap: true,
     });
+    const pullIndex = friday.lifts.findIndex((l) => l.exercise_id === 'pull_up');
+    const assisted = swapLiftExercise(friday, pullIndex, 'pull_up_cable');
+    expect(assisted.lifts[pullIndex]).toMatchObject({
+      exercise_id: 'pull_up_cable',
+      name: 'Cable-assisted pull-up',
+      equipment: 'cable',
+    });
+    expect(assisted.lifts[pullIndex]?.sets).toHaveLength(friday.lifts[pullIndex]!.sets.length);
   });
 
   it('swaps an alternative without dropping set slots', () => {

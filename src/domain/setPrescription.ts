@@ -30,21 +30,33 @@ export function formatLoadReps(
   reps: number,
   amrap?: boolean,
   timed = false,
+  assisted = false,
 ): string {
   const count = timed ? `${reps}s` : `${reps}${amrap ? '+' : ''}`;
-  return `${formatLoad(weightKg)} × ${count}`;
+  return `${formatLoad(weightKg, assisted)} × ${count}`;
 }
 
 /** Visible plan for an unfinished row (or the original plan on a logged row). */
-export function formatPlanLoad(set: WeightReps & { amrap?: boolean }, timed = false): string {
-  return formatLoadReps(prescriptionWeightKg(set), prescriptionReps(set), set.amrap, timed);
+export function formatPlanLoad(
+  set: WeightReps & { amrap?: boolean },
+  timed = false,
+  assisted = false,
+): string {
+  return formatLoadReps(
+    prescriptionWeightKg(set),
+    prescriptionReps(set),
+    set.amrap,
+    timed,
+    assisted,
+  );
 }
 
 export function formatLoggedLoad(
   set: Pick<LoggedSet, 'weight_kg' | 'reps' | 'amrap'>,
   timed = false,
+  assisted = false,
 ): string {
-  return formatLoadReps(set.weight_kg, set.reps, set.amrap, timed);
+  return formatLoadReps(set.weight_kg, set.reps, set.amrap, timed, assisted);
 }
 
 export function loggedDiffersFromPlan(set: LoggedSet): boolean {

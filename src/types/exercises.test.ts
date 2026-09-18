@@ -12,6 +12,7 @@ import {
   SUB_EXERCISE_IDS,
   isTimedHold,
   logCountMax,
+  isAssistedLoad,
 } from '../types/exercises';
 
 const REQUIRED_PRIMARIES = [
@@ -44,6 +45,7 @@ const REQUIRED_ACCESSORIES = [
   'row_db',
   'overhead_press',
   'pull_up',
+  'pull_up_cable',
   'pull_up_band',
   'lat_pulldown_band',
   'face_pull_band',
@@ -103,5 +105,19 @@ describe('exercise catalog', () => {
     expect(logCountMax('squat_low_bar')).toBe(REPS_LOG_MAX);
     expect(REPS_LOG_MAX).toBe(50);
     expect(HOLD_SEC_LOG_MAX).toBe(300);
+  });
+
+  it('treats cable and band pull-ups as assistance kg, not added load', () => {
+    expect(isAssistedLoad('pull_up_cable')).toBe(true);
+    expect(isAssistedLoad('pull_up_band')).toBe(true);
+    expect(isAssistedLoad('pull_up')).toBe(false);
+    expect(isAssistedLoad('lat_pulldown_band')).toBe(false);
+    expect(isAssistedLoad('plank')).toBe(false);
+    expect(EXERCISE_CATALOG.pull_up_cable).toMatchObject({
+      name: 'Cable-assisted pull-up',
+      equipment: 'cable',
+      pattern: 'pull',
+      assisted: true,
+    });
   });
 });

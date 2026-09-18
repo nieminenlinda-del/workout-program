@@ -66,7 +66,7 @@ export function WorkoutPreview({
                     <li key={set.setNumber} className={`preview-set ${set.warmup ? 'warmup' : ''}`}>
                       <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>{set.label}</span>
                       <span className="set-main">
-                        {formatLoad(set.weight_kg)} × {set.reps}
+                        {formatLoad(set.weight_kg, lift.assisted)} × {set.reps}
                         {lift.timed ? 's' : ''}
                         {set.amrap ? '+' : ''}
                         <em> @ {set.rpe} RPE</em>

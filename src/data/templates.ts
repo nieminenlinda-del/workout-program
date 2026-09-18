@@ -39,7 +39,9 @@ const CORE_REST = 60;
  * Seed T1s are the unused PR #8 programmed line (squat 55 × 3×5, bench 40,
  * DL 70, Fri 40 × 2×5) used only off-block / other blocks.
  * Front plank seed is 3 × 60s. Day D optional tricep is cable_rope_pushdown
- * 2 × 10–12 @ 12.5 kg (band is an alt).
+ * 2 × 10–12 @ 12.5 kg (band is an alt). Day D pull-up is BW with cable-assisted
+ * (downward cable + plates) and band-assisted as alts — kg on those IDs is
+ * assistance, not extra load.
  * Changing these templates only affects new drafts — completed SessionLog rows stay as logged.
  */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
@@ -230,7 +232,8 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         slot_id: 'd-pull',
         role: 'accessory',
         exercise_id: 'pull_up',
-        alternatives: ['pull_up_band', 'lat_pulldown_band'],
+        alternatives: ['pull_up_cable', 'pull_up_band', 'lat_pulldown_band'],
+        note: 'Cable/band kg is assistance (helps you up), not extra load. BW is unassisted.',
         sets: [
           { weight_kg: 0, reps: 6, rpe: 7, amrap: true, rest_sec: ACC_REST },
           { weight_kg: 0, reps: 6, rpe: 7, amrap: true, rest_sec: ACC_REST },

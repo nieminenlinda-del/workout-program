@@ -19,6 +19,7 @@ export function SetLogger({
   lastPerformance,
   hasLaterSameKind,
   timed = false,
+  assisted = false,
   equipmentOptions = [],
   equipment,
   onEquipment,
@@ -34,6 +35,7 @@ export function SetLogger({
   lastPerformance?: LastPerformance | null;
   hasLaterSameKind: boolean;
   timed?: boolean;
+  assisted?: boolean;
   equipmentOptions?: readonly Equipment[];
   equipment?: Equipment;
   onEquipment?: (next: Equipment) => void;
@@ -51,7 +53,14 @@ export function SetLogger({
   const planKg = prescriptionWeightKg(initial);
   const overridden = weight !== planKg;
   const warmup = Boolean(initial.warmup);
-  const addedLoad = equipment === 'bodyweight' || timed;
+  const addedLoad = !assisted && (equipment === 'bodyweight' || timed);
+  const weightLabel = assisted
+    ? 'Assistance'
+    : addedLoad
+      ? 'Added weight'
+      : overridden
+        ? 'Weight — overridden'
+        : 'Weight';
 
   return (
     <div className="sheet-backdrop" role="presentation" onClick={onCancel}>
@@ -67,7 +76,7 @@ export function SetLogger({
           {amrap ? ' · AMRAP' : ''}
         </p>
         <h2 className="sheet-title">{exerciseName}</h2>
-        <p className="sheet-plan">Plan {formatPlanLoad(initial, timed)}</p>
+        <p className="sheet-plan">Plan {formatPlanLoad(initial, timed, assisted)}</p>
         <LastPerformanceHint performance={lastPerformance} />
 
         {equipment && equipmentOptions.length > 1 && onEquipment ? (
@@ -89,17 +98,19 @@ export function SetLogger({
         )}
 
         <NumberStepper
-          label={addedLoad ? 'Added weight' : overridden ? 'Weight — overridden' : 'Weight'}
+          label={weightLabel}
           value={weight}
           onChange={setWeight}
           step={2.5}
           suffix="kg"
           hint={
-            addedLoad
-              ? '0 is bodyweight. Add kg for a plate or vest — timed holds can be weighted.'
-              : equipment === 'barbell'
-                ? `Total on the bar, including the ${bar} kg bar. Steppers are 2.5 kg.`
-                : 'Tap the number to type. Steppers are 2.5 kg. Not locked to the plan.'
+            assisted
+              ? 'Kg that helps you up — cable plates or a band. 0 is unassisted / bodyweight. Not added weight.'
+              : addedLoad
+                ? '0 is bodyweight. Add kg for a plate or vest — timed holds can be weighted.'
+                : equipment === 'barbell'
+                  ? `Total on the bar, including the ${bar} kg bar. Steppers are 2.5 kg.`
+                  : 'Tap the number to type. Steppers are 2.5 kg. Not locked to the plan.'
           }
         />
         <div className="micro-steps">

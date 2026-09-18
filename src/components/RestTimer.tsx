@@ -15,7 +15,7 @@ export function RestTimer({
 }) {
   const { voiceEnabled, setVoiceEnabled } = useTimerVoicePref();
   // useCountdown ticks ~200ms and feeds remaining seconds into useSpokenCountdown
-  // as (prev, next) for 30 / 10; natural finish speaks 0.
+  // as (prev, next) for 30 / 10; natural finish cues 0.
   const { state, pause, resume, extend, skip } = useCountdown(seconds, undefined, voiceEnabled);
   const remaining = displaySeconds(state);
   const done = state.finished;
@@ -45,7 +45,7 @@ export function RestTimer({
         <p className="rest-kicker">{done ? 'Rest done' : state.running ? 'Rest' : 'Paused'}</p>
         <h2 className="rest-title">{exerciseName}</h2>
         <p className="muted rest-hint">
-          {seconds}s default · tap outside or skip to log · voice at 30s, 10s, done
+          {seconds}s default · tap outside or skip to log · cues at 30s, 10s, done
         </p>
         <VoiceToggle enabled={voiceEnabled} onChange={setVoiceEnabled} />
         <div className="rest-ring-wrap">

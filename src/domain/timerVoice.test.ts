@@ -11,6 +11,7 @@ import {
   cancelTimerVoice,
   SPEECH_KEEP_ALIVE_MS,
 } from './timerVoice';
+import { resetTimerAudioForTests, timerAudioKeepAliveRunning } from './timerCue';
 
 describe('timer voice thresholds', () => {
   it('announces 30 then 10 then 0 once on a long rest', () => {
@@ -99,130 +100,99 @@ describe('timer voice language', () => {
   });
 });
 
-describe('iOS speech unlock and keep-alive', () => {
-  class FakeUtterance {
-    text: string;
-    lang = '';
-    volume = 1;
-    rate = 1;
-    voice: { lang: string } | null = null;
-    constructor(text: string) {
-      this.text = text;
-    }
+describe('iOS mixable voice path (no speechSynthesis)', () => {
+  class FakeAudioContext {
+    state = 'running';
+    currentTime = 0;
+    destination = {};
+    resume = vi.fn(async () => {
+      this.state = 'running';
+    });
+    createOscillator = vi.fn(() => ({
+      type: 'sine',
+      frequency: { value: 0 },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+      addEventListener: vi.fn(),
+    }));
+    createGain = vi.fn(() => ({
+      gain: {
+        setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+    }));
   }
 
   let synth: {
-    speaking: boolean;
-    pending: boolean;
-    paused: boolean;
-    spoken: string[];
+    speak: ReturnType<typeof vi.fn>;
     cancel: ReturnType<typeof vi.fn>;
     pause: ReturnType<typeof vi.fn>;
     resume: ReturnType<typeof vi.fn>;
-    speak: ReturnType<typeof vi.fn>;
-    getVoices: ReturnType<typeof vi.fn>;
-    addEventListener: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     vi.useFakeTimers();
     synth = {
-      speaking: false,
-      pending: false,
-      paused: false,
-      spoken: [],
+      speak: vi.fn(),
       cancel: vi.fn(),
       pause: vi.fn(),
-      resume: vi.fn(() => {
-        synth.paused = false;
-      }),
-      speak: vi.fn((utter: FakeUtterance) => {
-        synth.spoken.push(utter.text);
-      }),
-      getVoices: vi.fn(() => [{ lang: 'en-US', voiceURI: 'en', default: true }]),
-      addEventListener: vi.fn(),
+      resume: vi.fn(),
     };
     Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
-    // @ts-expect-error test stub
-    globalThis.SpeechSynthesisUtterance = FakeUtterance;
+    vi.stubGlobal('AudioContext', FakeAudioContext);
+    resetTimerAudioForTests();
     while (speechKeepAliveRunning()) stopSpeechKeepAlive();
   });
 
   afterEach(() => {
-    while (speechKeepAliveRunning()) stopSpeechKeepAlive();
     cancelTimerVoice();
+    while (speechKeepAliveRunning()) stopSpeechKeepAlive();
+    resetTimerAudioForTests();
     Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
-  it('unlocks speech on a tap without cancelling the warmup utterance', () => {
+  it('unlocks audio on a tap without speaking a warmup utterance', () => {
     unlockTimerVoice();
-    expect(synth.speak).toHaveBeenCalledTimes(1);
+    expect(synth.speak).not.toHaveBeenCalled();
     expect(synth.cancel).not.toHaveBeenCalled();
-    expect(synth.spoken[0]).toBe('\u00a0');
   });
 
-  it('resumes a paused synth before speaking a cue', () => {
-    synth.paused = true;
+  it('plays a mixable cue instead of enqueueing SpeechSynthesisUtterance', () => {
     speakTimerCue(30);
-    expect(synth.resume).toHaveBeenCalled();
-    expect(synth.spoken.some((t) => t === '30 seconds' || t === 'Trettio sekunder')).toBe(true);
+    expect(synth.speak).not.toHaveBeenCalled();
+    expect(synth.cancel).not.toHaveBeenCalled();
   });
 
-  it('pulses pause/resume while idle so later rest cues still fire on iOS', () => {
+  it('does not pulse speechSynthesis keep-alive (that session stops gym music)', () => {
     startSpeechKeepAlive();
     expect(speechKeepAliveRunning()).toBe(true);
+    expect(timerAudioKeepAliveRunning()).toBe(true);
     vi.advanceTimersByTime(SPEECH_KEEP_ALIVE_MS);
-    expect(synth.pause).toHaveBeenCalled();
-    expect(synth.resume).toHaveBeenCalled();
+    expect(synth.pause).not.toHaveBeenCalled();
+    expect(synth.resume).not.toHaveBeenCalled();
     stopSpeechKeepAlive();
     expect(speechKeepAliveRunning()).toBe(false);
   });
 
-  it('does not pulse while an utterance is already speaking', () => {
-    startSpeechKeepAlive();
-    synth.speaking = true;
-    vi.advanceTimersByTime(SPEECH_KEEP_ALIVE_MS);
-    expect(synth.pause).not.toHaveBeenCalled();
-    stopSpeechKeepAlive();
-  });
-
   it('does not speak while the page is backgrounded', () => {
+    let constructed = 0;
+    vi.stubGlobal(
+      'AudioContext',
+      class extends FakeAudioContext {
+        constructor() {
+          super();
+          constructed += 1;
+        }
+      },
+    );
+    resetTimerAudioForTests();
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     speakTimerCue(30);
+    expect(constructed).toBe(0);
     expect(synth.speak).not.toHaveBeenCalled();
-  });
-
-  it('does not pulse keep-alive while the page is backgrounded', () => {
-    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
-    startSpeechKeepAlive();
-    vi.advanceTimersByTime(SPEECH_KEEP_ALIVE_MS);
-    expect(synth.pause).not.toHaveBeenCalled();
-    stopSpeechKeepAlive();
-  });
-
-  it('keeps voices from voiceschanged when getVoices is empty at speak time', () => {
-    let voices: { lang: string; voiceURI: string; default?: boolean }[] = [];
-    synth.getVoices = vi.fn(() => voices);
-    unlockTimerVoice();
-    const onVoices = synth.addEventListener.mock.calls.find((call) => call[0] === 'voiceschanged')?.[1] as
-      | (() => void)
-      | undefined;
-    expect(onVoices).toEqual(expect.any(Function));
-    voices = [{ lang: 'sv-SE', voiceURI: 'sv', default: true }];
-    onVoices?.();
-    voices = [];
-    synth.spoken.length = 0;
-    synth.speak.mockClear();
-    speakTimerCue(30);
-    expect(synth.spoken).toContain('Trettio sekunder');
-  });
-
-  it('resumes the synth when the page becomes visible again', () => {
-    unlockTimerVoice();
-    synth.resume.mockClear();
-    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-    document.dispatchEvent(new Event('visibilitychange'));
-    expect(synth.resume).toHaveBeenCalled();
   });
 });

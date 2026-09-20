@@ -187,12 +187,16 @@ describe('Restore today’s Mon 14 Day A', () => {
     expect(sameDay[0]?.workLabel).toBe('57.5 kg · 3 × 4');
     expect(sameDay[0]?.lastLine).toBe('No prior log');
 
-    const nextWeek = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-21');
-    expect(nextWeek[0]?.workLabel).toBe('57.5 kg · 3 × 4');
-    expect(nextWeek[0]?.lastLine).toBe('Last: 57.5 kg × 4');
-    expect(nextWeek[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
-    expect(nextWeek[2]?.lastLine).toBe('Last: 37.5 kg × 8 · DBs');
-    expect(nextWeek[3]?.lastLine).toBe('Last: 5 kg × 120s');
+    const laterW2 = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-19');
+    expect(laterW2[0]?.workLabel).toBe('57.5 kg · 3 × 4');
+    expect(laterW2[0]?.lastLine).toBe('Last: 57.5 kg × 4');
+
+    const week3 = plannedDayPreview(DAY_TEMPLATES.A, history, '2026-09-21');
+    expect(week3[0]?.workLabel).toBe('60 kg · 3 × 3');
+    expect(week3[0]?.lastLine).toBe('Last: 57.5 kg × 4');
+    expect(week3[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
+    expect(week3[2]?.lastLine).toBe('Last: 37.5 kg × 8 · DBs');
+    expect(week3[3]?.lastLine).toBe('Last: 5 kg × 120s');
   });
 });
 

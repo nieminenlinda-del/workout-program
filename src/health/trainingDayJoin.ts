@@ -1,20 +1,13 @@
-import { addCalendarDays, weekdayOfYmd } from './dates';
+import { calendarTemplateDay } from '../domain/templateDay';
+import { addCalendarDays } from './dates';
 import type { DailyActiveEnergy, TrainingDayEnergy, TrainingTemplateDay } from './types';
 
-/** Mon=A, Tue=B, Thu=C, Fri=D; Wed/Sat/Sun (and anything else) = rest. */
+/**
+ * Mon=A, Tue=B, Thu=C, Fri=D; Wed/Sat/Sun = rest, except Kraft trip dated
+ * overrides (Wed 23 Sep 2026 = C, Thu 24 = D, Fri 25 = rest / massage).
+ */
 export function templateDayForDate(ymd: string): TrainingTemplateDay {
-  switch (weekdayOfYmd(ymd)) {
-    case 1:
-      return 'A';
-    case 2:
-      return 'B';
-    case 4:
-      return 'C';
-    case 5:
-      return 'D';
-    default:
-      return 'rest';
-  }
+  return calendarTemplateDay(ymd);
 }
 
 export function isTrainingDay(templateDay: TrainingTemplateDay): boolean {

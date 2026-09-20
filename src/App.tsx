@@ -9,7 +9,7 @@ import { IntervalTimerScreen } from './screens/IntervalTimerScreen';
 import { HealthScreen } from './screens/HealthScreen';
 import { useRepository, useSessionFlow, type AppView } from './hooks/useSessionFlow';
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
-import { canonicalTemplateDay, todayIsoDate } from './domain/templateDay';
+import { canonicalTemplateDay, defaultTemplateDayForDate, todayIsoDate } from './domain/templateDay';
 import type { CanonicalTemplateDay } from './types/session';
 import {
   buildSessionBackup,
@@ -20,7 +20,9 @@ import {
 export default function App() {
   const repo = useRepository();
   const flow = useSessionFlow(repo);
-  const [templateDay, setTemplateDay] = useState<CanonicalTemplateDay>(DEFAULT_TEMPLATE_DAY);
+  const [templateDay, setTemplateDay] = useState<CanonicalTemplateDay>(
+    () => defaultTemplateDayForDate(todayIsoDate()) ?? DEFAULT_TEMPLATE_DAY,
+  );
   const [intervalBack, setIntervalBack] = useState<Extract<AppView, 'home' | 'workout'>>('home');
   const date = todayIsoDate();
 

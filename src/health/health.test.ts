@@ -117,6 +117,16 @@ describe('training-day join', () => {
     expect(templateDayForDate('2026-09-13')).toBe('rest');
   });
 
+  it('Kraft trip week: Wed 23 is C, Thu 24 is D, Fri 25 is rest; later weeks unchanged', () => {
+    expect(templateDayForDate('2026-09-20')).toBe('rest');
+    expect(templateDayForDate('2026-09-23')).toBe('C');
+    expect(templateDayForDate('2026-09-24')).toBe('D');
+    expect(templateDayForDate('2026-09-25')).toBe('rest');
+    expect(templateDayForDate('2026-09-28')).toBe('A');
+    expect(templateDayForDate('2026-10-01')).toBe('C');
+    expect(templateDayForDate('2026-10-02')).toBe('D');
+  });
+
   it('joins last N days of active energy with training vs rest labels', () => {
     const { samples } = parseHealthXmlString(fixtureXml);
     const daily = rollupDays(dedupeSamples(samples));

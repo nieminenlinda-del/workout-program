@@ -134,3 +134,64 @@ describe('HomeScreen Restore Week 1 weights', () => {
     expect(container.textContent).toMatch(/Session log \(4\)/);
   });
 });
+
+describe('HomeScreen Block A week chip and T1 preview', () => {
+  const nodes: { root: Root; container: HTMLDivElement }[] = [];
+
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
+
+  afterEach(() => {
+    while (nodes.length) {
+      const node = nodes.pop();
+      if (node) unmount(node.root, node.container);
+    }
+  });
+
+  it('on Sun 20 Sep shows week 3 and squat 60 × 3×3', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-09-20', templateDay: 'A' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 3/i);
+    expect(container.textContent).toContain('60 kg · 3 × 3');
+    expect(container.textContent).toMatch(/Soft-cap ≤8/);
+  });
+
+  it('on Sun 20 Sep Day B shows bench 42.5 × 3×4', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-09-20', templateDay: 'B' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 3/i);
+    expect(container.textContent).toContain('42.5 kg · 3 × 4');
+  });
+
+  it('on Sat 19 Sep still shows week 2 squat 57.5', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-09-19', templateDay: 'A' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 2/i);
+    expect(container.textContent).toContain('57.5 kg · 3 × 4');
+  });
+
+  it('on Wed 23 Sep Day C shows deadlift 72.5 × 3×3', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-09-23', templateDay: 'C' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 3/i);
+    expect(container.textContent).toContain('72.5 kg · 3 × 3');
+  });
+
+  it('on Thu 24 Sep Day D shows bench volume 42.5 × 2×4', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-09-24', templateDay: 'D' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 3/i);
+    expect(container.textContent).toContain('42.5 kg · 2 × 4');
+  });
+});

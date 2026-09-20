@@ -79,7 +79,7 @@ The UI file picker posts zip/xml to `src/health/parse/worker.ts`, which stream-u
 `getMesocycleContext(date)` maps the 2026 test cycle (block, phase, week index).
 Load selection for Block A T1s is a separate locked table (`src/domain/programWeek.ts`), not the Phase 2 engine.
 
-**Week formula:** start date inclusive; `weekIndex = floor((asOf − start) / 7 days) + 1` on UTC calendar dates. Block A `2026-09-07` → week 1; `2026-09-14` → week 2 of 4.
+**Week formula:** start date inclusive; `weekIndex = floor((asOf − start) / 7 days) + 1` on UTC calendar dates. Block A `2026-09-07` → week 1; `2026-09-14` → week 2 of 4. Kraft trip exception: Week 3 starts **2026-09-20** (one day early — `programWeekIndex` / home chip), so Week 2 is 14–19 Sep only.
 
 **Block A T1 table (Kraft, TMs S72.5 / B52.5 / D90) — not auto +2.5:**
 
@@ -87,9 +87,10 @@ Load selection for Block A T1s is a separate locked table (`src/domain/programWe
 | --- | --- | --- | --- | --- |
 | 1 (rebase) | 47.5 × 3×5 | 40 × 3×5 | 70 × 3×5 | 40 × 2×5 |
 | 2 (locked) | **57.5 × 3×4** @ RPE ≤7 (55 if first set off) | 40 × 3×5 | 70 × 3×4 | 40 × 2×5 |
-| 3–4 | hold week 2 | hold | hold | hold |
+| 3 (locked; from **20 Sep**) | **60 × 3×3** @ RPE ≤8 | **42.5 × 3×4** | **72.5 × 3×3** | **42.5 × 2×4** |
+| ≥4 | hold week 3 until Kraft locks week 4 | hold | hold | hold |
 
-Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Accessories stay on the seed template. Off-block / Block B–C use the static seed T1s.
+Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Accessories stay on the seed template. Off-block / Block B–C use the static seed T1s.
 
 | Block | Window | Default phase |
 | --- | --- | --- |

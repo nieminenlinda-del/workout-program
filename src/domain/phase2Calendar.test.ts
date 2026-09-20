@@ -24,6 +24,9 @@ describe('phase 2 calendar hook', () => {
     expect(getMesocycleContext('2026-09-07').block).toBe('A');
     expect(getMesocycleContext('2026-09-07').weekIndex).toBe(1);
     expect(getMesocycleContext('2026-09-14').weekIndex).toBe(2);
+    expect(getMesocycleContext('2026-09-19').weekIndex).toBe(2);
+    expect(getMesocycleContext('2026-09-20').weekIndex).toBe(3);
+    expect(getMesocycleContext('2026-09-27').weekIndex).toBe(3);
     expect(getMesocycleContext('2026-10-04').weekIndex).toBe(4);
     expect(getMesocycleContext('2026-10-04').phase).toBe('accumulate');
     expect(getMesocycleContext('2026-10-05').phase).toBe('intensify');

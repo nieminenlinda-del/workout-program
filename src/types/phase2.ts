@@ -161,7 +161,7 @@ export const MESOCYCLE_WINDOWS: readonly MesocycleWindow[] = [
 export interface MesocycleContext {
   asOf: string;
   block: MesocycleBlock | null;
-  /** 1-based week inside `window` (7 Sep inclusive → week 1; 14 Sep → week 2). */
+  /** 1-based week inside `window` (7 Sep → 1; 14 Sep → 2; Block A 20 Sep → 3, Kraft trip). */
   weekIndex: number | null;
   phase: BlockPhase | null;
   window: MesocycleWindow | null;

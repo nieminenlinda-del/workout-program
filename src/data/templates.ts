@@ -38,10 +38,11 @@ const CORE_REST = 60;
  * come from `applyProgramWeek` (Kraft week table), not these numbers.
  * Seed T1s are the unused PR #8 programmed line (squat 55 × 3×5, bench 40,
  * DL 70, Fri 40 × 2×5) used only off-block / other blocks.
- * Front plank seed is 3 × 60s. Day D optional tricep is cable_rope_pushdown
- * 2 × 10–12 @ 12.5 kg (band is an alt). Day D pull-up is BW with cable-assisted
- * (downward cable + plates) and band-assisted as alts — kg on those IDs is
- * assistance, not extra load.
+ * Front plank seed is 3 × 60s. Day A reverse lunge is barbell+plates
+ * (37.5 kg total on the bar; goblet / goblet-sub are DB alts). Day D optional
+ * tricep is cable_rope_pushdown 2 × 10–12 @ 12.5 kg (band is an alt). Day D
+ * pull-up is BW with cable-assisted (downward cable + plates) and band-assisted
+ * as alts — kg on those IDs is assistance, not extra load.
  * Changing these templates only affects new drafts — completed SessionLog rows stay as logged.
  */
 export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
@@ -79,9 +80,9 @@ export const DAY_TEMPLATES: Record<CanonicalTemplateDay, DayTemplate> = {
         exercise_id: 'reverse_lunge',
         alternatives: ['goblet_squat', 'squat_goblet'],
         sets: [
-          { weight_kg: 12, reps: 8, rpe: 7, rest_sec: ACC_REST },
-          { weight_kg: 12, reps: 8, rpe: 7, rest_sec: ACC_REST },
-          { weight_kg: 12, reps: 8, rpe: 7.5, rest_sec: ACC_REST },
+          { weight_kg: 37.5, reps: 8, rpe: 7, rest_sec: ACC_REST },
+          { weight_kg: 37.5, reps: 8, rpe: 7, rest_sec: ACC_REST },
+          { weight_kg: 37.5, reps: 8, rpe: 7.5, rest_sec: ACC_REST },
         ],
       },
       {

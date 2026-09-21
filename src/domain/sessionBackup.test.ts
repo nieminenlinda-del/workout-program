@@ -86,7 +86,7 @@ describe('Restore Week 1 weights', () => {
     expect(preview[0]?.workLabel).toBe('57.5 kg · 3 × 4');
     expect(preview[0]?.lastLine).toBe('Last: 47.5 kg × 5');
     expect(preview[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
-    expect(preview[2]?.lastLine).toBe('Last: 12 kg × 8 · DBs');
+    expect(preview[2]?.lastLine).toBe('Last: 37.5 kg × 8 · Barbell');
     expect(preview[3]?.lastLine).toBe('Last: BW × 60s');
 
     expect(
@@ -157,6 +157,7 @@ describe('Restore today’s Mon 14 Day A', () => {
     ).toBe(true);
 
     const lunge = row.lifts.find((lift) => lift.exercise_id === 'reverse_lunge');
+    expect(lunge).toMatchObject({ equipment: 'barbell', bar_kg: 15 });
     const lungeWork = lunge?.sets.filter((set) => !isWarmupSet(set)) ?? [];
     expect(lungeWork).toHaveLength(3);
     expect(
@@ -172,7 +173,7 @@ describe('Restore today’s Mon 14 Day A', () => {
     const hingeSlot = DAY_TEMPLATES.A.slots.find((slot) => slot.exercise_id === 'rdl');
     expect(hingeSlot?.sets.map((set) => set.rpe)).toEqual([7, 7, 7.5]);
     const lungeSlot = DAY_TEMPLATES.A.slots.find((slot) => slot.exercise_id === 'reverse_lunge');
-    expect(lungeSlot?.sets.every((set) => set.weight_kg === 12 && set.reps === 8)).toBe(true);
+    expect(lungeSlot?.sets.every((set) => set.weight_kg === 37.5 && set.reps === 8)).toBe(true);
     const plankSlot = DAY_TEMPLATES.A.slots.find((slot) => slot.exercise_id === 'plank');
     expect(plankSlot?.sets.map((set) => set.reps)).toEqual([60, 60, 60]);
     expect(plankSlot?.sets.every((set) => set.weight_kg === 0)).toBe(true);
@@ -195,7 +196,7 @@ describe('Restore today’s Mon 14 Day A', () => {
     expect(week3[0]?.workLabel).toBe('60 kg · 3 × 3');
     expect(week3[0]?.lastLine).toBe('Last: 57.5 kg × 4');
     expect(week3[1]?.lastLine).toBe('Last: 50 kg × 8 · Barbell');
-    expect(week3[2]?.lastLine).toBe('Last: 37.5 kg × 8 · DBs');
+    expect(week3[2]?.lastLine).toBe('Last: 37.5 kg × 8 · Barbell');
     expect(week3[3]?.lastLine).toBe('Last: 5 kg × 120s');
   });
 });

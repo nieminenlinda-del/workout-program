@@ -1,4 +1,5 @@
 import { isExerciseId } from '../types/exercises';
+import { DEFAULT_BAR_KG } from './equipment';
 import {
   DEFAULT_READINESS,
   type CanonicalTemplateDay,
@@ -324,6 +325,10 @@ export function mon14DayAReferenceSession(): SessionDraft {
   draft.notes = MON14_DAY_A_NOTES;
   draft.readiness = withComputedLight(DEFAULT_READINESS, 'GREEN');
   for (const lift of draft.lifts) {
+    if (lift.exercise_id === 'reverse_lunge') {
+      lift.equipment = 'barbell';
+      lift.bar_kg = DEFAULT_BAR_KG;
+    }
     let workIndex = 0;
     lift.sets = lift.sets.map((set) => {
       if (isWarmupSet(set)) return set;

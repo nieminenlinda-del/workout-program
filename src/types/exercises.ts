@@ -213,7 +213,7 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     name: 'Reverse lunge',
     role: 'accessory',
     pattern: 'squat',
-    equipment: 'dumbbells',
+    equipment: 'barbell',
   },
   split_squat_db: {
     id: 'split_squat_db',

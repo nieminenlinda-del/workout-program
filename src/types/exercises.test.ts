@@ -74,6 +74,18 @@ describe('exercise catalog', () => {
     }
   });
 
+  it('programs reverse lunge as barbell+plates, not DBs', () => {
+    expect(EXERCISE_CATALOG.reverse_lunge).toMatchObject({
+      name: 'Reverse lunge',
+      equipment: 'barbell',
+      pattern: 'squat',
+      role: 'accessory',
+    });
+    expect(EXERCISE_CATALOG.goblet_squat.equipment).toBe('dumbbells');
+    expect(EXERCISE_CATALOG.squat_goblet.equipment).toBe('dumbbells');
+    expect(EXERCISE_CATALOG.split_squat_db.equipment).toBe('dumbbells');
+  });
+
   it('programs cable rope pushdown as a kg stack, not a band', () => {
     expect(EXERCISE_CATALOG.cable_rope_pushdown).toMatchObject({
       name: 'Cable rope pushdown',

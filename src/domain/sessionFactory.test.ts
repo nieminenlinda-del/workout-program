@@ -16,6 +16,9 @@ describe('seed templates', () => {
     expect(ids).toContain('rdl');
     expect(ids).toContain('reverse_lunge');
     expect(alts).toContain('goblet_squat');
+    expect(DAY_TEMPLATES.A.slots.find((s) => s.slot_id === 'a-leg')?.sets.map((s) => s.weight_kg)).toEqual([
+      37.5, 37.5, 37.5,
+    ]);
     expect(ids).toContain('plank');
     expect(alts).toContain('dead_bug');
   });

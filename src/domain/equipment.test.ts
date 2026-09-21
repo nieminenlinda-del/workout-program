@@ -13,6 +13,34 @@ import { createDraftSession, swapLiftExercise } from './sessionFactory';
 import { exerciseEquipment } from '../types/exercises';
 
 describe('accessory equipment from slot alternatives', () => {
+  it('maps Day A reverse lunge barbell vs goblet DBs', () => {
+    const slot = DAY_TEMPLATES.A.slots.find((s) => s.slot_id === 'a-leg');
+    if (!slot) throw new Error('missing a-leg');
+    expect(equipmentOptionsForSlot(slot)).toEqual(['barbell', 'dumbbells']);
+    expect(exerciseForEquipment(slot, 'barbell')).toBe('reverse_lunge');
+    expect(exerciseForEquipment(slot, 'dumbbells')).toBe('goblet_squat');
+    expect(exerciseForEquipment(slot, 'barbell', 'goblet_squat')).toBe('reverse_lunge');
+    expect(exerciseForEquipment(slot, 'dumbbells', 'squat_goblet')).toBe('squat_goblet');
+    expect(slotAllowsEquipmentPicker(slot)).toBe(true);
+    expect(exerciseEquipment('reverse_lunge')).toBe('barbell');
+    expect(slot.sets.map((s) => s.weight_kg)).toEqual([37.5, 37.5, 37.5]);
+    const monday = createDraftSession('A', '2026-09-14');
+    const lunge = monday.lifts.find((l) => l.exercise_id === 'reverse_lunge');
+    expect(lunge).toMatchObject({
+      exercise_id: 'reverse_lunge',
+      name: 'Reverse lunge',
+      equipment: 'barbell',
+    });
+    expect(lunge?.sets.filter((s) => !s.warmup).map((s) => s.weight_kg)).toEqual([37.5, 37.5, 37.5]);
+    const lungeIndex = monday.lifts.findIndex((l) => l.exercise_id === 'reverse_lunge');
+    const swapped = swapLiftExercise(monday, lungeIndex, 'goblet_squat');
+    expect(swapped.lifts[lungeIndex]).toMatchObject({
+      exercise_id: 'goblet_squat',
+      name: 'Goblet squat',
+      equipment: 'dumbbells',
+    });
+  });
+
   it('maps Day B row barbell vs dumbbells to existing IDs', () => {
     const slot = DAY_TEMPLATES.B.slots.find((s) => s.slot_id === 'b-row');
     if (!slot) throw new Error('missing b-row');

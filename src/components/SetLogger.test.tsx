@@ -215,3 +215,69 @@ describe('SetLogger assisted pull-ups', () => {
     expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ weight_kg: 0, reps: 6 });
   });
 });
+
+const lungeSet: LoggedSet = {
+  weight_kg: 37.5,
+  reps: 8,
+  rpe: 7,
+  completed: false,
+  target_weight_kg: 37.5,
+  target_reps: 8,
+};
+
+describe('SetLogger reverse lunge barbell+plates', () => {
+  const nodes: { root: Root; container: HTMLDivElement }[] = [];
+
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
+
+  afterEach(() => {
+    while (nodes.length) {
+      const node = nodes.pop();
+      if (node) unmount(node.root, node.container);
+    }
+  });
+
+  it('logs 37.5 kg total on the bar and shows the bar mass picker', async () => {
+    const onComplete = vi.fn();
+    const onBarKg = vi.fn();
+    const { container, root } = mount(
+      <SetLogger
+        exerciseName="Reverse lunge"
+        setLabel="1"
+        setCount={3}
+        initial={lungeSet}
+        hasLaterSameKind
+        equipment="barbell"
+        equipmentOptions={['barbell', 'dumbbells']}
+        barKg={15}
+        onBarKg={onBarKg}
+        onEquipment={() => undefined}
+        onCancel={() => undefined}
+        onComplete={onComplete}
+      />,
+    );
+    nodes.push({ container, root });
+
+    expect(container.textContent).toContain('Total on the bar, including the 15 kg bar');
+    expect(container.textContent).toContain('37.5');
+    expect(container.textContent).toContain('Weights');
+    expect(container.textContent).toContain('DBs');
+    expect(container.textContent).toContain('15 kg');
+
+    const complete = [...container.querySelectorAll('button')].find(
+      (el) => el.textContent === 'Complete set',
+    );
+    await act(async () => {
+      complete?.click();
+    });
+
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onComplete.mock.calls[0]?.[0]).toMatchObject({
+      weight_kg: 37.5,
+      reps: 8,
+      completed: true,
+    });
+  });
+});

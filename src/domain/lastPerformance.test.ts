@@ -183,6 +183,13 @@ describe('last matching performance', () => {
     expect(
       formatLastPerformance(lastMatchingPerformance([cable], 'cable_rope_pushdown', 'D', '2026-09-04')),
     ).toBe('Last: 12.5 kg × 12 · Cable');
+    const lunge = completeSession('A', '2026-09-14', 'reverse_lunge', [{ weight_kg: 37.5, reps: 8 }]);
+    expect(formatLastPerformance(lastMatchingPerformance([lunge], 'reverse_lunge', 'A', '2026-09-21'))).toBe(
+      'Last: 37.5 kg × 8 · Barbell',
+    );
+    expect(formatLastPerformance(lastMatchingPerformance([lunge], 'goblet_squat', 'A', '2026-09-21'))).toBe(
+      'Last: 37.5 kg × 8 · Barbell',
+    );
   });
 
   it('falls back to the same slot family so a band (or BW) log is last week for cable', () => {
@@ -266,8 +273,13 @@ describe('week 1 logs are last week for week 2', () => {
     });
     expect(lastMatchingPerformance(week1, 'reverse_lunge', 'A', '2026-09-14')).toMatchObject({
       date: '2026-09-07',
-      weight_kg: 12,
+      weight_kg: 37.5,
+      reps: 8,
+      equipment: 'barbell',
     });
+    expect(formatLastPerformance(lastMatchingPerformance(week1, 'reverse_lunge', 'A', '2026-09-14'))).toBe(
+      'Last: 37.5 kg × 8 · Barbell',
+    );
     expect(formatLastPerformance(lastMatchingPerformance(week1, 'plank', 'A', '2026-09-14'))).toBe(
       'Last: BW × 60s',
     );

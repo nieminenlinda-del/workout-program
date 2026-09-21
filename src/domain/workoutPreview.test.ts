@@ -138,7 +138,7 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
       expect(preview.map((row) => row.lastLine)).toEqual([
         'Last: 47.5 kg × 5',
         'Last: 50 kg × 8 · Barbell',
-        'Last: 12 kg × 8 · DBs',
+        'Last: 37.5 kg × 8 · Barbell',
         'Last: BW × 60s',
       ]);
       expect(preview[0]?.last).toMatchObject({
@@ -172,7 +172,7 @@ describe('upcoming preview Last: from completed logs (no draft)', () => {
     expect(preview.map((row) => row.lastLine)).toEqual([
       'Last: 47.5 kg × 5',
       'Last: 50 kg × 8 · Barbell',
-      'Last: 12 kg × 8 · DBs',
+      'Last: 37.5 kg × 8 · Barbell',
       'Last: BW × 60s',
     ]);
     expect(preview[0]?.workLabel).toBe('57.5 kg · 3 × 4');

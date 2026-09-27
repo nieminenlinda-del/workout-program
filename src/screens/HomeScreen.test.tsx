@@ -39,6 +39,7 @@ function homeProps(overrides: Partial<Parameters<typeof HomeScreen>[0]> = {}) {
     onStart: () => undefined,
     onResume: () => undefined,
     onHistory: () => undefined,
+    onBlockPreview: () => undefined,
     onInterval: () => undefined,
     onHealth: () => undefined,
     onImportSessions: async () => 0,

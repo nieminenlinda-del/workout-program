@@ -5,11 +5,24 @@ import type { VoiceThresholdSec, VoiceZeroKind } from './timerVoice';
  * duck/mix with Apple Music / Spotify instead of taking exclusive playback.
  * `speechSynthesis` cannot do this on iOS — it uses a spoken-audio session
  * that stops other audio for the rest of the rest timer.
+ *
+ * Do not switch this to `playback` or `transient-solo`. Those interrupt
+ * gym music for the rest of the session.
  */
 export const MIXABLE_AUDIO_SESSION_TYPE = 'transient' as const;
 
-/** Pulse AudioContext.resume so iOS does not suspend the graph mid-rest. */
+/** Pulse AudioContext.resume so iOS does not leave the graph suspended mid-rest. */
 export const TIMER_AUDIO_KEEP_ALIVE_MS = 8000;
+
+/**
+ * Schedule a hair ahead of `currentTime`. A start time of "now" on a context
+ * that just left `suspended` / `interrupted` is already in the past by the
+ * time iOS starts the audio device, so the short envelope is skipped.
+ */
+export const CUE_LEAD_SEC = 0.05;
+
+/** Give up waiting on resume() so a backgrounded page cannot hang the cue. */
+const RESUME_TIMEOUT_MS = 400;
 
 export type CueNote = {
   frequency: number;
@@ -17,12 +30,26 @@ export type CueNote = {
   durationSec: number;
 };
 
+export type TimerCueKind = 'end' | 'work' | 'rest';
+
 let audioCtx: AudioContext | null = null;
 let keepAliveId: ReturnType<typeof setInterval> | null = null;
 let keepAliveRefs = 0;
 const activeOscillators = new Set<OscillatorNode>();
 
 type AudioSessionLike = { type: string };
+
+type PendingCue = {
+  notes: CueNote[];
+  peak: number;
+  source: 'phase' | 'voice';
+};
+
+let pending: PendingCue[] = [];
+let removeLifecycle: (() => void) | null = null;
+
+type VisualListener = (kind: TimerCueKind) => void;
+const visualListeners = new Set<VisualListener>();
 
 function audioSession(): AudioSessionLike | null {
   if (typeof navigator === 'undefined') return null;
@@ -42,34 +69,192 @@ export function preferMixableTimerAudio(): boolean {
   }
 }
 
+/**
+ * iOS Safari reports `interrupted` (not only `suspended`) when another app
+ * owns the audio session — the usual case with gym music — and after the
+ * PWA has been backgrounded. `resume()` is required for both.
+ */
+export function contextNeedsResume(state: string): boolean {
+  return state === 'suspended' || state === 'interrupted';
+}
+
+/** Absolute audio-clock times for a phrase, placed just ahead of `currentTime`. */
+export function noteStartTimes(
+  currentTime: number,
+  notes: readonly CueNote[],
+  leadSec = CUE_LEAD_SEC,
+): number[] {
+  const t0 = currentTime + leadSec;
+  return notes.map((note) => t0 + note.startSec);
+}
+
+/** Phase beeps. Both end tones share one audio-clock schedule (no setTimeout). */
+export function phaseCueNotes(kind: TimerCueKind): CueNote[] {
+  if (kind === 'work') return [{ frequency: 740, startSec: 0, durationSec: 0.16 }];
+  if (kind === 'rest') return [{ frequency: 520, startSec: 0, durationSec: 0.18 }];
+  return [
+    { frequency: 880, startSec: 0, durationSec: 0.14 },
+    { frequency: 988, startSec: 0.16, durationSec: 0.2 },
+  ];
+}
+
+function pageHidden(): boolean {
+  return typeof document !== 'undefined' && document.hidden;
+}
+
+function enqueue(item: PendingCue): void {
+  pending = pending.filter((queued) => queued.source !== item.source);
+  pending.push(item);
+}
+
+function audioContextCtor(): typeof AudioContext | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  );
+}
+
+function bindContext(ctx: AudioContext): void {
+  // Test doubles and very old WebKit builds may omit EventTarget methods.
+  // Missing the listener must not cancel the beep.
+  ctx.addEventListener?.('statechange', () => {
+    if (pageHidden()) return;
+    if (ctx.state === 'running') flushPending(ctx);
+  });
+}
+
 function audioContext(): AudioContext | null {
+  installLifecycle();
   preferMixableTimerAudio();
-  const Ctor =
-    typeof window !== 'undefined'
-      ? window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      : undefined;
+  const Ctor = audioContextCtor();
   if (!Ctor) return null;
-  if (!audioCtx) audioCtx = new Ctor();
+  if (audioCtx && (audioCtx.state as string) === 'closed') audioCtx = null;
+  if (!audioCtx) {
+    audioCtx = new Ctor();
+    bindContext(audioCtx);
+  }
   return audioCtx;
 }
 
-function resumeContext(ctx: AudioContext): void {
-  if (ctx.state === 'suspended') void ctx.resume();
+function scheduleNow(ctx: AudioContext, notes: readonly CueNote[], peak: number): void {
+  const starts = noteStartTimes(ctx.currentTime, notes);
+  notes.forEach((note, index) => {
+    beepAt(ctx, note.frequency, starts[index] ?? ctx.currentTime, note.durationSec, peak);
+  });
+}
+
+function flushPending(ctx: AudioContext): void {
+  if (ctx.state !== 'running' || pending.length === 0) return;
+  const batch = pending;
+  pending = [];
+  for (const item of batch) {
+    try {
+      scheduleNow(ctx, item.notes, item.peak);
+    } catch {
+      /* muted output */
+    }
+  }
+}
+
+function withTimeout(promise: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    const timer = window.setTimeout(finish, ms);
+    promise.then(
+      () => {
+        window.clearTimeout(timer);
+        finish();
+      },
+      () => {
+        window.clearTimeout(timer);
+        finish();
+      },
+    );
+  });
+}
+
+/**
+ * Invoke `resume()` in this turn. Awaiting something else first drops the
+ * iOS user-gesture token, and resume() from `interrupted` is what reclaims
+ * the mixable session from Apple Music / Spotify.
+ */
+function resumeContext(ctx: AudioContext): Promise<void> {
+  if (!contextNeedsResume(ctx.state as string)) return Promise.resolve();
+  preferMixableTimerAudio();
+  let pendingResume: Promise<unknown>;
+  try {
+    pendingResume = Promise.resolve(ctx.resume());
+  } catch {
+    return Promise.resolve();
+  }
+  return withTimeout(pendingResume, RESUME_TIMEOUT_MS);
+}
+
+function onVisible(): void {
+  if (pageHidden()) return;
+  preferMixableTimerAudio();
+  const ctx = audioCtx ?? (pending.length > 0 ? audioContext() : null);
+  if (!ctx) return;
+  if (ctx.state === 'running') {
+    flushPending(ctx);
+    return;
+  }
+  if (!contextNeedsResume(ctx.state as string)) return;
+  void resumeContext(ctx).then(() => {
+    if (ctx.state === 'running') flushPending(ctx);
+  });
+}
+
+function installLifecycle(): void {
+  if (removeLifecycle || typeof document === 'undefined' || typeof window === 'undefined') return;
+  document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('pageshow', onVisible);
+  document.addEventListener('pointerdown', unlockTimerAudio, true);
+  window.addEventListener('touchend', unlockTimerAudio, true);
+  const session = audioSession() as (AudioSessionLike & EventTarget) | null;
+  const sessionEvents = Boolean(session && typeof session.addEventListener === 'function');
+  if (session && sessionEvents) session.addEventListener('statechange', onVisible);
+  removeLifecycle = () => {
+    document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('pageshow', onVisible);
+    document.removeEventListener('pointerdown', unlockTimerAudio, true);
+    window.removeEventListener('touchend', unlockTimerAudio, true);
+    if (session && sessionEvents) session.removeEventListener('statechange', onVisible);
+    removeLifecycle = null;
+  };
 }
 
 /** Call from a tap so iOS/Chrome will allow later beeps. Does not touch TTS. */
 export function unlockTimerAudio(): void {
   const ctx = audioContext();
-  if (ctx) resumeContext(ctx);
+  if (!ctx) return;
+  if (ctx.state === 'running') {
+    flushPending(ctx);
+    return;
+  }
+  if (!contextNeedsResume(ctx.state as string)) return;
+  void resumeContext(ctx).then(() => {
+    if (ctx.state === 'running') flushPending(ctx);
+  });
 }
 
 function vibratePattern(pattern: number[]): void {
   try {
     navigator.vibrate?.(pattern);
   } catch {
-    /* vibration unsupported or blocked — audio may still play */
+    /* iOS Safari has no vibrate(); the visual cue still runs */
   }
+}
+
+/** True when this browser exposes the Vibration API. iOS Safari returns false. */
+export function timerVibrationSupported(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 }
 
 function trackOscillator(osc: OscillatorNode): void {
@@ -78,7 +263,13 @@ function trackOscillator(osc: OscillatorNode): void {
   osc.addEventListener('ended', drop);
 }
 
-function beepAt(ctx: AudioContext, frequency: number, startTime: number, durationSec: number, peak = 0.14): void {
+function beepAt(
+  ctx: AudioContext,
+  frequency: number,
+  startTime: number,
+  durationSec: number,
+  peak = 0.14,
+): void {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'square';
@@ -93,32 +284,63 @@ function beepAt(ctx: AudioContext, frequency: number, startTime: number, duratio
   osc.stop(startTime + durationSec + 0.02);
 }
 
-function beep(frequency: number, durationSec: number): void {
-  try {
-    const ctx = audioContext();
-    if (!ctx) return;
-    resumeContext(ctx);
-    beepAt(ctx, frequency, ctx.currentTime, durationSec);
-  } catch {
-    /* muted output or missing AudioContext */
+function notifyVisual(kind: TimerCueKind): void {
+  for (const listener of visualListeners) {
+    try {
+      listener(kind);
+    } catch {
+      /* a UI listener must not swallow the beep */
+    }
   }
 }
 
-/** Vibration first (no audio permission). Beep may be silent if the phone is muted. */
-export function signalTimerCue(kind: 'end' | 'work' | 'rest' = 'end'): void {
-  if (kind === 'work') {
-    vibratePattern([160, 60, 160]);
-    beep(740, 0.16);
-    return;
+/** Rest / interval screens subscribe to flash a banner even when audio is silent. */
+export function subscribeTimerCueVisual(listener: VisualListener): () => void {
+  visualListeners.add(listener);
+  return () => visualListeners.delete(listener);
+}
+
+/**
+ * Play notes only after the context is `running`.
+ *
+ * The whole rest is not armed on the audio clock: iOS suspends that clock
+ * whenever the graph is idle (and gym music keeps the session interrupted),
+ * so a beep scheduled 90s ahead would drift from the wall-clock end. The
+ * countdown already ends on `endsAtMs`; this function plays at that moment.
+ */
+function playCueNotes(notes: CueNote[], peak: number, source: PendingCue['source']): Promise<boolean> {
+  try {
+    installLifecycle();
+    if (pageHidden()) {
+      enqueue({ notes, peak, source });
+      return Promise.resolve(false);
+    }
+    const ctx = audioContext();
+    if (!ctx) return Promise.resolve(false);
+    if (ctx.state === 'running') {
+      pending = pending.filter((queued) => queued.source !== source);
+      scheduleNow(ctx, notes, peak);
+      return Promise.resolve(true);
+    }
+    if (!contextNeedsResume(ctx.state as string)) return Promise.resolve(false);
+    enqueue({ notes, peak, source });
+    return resumeContext(ctx).then(() => {
+      if (ctx.state !== 'running') return false;
+      flushPending(ctx);
+      return true;
+    });
+  } catch {
+    return Promise.resolve(false);
   }
-  if (kind === 'rest') {
-    vibratePattern([220]);
-    beep(520, 0.18);
-    return;
-  }
-  vibratePattern([200, 80, 200, 80, 280]);
-  beep(880, 0.14);
-  window.setTimeout(() => beep(988, 0.2), 160);
+}
+
+/** Vibration where it exists, then a mixable beep. Always notifies the visual cue. */
+export function signalTimerCue(kind: TimerCueKind = 'end'): Promise<boolean> {
+  if (kind === 'work') vibratePattern([160, 60, 160]);
+  else if (kind === 'rest') vibratePattern([220]);
+  else vibratePattern([200, 80, 200, 80, 280]);
+  notifyVisual(kind);
+  return playCueNotes(phaseCueNotes(kind), 0.14, 'phase');
 }
 
 /**
@@ -161,21 +383,12 @@ export function voiceCueNotes(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 
 }
 
 /** Mixable Web Audio stand-in for speechSynthesis timer lines. */
-export function playTimerVoiceCue(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): void {
-  try {
-    const ctx = audioContext();
-    if (!ctx) return;
-    resumeContext(ctx);
-    const now = ctx.currentTime;
-    for (const note of voiceCueNotes(cue, zeroKind)) {
-      beepAt(ctx, note.frequency, now + note.startSec, note.durationSec, 0.16);
-    }
-  } catch {
-    /* muted output or missing AudioContext */
-  }
+export function playTimerVoiceCue(cue: VoiceThresholdSec, zeroKind: VoiceZeroKind = 'done'): Promise<boolean> {
+  return playCueNotes(voiceCueNotes(cue, zeroKind), 0.16, 'voice');
 }
 
 export function cancelTimerVoiceCues(): void {
+  pending = pending.filter((queued) => queued.source !== 'voice');
   for (const osc of activeOscillators) {
     try {
       osc.stop();
@@ -189,16 +402,31 @@ export function cancelTimerVoiceCues(): void {
 /**
  * Resume the (already unlocked) AudioContext on an interval.
  * Do **not** play silence here — that would duck gym music every few seconds.
+ * `interrupted` counts: with music playing, iOS rarely stays on `suspended`.
  */
 export function startTimerAudioKeepAlive(): void {
   if (typeof window === 'undefined') return;
+  installLifecycle();
   keepAliveRefs += 1;
   if (keepAliveId != null) return;
   const pulse = () => {
-    if (typeof document !== 'undefined' && document.hidden) return;
-    if (!audioCtx || audioCtx.state !== 'suspended') return;
+    if (pageHidden()) return;
+    if (!audioCtx) return;
+    if ((audioCtx.state as string) === 'closed') {
+      audioCtx = null;
+      return;
+    }
+    if (!contextNeedsResume(audioCtx.state as string)) return;
     preferMixableTimerAudio();
-    void audioCtx.resume();
+    const ctx = audioCtx;
+    void ctx.resume().then(
+      () => {
+        if (ctx.state === 'running') flushPending(ctx);
+      },
+      () => {
+        /* resume rejected; the next tap or visibility change tries again */
+      },
+    );
   };
   keepAliveId = window.setInterval(pulse, TIMER_AUDIO_KEEP_ALIVE_MS);
 }
@@ -219,10 +447,13 @@ export function timerAudioKeepAliveRunning(): boolean {
 /** Test-only: drop the cached context and keep-alive so suites stay isolated. */
 export function resetTimerAudioForTests(): void {
   cancelTimerVoiceCues();
+  pending = [];
+  visualListeners.clear();
   keepAliveRefs = 0;
   if (keepAliveId != null) {
     window.clearInterval(keepAliveId);
     keepAliveId = null;
   }
+  removeLifecycle?.();
   audioCtx = null;
 }

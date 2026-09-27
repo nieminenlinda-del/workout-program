@@ -11,7 +11,7 @@ import {
   stopInterval,
   syncInterval,
 } from '../domain/intervalTimer';
-import { displaySeconds } from '../domain/countdown';
+import { displaySeconds, msUntilDeadline } from '../domain/countdown';
 import { signalTimerCue, unlockTimerAudio } from '../domain/timerCue';
 import { speakZeroIfEnabled, useSpokenCountdown } from './useSpokenCountdown';
 import { useWakeLock } from './useWakeLock';
@@ -34,11 +34,15 @@ export function useIntervalTimer(
   );
 
   useEffect(() => {
-    if (!state.countdown.running) return;
-    const id = window.setInterval(() => {
-      setState((current) => syncInterval(current, Date.now()));
-    }, 200);
-    return () => window.clearInterval(id);
+    if (!state.countdown.running || state.countdown.endsAtMs == null) return;
+    const tick = () => setState((current) => syncInterval(current, Date.now()));
+    const delay = msUntilDeadline(state.countdown.endsAtMs, Date.now());
+    const timeoutId = window.setTimeout(tick, delay ?? 0);
+    const intervalId = window.setInterval(tick, 200);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
   }, [state.countdown.running, state.countdown.endsAtMs, state.phase]);
 
   useEffect(() => {

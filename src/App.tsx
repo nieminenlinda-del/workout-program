@@ -8,6 +8,7 @@ import { DetailScreen, HistoryScreen } from './screens/HistoryScreen';
 import { IntervalTimerScreen } from './screens/IntervalTimerScreen';
 import { HealthScreen } from './screens/HealthScreen';
 import { BlockPreviewScreen } from './screens/BlockPreviewScreen';
+import { TimerCueFlash } from './components/TimerCueFlash';
 import { useRepository, useSessionFlow, type AppView } from './hooks/useSessionFlow';
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
 import { canonicalTemplateDay, defaultTemplateDayForDate, todayIsoDate } from './domain/templateDay';
@@ -69,6 +70,7 @@ export default function App() {
 
   return (
     <div className="shell">
+      <TimerCueFlash />
       {view === 'home' ? (
         <HomeScreen
           date={date}

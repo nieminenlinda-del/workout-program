@@ -2,6 +2,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { PWA_CACHE_ID } from './src/pwaCache';
 
 const BASE = '/workout-program/';
 
@@ -38,7 +39,7 @@ export default defineConfig({
       workbox: {
         // Versioned precache id so an installed Home Screen app drops the
         // previous cache when this build's service worker activates.
-        cacheId: 'linda-lift-v2',
+        cacheId: PWA_CACHE_ID,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: `${BASE}index.html`,

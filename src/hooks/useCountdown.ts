@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   displaySeconds,
   extendCountdown,
+  msUntilDeadline,
   pauseCountdown,
   resumeCountdown,
   skipCountdown,
@@ -30,11 +31,17 @@ export function useCountdown(
   useSpokenCountdown(displaySeconds(state), `rest-${voiceCycle}`, voiceEnabled);
 
   useEffect(() => {
-    if (!state.running) return;
-    const id = window.setInterval(() => {
-      setState((current) => syncCountdown(current, Date.now()));
-    }, 200);
-    return () => window.clearInterval(id);
+    if (!state.running || state.endsAtMs == null) return;
+    const tick = () => setState((current) => syncCountdown(current, Date.now()));
+    // Exact wall-clock deadline plus a short poll. iOS may delay either one;
+    // `syncCountdown` still finishes from `endsAtMs`, not from tick count.
+    const delay = msUntilDeadline(state.endsAtMs, Date.now());
+    const timeoutId = window.setTimeout(tick, delay ?? 0);
+    const intervalId = window.setInterval(tick, 200);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
   }, [state.running, state.endsAtMs]);
 
   useEffect(() => {

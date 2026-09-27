@@ -85,6 +85,12 @@ export function skipCountdown(state: CountdownState): CountdownState {
   };
 }
 
+/** Milliseconds until the wall-clock deadline. Null when the countdown is not running. */
+export function msUntilDeadline(endsAtMs: number | null, nowMs: number): number | null {
+  if (endsAtMs == null) return null;
+  return Math.max(0, endsAtMs - nowMs);
+}
+
 export function displaySeconds(state: CountdownState): number {
   if (state.finished || state.remainingMs <= 0) return 0;
   return Math.max(1, Math.ceil(state.remainingMs / 1000));

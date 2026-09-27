@@ -3,6 +3,7 @@ import {
   displaySeconds,
   extendCountdown,
   formatClock,
+  msUntilDeadline,
   pauseCountdown,
   progressRatio,
   resumeCountdown,
@@ -25,6 +26,9 @@ describe('countdown', () => {
     const afterJump = syncCountdown(started, 91_000);
     expect(afterJump.finished).toBe(true);
     expect(displaySeconds(afterJump)).toBe(0);
+    expect(msUntilDeadline(started.endsAtMs, 1_000)).toBe(90_000);
+    expect(msUntilDeadline(started.endsAtMs, 91_000)).toBe(0);
+    expect(msUntilDeadline(null, 91_000)).toBeNull();
   });
 
   it('pauses and does not consume time until resume', () => {

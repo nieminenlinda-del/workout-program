@@ -3,4 +3,4 @@
  * previous cache — iOS often keeps a stale service worker until the cache
  * name changes. File hashes alone are not enough on an installed PWA.
  */
-export const PWA_CACHE_ID = 'linda-lift-v22-timer-cue';
+export const PWA_CACHE_ID = 'linda-lift-v23-foreground-cue';

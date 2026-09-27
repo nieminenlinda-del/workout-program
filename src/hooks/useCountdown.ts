@@ -10,7 +10,7 @@ import {
   syncCountdown,
   type CountdownState,
 } from '../domain/countdown';
-import { signalTimerCue, unlockTimerAudio } from '../domain/timerCue';
+import { signalTimerCue, startTimerAudioKeepAlive, stopTimerAudioKeepAlive, unlockTimerAudio } from '../domain/timerCue';
 import { speakZeroIfEnabled, useSpokenCountdown } from './useSpokenCountdown';
 import { useWakeLock } from './useWakeLock';
 
@@ -29,6 +29,14 @@ export function useCountdown(
 
   useWakeLock(state.running && !state.finished);
   useSpokenCountdown(displaySeconds(state), `rest-${voiceCycle}`, voiceEnabled);
+
+  // Voice-off still needs the graph held open. The spoken hook only does this
+  // while cues are enabled, and the end beep is not a user gesture.
+  useEffect(() => {
+    if (!state.running) return;
+    startTimerAudioKeepAlive();
+    return () => stopTimerAudioKeepAlive();
+  }, [state.running]);
 
   useEffect(() => {
     if (!state.running || state.endsAtMs == null) return;

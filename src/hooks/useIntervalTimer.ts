@@ -12,7 +12,7 @@ import {
   syncInterval,
 } from '../domain/intervalTimer';
 import { displaySeconds, msUntilDeadline } from '../domain/countdown';
-import { signalTimerCue, unlockTimerAudio } from '../domain/timerCue';
+import { signalTimerCue, startTimerAudioKeepAlive, stopTimerAudioKeepAlive, unlockTimerAudio } from '../domain/timerCue';
 import { speakZeroIfEnabled, useSpokenCountdown } from './useSpokenCountdown';
 import { useWakeLock } from './useWakeLock';
 
@@ -27,6 +27,12 @@ export function useIntervalTimer(
 
   const active = state.phase === 'work' || state.phase === 'rest';
   useWakeLock(active && state.countdown.running);
+
+  useEffect(() => {
+    if (!state.countdown.running) return;
+    startTimerAudioKeepAlive();
+    return () => stopTimerAudioKeepAlive();
+  }, [state.countdown.running]);
   useSpokenCountdown(
     displaySeconds(state.countdown),
     `${state.phase}-${state.round}`,

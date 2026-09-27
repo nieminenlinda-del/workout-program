@@ -36,6 +36,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Versioned precache id so an installed Home Screen app drops the
+        // previous cache when this build's service worker activates.
+        cacheId: 'linda-lift-v2',
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: `${BASE}index.html`,
       },

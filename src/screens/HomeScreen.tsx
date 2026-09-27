@@ -19,6 +19,7 @@ export function HomeScreen({
   onStart,
   onResume,
   onHistory,
+  onBlockPreview,
   onInterval,
   onHealth,
   onImportSessions,
@@ -34,6 +35,7 @@ export function HomeScreen({
   onStart: () => void;
   onResume: () => void;
   onHistory: () => void;
+  onBlockPreview: () => void;
   onInterval: () => void;
   onHealth: () => void;
   onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
@@ -116,6 +118,10 @@ export function HomeScreen({
           {draft ? 'Replace draft & start' : 'Start session'}
         </button>
       </section>
+
+      <button type="button" className="btn btn-ghost btn-block" onClick={onBlockPreview}>
+        Block preview
+      </button>
 
       <p className="tm-note">
         Training maxes (docs only): squat {SEED_TRAINING_MAXES.squat_kg} · bench{' '}

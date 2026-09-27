@@ -21,7 +21,8 @@ export type AppView =
   | 'history'
   | 'detail'
   | 'interval'
-  | 'health';
+  | 'health'
+  | 'blockPreview';
 
 export function useRepository(): SessionRepository {
   return useMemo(() => createIndexedDbRepository(), []);

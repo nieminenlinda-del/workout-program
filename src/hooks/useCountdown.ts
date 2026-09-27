@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   displaySeconds,
   extendCountdown,
+  msUntilDeadline,
   pauseCountdown,
   resumeCountdown,
   skipCountdown,
@@ -9,7 +10,7 @@ import {
   syncCountdown,
   type CountdownState,
 } from '../domain/countdown';
-import { signalTimerCue, unlockTimerAudio } from '../domain/timerCue';
+import { signalTimerCue, startTimerAudioKeepAlive, stopTimerAudioKeepAlive, unlockTimerAudio } from '../domain/timerCue';
 import { speakZeroIfEnabled, useSpokenCountdown } from './useSpokenCountdown';
 import { useWakeLock } from './useWakeLock';
 
@@ -29,12 +30,26 @@ export function useCountdown(
   useWakeLock(state.running && !state.finished);
   useSpokenCountdown(displaySeconds(state), `rest-${voiceCycle}`, voiceEnabled);
 
+  // Voice-off still needs the graph held open. The spoken hook only does this
+  // while cues are enabled, and the end beep is not a user gesture.
   useEffect(() => {
     if (!state.running) return;
-    const id = window.setInterval(() => {
-      setState((current) => syncCountdown(current, Date.now()));
-    }, 200);
-    return () => window.clearInterval(id);
+    startTimerAudioKeepAlive();
+    return () => stopTimerAudioKeepAlive();
+  }, [state.running]);
+
+  useEffect(() => {
+    if (!state.running || state.endsAtMs == null) return;
+    const tick = () => setState((current) => syncCountdown(current, Date.now()));
+    // Exact wall-clock deadline plus a short poll. iOS may delay either one;
+    // `syncCountdown` still finishes from `endsAtMs`, not from tick count.
+    const delay = msUntilDeadline(state.endsAtMs, Date.now());
+    const timeoutId = window.setTimeout(tick, delay ?? 0);
+    const intervalId = window.setInterval(tick, 200);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
   }, [state.running, state.endsAtMs]);
 
   useEffect(() => {

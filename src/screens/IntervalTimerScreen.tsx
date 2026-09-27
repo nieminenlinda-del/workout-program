@@ -39,8 +39,8 @@ export function IntervalTimerScreen({
         <span />
       </header>
       <p className="lede">
-        Conditioning / circuits. Not tied to a lift. Buzz + beep still fire; mixable cues at
-        30s, 10s, and the next phase.
+        Conditioning / circuits. Not tied to a lift. Beep and a flash mark each phase;
+        mixable cues at 30s, 10s, and the next phase.
       </p>
 
       {state.phase === 'idle' ? (

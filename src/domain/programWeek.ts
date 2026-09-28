@@ -10,7 +10,12 @@ export interface T1Prescription {
   reps: number;
   /** Per-set RPE; length matches `set_count`. */
   rpe: number[];
-  /** Coaching line under the T1 name (Week 2–3 squat soft-cap). */
+  /**
+   * Target shown wherever the app prints a planned RPE, when that target is a
+   * band rather than one number per set (Week 4 deload: `5–6`).
+   */
+  rpe_label?: string;
+  /** Coaching line under the T1 name (Week 2–3 squat soft-cap, Week 4 deload). */
   note?: string;
 }
 
@@ -69,7 +74,7 @@ export function blockWeekContext(asOf: string): {
   };
 }
 
-export type BlockAT1Week = 1 | 2 | 3;
+export type BlockAT1Week = 1 | 2 | 3 | 4;
 
 /**
  * Block A T1 table (Kraft, Sep 2026). Not an auto-progression rule.
@@ -79,7 +84,10 @@ export type BlockAT1Week = 1 | 2 | 3;
  * DL 70×3×4; Fri 40×2×5. Bench/DL hold load — no +2.5.
  * Week 3 (locked; early start 20 Sep): squat 60×3×3 @ RPE ≤8; bench 42.5×3×4;
  * DL 72.5×3×3; bench volume 42.5×2×4.
- * Week ≥4: no Kraft lock yet — hold Week 3. Accessories stay on the seed template.
+ * Week 4 (Mon 28 Sep–Sun 4 Oct) is a deload, all T1s @ RPE 5–6:
+ * squat 45×2×5; bench 32.5×2×5; DL 55×2×5 (Wed or Thu); Fri bench 32.5×2×5.
+ * A later Block A week would hold Week 3. Block B starts 5 Oct and is not in this table.
+ * Accessories stay on the seed template.
  */
 export const BLOCK_A_T1_BY_WEEK: Record<BlockAT1Week, Record<CanonicalTemplateDay, T1Prescription>> = {
   1: {
@@ -112,17 +120,36 @@ export const BLOCK_A_T1_BY_WEEK: Record<BlockAT1Week, Record<CanonicalTemplateDa
     C: { weight_kg: 72.5, set_count: 3, reps: 3, rpe: [7.5, 8, 8] },
     D: { weight_kg: 42.5, set_count: 2, reps: 4, rpe: [7, 7.5] },
   },
+  4: {
+    A: { weight_kg: 45, set_count: 2, reps: 5, rpe: [5, 6], rpe_label: '5–6', note: 'Deload. RPE 5–6.' },
+    B: { weight_kg: 32.5, set_count: 2, reps: 5, rpe: [5, 6], rpe_label: '5–6', note: 'Deload. RPE 5–6.' },
+    C: { weight_kg: 55, set_count: 2, reps: 5, rpe: [5, 6], rpe_label: '5–6', note: 'Deload. RPE 5–6.' },
+    D: { weight_kg: 32.5, set_count: 2, reps: 5, rpe: [5, 6], rpe_label: '5–6', note: 'Deload. RPE 5–6.' },
+  },
 };
 
-/** Week 1 / 2 / 3 row; Week ≥4 holds Week 3. Null off-block / other blocks. */
+/** Week 1 / 2 / 3 rows; Week 4 is the deload. Any later Block A week holds Week 3. */
+function blockATableWeek(weekIndex: number): BlockAT1Week {
+  if (weekIndex <= 1) return 1;
+  if (weekIndex === 2) return 2;
+  if (weekIndex === 4) return 4;
+  return 3;
+}
+
+/** Block A Week 4 (28 Sep–4 Oct 2026). False for Block B/C, including their week 4. */
+export function isBlockADeloadWeek(asOf: string): boolean {
+  const ctx = blockWeekContext(asOf);
+  return ctx?.block === 'A' && ctx.weekIndex === 4;
+}
+
+/** Week 1 / 2 / 3 row; Week 4 deload; later Block A weeks hold Week 3. Null off-block / other blocks. */
 export function t1PrescriptionFor(
   day: CanonicalTemplateDay,
   asOf: string,
 ): T1Prescription | null {
   const ctx = blockWeekContext(asOf);
   if (!ctx || ctx.block !== 'A') return null;
-  const tableWeek: BlockAT1Week = ctx.weekIndex <= 1 ? 1 : ctx.weekIndex === 2 ? 2 : 3;
-  return BLOCK_A_T1_BY_WEEK[tableWeek][day];
+  return BLOCK_A_T1_BY_WEEK[blockATableWeek(ctx.weekIndex)][day];
 }
 
 /** Overlay Block A T1 kg/reps onto the seed template. Accessories unchanged. */
@@ -147,6 +174,7 @@ function overlayT1(slot: TemplateSlot, rx: T1Prescription): TemplateSlot {
     reps: rx.reps,
     rpe: rx.rpe[i] ?? rx.rpe[rx.rpe.length - 1] ?? 7,
     rest_sec: rest,
+    ...(rx.rpe_label ? { rpe_label: rx.rpe_label } : {}),
   }));
   return rx.note ? { ...slot, sets, note: rx.note } : { ...slot, sets, note: undefined };
 }

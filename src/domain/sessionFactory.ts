@@ -37,6 +37,7 @@ export function liftsFromTemplate(day: CanonicalTemplateDay, asOf = todayIsoDate
           warmup: s.warmup,
           target_weight_kg: s.weight_kg,
           target_reps: s.reps,
+          ...(s.rpe_label ? { rpe_label: s.rpe_label } : {}),
         })),
         warmupKindFor(slot.exercise_id),
       ),

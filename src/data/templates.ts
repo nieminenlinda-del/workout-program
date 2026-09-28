@@ -5,6 +5,8 @@ export interface SeedSet {
   weight_kg: number;
   reps: number;
   rpe: number;
+  /** Planned RPE band, shown instead of `rpe` (Week 4 deload `5–6`). */
+  rpe_label?: string;
   amrap?: boolean;
   rest_sec: number;
   warmup?: boolean;

@@ -111,6 +111,7 @@ function asSet(value: unknown, label: string): LoggedSet {
   if (typeof row.warmup === 'boolean') set.warmup = row.warmup;
   if (typeof row.target_weight_kg === 'number') set.target_weight_kg = row.target_weight_kg;
   if (typeof row.target_reps === 'number') set.target_reps = row.target_reps;
+  if (typeof row.rpe_label === 'string' && row.rpe_label) set.rpe_label = row.rpe_label;
   return set;
 }
 

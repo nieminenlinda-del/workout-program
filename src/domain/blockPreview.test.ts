@@ -57,6 +57,7 @@ describe('block preview phases and weeks', () => {
       end: '2026-09-27',
       rangeLabel: '20–27 Sep',
       phaseLabel: 'Hypertrophy',
+      deload: false,
       current: true,
       projected: false,
       completed: false,
@@ -67,9 +68,11 @@ describe('block preview phases and weeks', () => {
       end: '2026-10-04',
       rangeLabel: '28 Sep – 4 Oct',
       phaseLabel: 'Hypertrophy',
+      deload: true,
       current: false,
       projected: true,
     });
+    expect(weeks.find((week) => week.id === 'B-4')?.deload).toBe(false);
     expect(weeks.find((week) => week.id === 'B-1')?.phaseLabel).toBe('Strength');
     expect(weeks.at(-1)).toMatchObject({
       label: 'Block C · Week 3',
@@ -111,13 +114,39 @@ describe('block preview loads', () => {
     expect(weeks[0]?.sessions[3]?.exercises[0]?.workLabel).toBe('42.5 kg · 2 × 4');
   });
 
-  it('holds week 3 into Block A week 4 and labels it projected', () => {
-    const monday = weeks[1]?.sessions[0];
+  it('uses the Week 4 deload on Block A week 4 and labels it projected', () => {
+    const week = weeks[1];
+    expect(week?.deload).toBe(true);
+    expect(week?.end).toBe('2026-10-04');
+    expect(week?.sessions.map((session) => `${session.date} ${session.templateDay}`)).toEqual([
+      '2026-09-28 A',
+      '2026-09-29 B',
+      '2026-10-01 C',
+      '2026-10-02 D',
+    ]);
+
+    const monday = week?.sessions[0];
     expect(monday?.date).toBe('2026-09-28');
     expect(monday?.projected).toBe(true);
-    expect(monday?.exercises[0]?.workLabel).toBe('60 kg · 3 × 3');
+    expect(monday?.exercises[0]).toMatchObject({
+      workLabel: '45 kg · 2 × 5',
+      rpeLabel: 'RPE 5–6',
+      note: 'Deload. RPE 5–6.',
+    });
+    expect(monday?.exercises[1]?.workLabel).toBe('50 kg · 3 × 8');
     expect(monday?.exercises.every((row) => row.projected)).toBe(true);
     expectSameTargets('2026-09-28', 'A', monday?.exercises ?? []);
+
+    const deadlift = week?.sessions.find((session) => session.date === '2026-10-01');
+    expect(deadlift?.exercises[0]).toMatchObject({
+      workLabel: '55 kg · 2 × 5',
+      rpeLabel: 'RPE 5–6',
+    });
+    expectSameTargets('2026-09-30', 'C', deadlift?.exercises ?? []);
+    expectSameTargets('2026-10-01', 'C', deadlift?.exercises ?? []);
+    expect(week?.sessions.find((session) => session.date === '2026-10-02')?.exercises[0]?.workLabel).toBe(
+      '32.5 kg · 2 × 5',
+    );
   });
 
   it('uses the same seed targets as Today once the Kraft table stops (Block B and C)', () => {

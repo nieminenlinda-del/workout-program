@@ -4,6 +4,8 @@ import { createDraftSession } from './sessionFactory';
 import {
   applyProgramWeek,
   blockWeekContext,
+  dayTemplateForDate,
+  isBlockADeloadWeek,
   programWeekIndex,
   t1PrescriptionFor,
   weekIndexFromStart,
@@ -122,11 +124,40 @@ describe('Block A Kraft T1 table (no auto +2.5)', () => {
     });
   });
 
-  it('week ≥4 holds Week 3; off-block and Block B do not overlay', () => {
-    expect(t1PrescriptionFor('A', '2026-09-28')?.weight_kg).toBe(60);
-    expect(t1PrescriptionFor('A', '2026-10-04')?.reps).toBe(3);
+  it('Week 4 deload (28 Sep–4 Oct): squat 45×2×5, bench 32.5×2×5, DL 55×2×5, Fri 32.5×2×5 @ RPE 5–6', () => {
+    const deload = {
+      set_count: 2,
+      reps: 5,
+      rpe: [5, 6],
+      rpe_label: '5–6',
+      note: 'Deload. RPE 5–6.',
+    };
+    expect(isBlockADeloadWeek('2026-09-27')).toBe(false);
+    expect(isBlockADeloadWeek('2026-09-28')).toBe(true);
+    expect(isBlockADeloadWeek('2026-10-04')).toBe(true);
+    expect(isBlockADeloadWeek('2026-10-05')).toBe(false);
+
+    expect(t1PrescriptionFor('A', '2026-09-28')).toEqual({ weight_kg: 45, ...deload });
+    expect(t1PrescriptionFor('B', '2026-09-29')).toEqual({ weight_kg: 32.5, ...deload });
+    // Day C is the same load on Wed or Thu — she may deadlift either day.
+    expect(t1PrescriptionFor('C', '2026-09-30')).toEqual({ weight_kg: 55, ...deload });
+    expect(t1PrescriptionFor('C', '2026-10-01')).toEqual({ weight_kg: 55, ...deload });
+    expect(dayTemplateForDate('C', '2026-09-30').slots[0]?.sets.map((set) => set.weight_kg)).toEqual([
+      55, 55,
+    ]);
+    expect(dayTemplateForDate('C', '2026-10-01').slots[0]?.sets.map((set) => set.rpe_label)).toEqual([
+      '5–6',
+      '5–6',
+    ]);
+    expect(t1PrescriptionFor('D', '2026-10-02')).toEqual({ weight_kg: 32.5, ...deload });
+
+    // Sun 4 Oct is the last deload day. Mon 5 Oct is Block B and stays off this table.
+    expect(blockWeekContext('2026-10-04')).toMatchObject({ block: 'A', weekIndex: 4, end: '2026-10-04' });
+    expect(t1PrescriptionFor('A', '2026-10-04')).toEqual({ weight_kg: 45, ...deload });
+    expect(t1PrescriptionFor('C', '2026-10-04')?.weight_kg).toBe(55);
     expect(t1PrescriptionFor('A', '2026-09-06')).toBeNull();
     expect(t1PrescriptionFor('A', '2026-10-05')).toBeNull();
+    expect(t1PrescriptionFor('C', '2026-10-05')).toBeNull();
   });
 
   it('does not invent +2.5 on bench or deadlift in weeks 1–2', () => {
@@ -154,8 +185,18 @@ describe('Kraft trip day-of-week defaults', () => {
     expect(defaultTemplateDayForDate('2026-09-17')).toBe('C');
     expect(defaultTemplateDayForDate('2026-09-18')).toBe('D');
     expect(defaultTemplateDayForDate('2026-09-28')).toBe('A');
+    expect(defaultTemplateDayForDate('2026-09-29')).toBe('B');
     expect(defaultTemplateDayForDate('2026-10-01')).toBe('C');
     expect(defaultTemplateDayForDate('2026-10-02')).toBe('D');
+  });
+
+  it('Week 4 deadlift opens on Wed 30 Sep and stays scheduled on Thu 1 Oct; Sun 4 Oct is rest', () => {
+    expect(defaultTemplateDayForDate('2026-09-30')).toBe('C');
+    expect(calendarTemplateDay('2026-09-30')).toBe('rest');
+    expect(defaultTemplateDayForDate('2026-10-01')).toBe('C');
+    expect(calendarTemplateDay('2026-10-01')).toBe('C');
+    expect(defaultTemplateDayForDate('2026-10-04')).toBeNull();
+    expect(blockWeekContext('2026-10-04')?.weekIndex).toBe(4);
   });
 });
 
@@ -213,5 +254,32 @@ describe('createDraftSession matches plannedDayPreview', () => {
     expect(week3.slots[2]?.sets.map((s) => s.weight_kg)).toEqual(
       DAY_TEMPLATES.A.slots[2].sets.map((s) => s.weight_kg),
     );
+    const week4 = applyProgramWeek(DAY_TEMPLATES.A, '2026-09-28');
+    expect(week4.slots[0]?.sets.map((s) => s.weight_kg)).toEqual([45, 45]);
+    expect(week4.slots[1]?.sets.map((s) => s.weight_kg)).toEqual(
+      DAY_TEMPLATES.A.slots[1].sets.map((s) => s.weight_kg),
+    );
+    expect(week4.slots[2]?.sets.map((s) => s.weight_kg)).toEqual(
+      DAY_TEMPLATES.A.slots[2].sets.map((s) => s.weight_kg),
+    );
+    expect(week4.slots.slice(1).every((slot) => slot.sets.every((set) => set.rpe_label == null))).toBe(
+      true,
+    );
+  });
+
+  it('Week 4 Day A squat is the deload 45 × 2×5 @ RPE 5–6', () => {
+    const preview = plannedDayPreview(DAY_TEMPLATES.A, [], '2026-09-28');
+    const squat = preview[0];
+    expect(squat?.workLabel).toBe('45 kg · 2 × 5');
+    expect(squat?.note).toBe('Deload. RPE 5–6.');
+    expect(squat?.sets.filter((s) => !s.warmup).map((s) => s.rpe_label)).toEqual(['5–6', '5–6']);
+
+    const draft = createDraftSession('A', '2026-09-28');
+    const work = draft.lifts[0].sets.filter((s) => !s.warmup);
+    expect(work.map((s) => s.weight_kg)).toEqual([45, 45]);
+    expect(work.map((s) => s.reps)).toEqual([5, 5]);
+    expect(work.map((s) => s.rpe)).toEqual([5, 6]);
+    expect(work.map((s) => s.rpe_label)).toEqual(['5–6', '5–6']);
+    expect(draft.lifts[0].sets.filter((s) => s.warmup).every((s) => s.rpe_label == null)).toBe(true);
   });
 });

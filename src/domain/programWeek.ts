@@ -1,20 +1,34 @@
 import { DAY_TEMPLATES, type DayTemplate, type TemplateSlot } from '../data/templates';
+import type { ExerciseId } from '../types/exercises';
 import type { CanonicalTemplateDay, SessionLog } from '../types/session';
 import { MESOCYCLE_WINDOWS, type MesocycleBlock } from '../types/phase2';
+import { paintAccessorySeed, progressAccessorySlot } from './accessoryProgression';
 import {
+  accessorySetsInWeek,
   accessorySlotForWeek,
+  blockBVariationWeek,
   blockPrescription,
   dropAccessorySlots,
   expandPrescription,
   holdNote,
   isPlannedDeload,
   isStepUp,
+  PAUSED_DEADLIFT_SLOT,
+  PAUSED_DL_BASE_KG,
+  pausedDeadliftSteps,
   previousWeekAnchor,
   shouldApplyHold,
   templateOverrideForDate,
   topSetRpeInWeek,
+  VARIATION_STEP_KG,
+  variationCitedRpe,
+  variationHeldNote,
+  variationLogInWeek,
+  variationStepNote,
   volumeSlotsFor,
+  withBlockBVariations,
   type T1Prescription,
+  type VariationLog,
 } from './cyclePlan';
 import { calendarYmd } from './lastPerformance';
 import { isProgressionFrozen } from './testWeek';
@@ -176,6 +190,8 @@ export function t1PrescriptionFor(
  * Overlay the week's T1 onto the seed template.
  * Test-week dates replace the whole day. C2 drops non-T1 slots.
  * B1–B3 and C1 add back-off rows (and a Day C paused bench) after the top sets.
+ * B1–B3 also swap Day A's RDL for a paused deadlift, move that RDL to Day D,
+ * and run accessory double progression on Today.
  */
 export function applyProgramWeek(
   template: DayTemplate,
@@ -194,9 +210,20 @@ export function applyProgramWeek(
   } else if (ctx) {
     slots = slots.map((slot) => accessorySlotForWeek(slot, ctx.block, ctx.weekIndex));
     slots = insertAfterTopSet(slots, volumeSlotsFor(ctx.block, ctx.weekIndex, template.id));
+    if (blockBVariationWeek(ctx.block, ctx.weekIndex)) {
+      slots = withBlockBVariations(slots, template.id, ctx.block, ctx.weekIndex);
+    }
+    if (ctx.block === 'B' || ctx.block === 'C') {
+      const clampReps = blockBVariationWeek(ctx.block, ctx.weekIndex);
+      slots = slots.map((slot) => paintAccessorySeed(slot, clampReps));
+    }
   }
   let next: DayTemplate = { ...template, slots };
-  if (options.hold) next = applyHold(template.id, asOf, next, options.logs ?? [], options.testDate);
+  if (options.hold) {
+    next = applyHold(template.id, asOf, next, options.logs ?? [], options.testDate);
+    next = applyVariationProgress(template.id, asOf, next, options.logs ?? []);
+    next = applyAccessoryProgress(template.id, asOf, next, options.logs ?? []);
+  }
   return next;
 }
 
@@ -252,6 +279,120 @@ function applyHold(
     ...template,
     slots: template.slots.map((slot) => overlayT1(slot, held)),
   };
+}
+
+interface VariationTarget {
+  day: CanonicalTemplateDay;
+  slotId: string;
+  exerciseId: ExerciseId;
+  baseKg: number;
+  steps: (log: VariationLog) => boolean;
+}
+
+/**
+ * Today only. Walks B1 up to this week and adds 2.5 kg for each earlier week
+ * whose log qualifies. No log keeps the running load and leaves the coaching
+ * note. Block preview leaves `hold` off, so B2/B3 stay on the base kilos.
+ */
+function applyVariationProgress(
+  day: CanonicalTemplateDay,
+  asOf: string,
+  template: DayTemplate,
+  logs: readonly SessionLog[],
+): DayTemplate {
+  const ctx = blockWeekContext(asOf);
+  if (!ctx || !blockBVariationWeek(ctx.block, ctx.weekIndex)) return template;
+  const targets = variationTargets(day);
+  if (targets.length === 0) return template;
+  const weekStarts = blockBWeekStarts(asOf, ctx);
+  let slots = template.slots;
+  for (const target of targets) {
+    let kg = target.baseKg;
+    let note: string | undefined;
+    let decided = false;
+    for (let index = 1; index < weekStarts.length; index += 1) {
+      const bounds = weekBounds(weekStarts[index - 1]);
+      const log = bounds
+        ? variationLogInWeek(logs, target.day, target.exerciseId, target.slotId, bounds.start, bounds.end)
+        : { rpes: [], lastRpe: null };
+      const cited = variationCitedRpe(log);
+      if (target.steps(log) && cited != null) {
+        kg += VARIATION_STEP_KG;
+        note = variationStepNote(cited);
+        decided = true;
+      } else if (cited != null) {
+        note = variationHeldNote(cited, false);
+        decided = true;
+      } else {
+        note = undefined;
+        decided = false;
+      }
+    }
+    slots = slots.map((slot) => {
+      if (slot.slot_id !== target.slotId) return slot;
+      return {
+        ...slot,
+        sets: slot.sets.map((set) => ({ ...set, weight_kg: kg })),
+        note: decided && note ? note : slot.note,
+      };
+    });
+  }
+  return { ...template, slots };
+}
+
+function variationTargets(day: CanonicalTemplateDay): VariationTarget[] {
+  if (day === 'A') {
+    return [
+      {
+        day: 'A',
+        slotId: PAUSED_DEADLIFT_SLOT,
+        exerciseId: 'deadlift_paused',
+        baseKg: PAUSED_DL_BASE_KG,
+        steps: pausedDeadliftSteps,
+      },
+    ];
+  }
+  return [];
+}
+
+/**
+ * Today only, B1–B3. Each accessory's next session follows Kraft's double
+ * progression from the seed table. B4 and Block C keep that seed (2 sets).
+ * Block preview leaves `hold` off, so future weeks stay on the seed.
+ */
+function applyAccessoryProgress(
+  day: CanonicalTemplateDay,
+  asOf: string,
+  template: DayTemplate,
+  logs: readonly SessionLog[],
+): DayTemplate {
+  const ctx = blockWeekContext(asOf);
+  if (!ctx || !blockBVariationWeek(ctx.block, ctx.weekIndex)) return template;
+  const weekStarts = blockBWeekStarts(asOf, ctx);
+  if (weekStarts.length < 2) return template;
+  const slots = template.slots.map((slot) => {
+    const sessions = weekStarts.slice(0, -1).map((start) => {
+      const bounds = weekBounds(start);
+      if (!bounds) return [];
+      return accessorySetsInWeek(logs, day, slot.exercise_id, slot.slot_id, bounds.start, bounds.end);
+    });
+    return progressAccessorySlot(slot, sessions);
+  });
+  return { ...template, slots };
+}
+
+function blockBWeekStarts(asOf: string, ctx: { block: MesocycleBlock; weekIndex: number }): string[] {
+  const starts: string[] = [];
+  let cursor = productWeekStart(asOf.slice(0, 10), ctx);
+  starts.push(cursor);
+  for (let i = 0; i < 6; i += 1) {
+    const prevDay = addDays(cursor, -1);
+    const prevCtx = blockWeekContext(prevDay);
+    if (!prevCtx || prevCtx.block !== 'B') break;
+    cursor = productWeekStart(prevDay, prevCtx);
+    starts.push(cursor);
+  }
+  return starts.reverse();
 }
 
 function insertAfterTopSet(slots: TemplateSlot[], extras: TemplateSlot[]): TemplateSlot[] {

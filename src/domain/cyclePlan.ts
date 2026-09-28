@@ -1,4 +1,4 @@
-import type { DayTemplate, SeedSet, TemplateSlot } from '../data/templates';
+import { exerciseName, type DayTemplate, type SeedSet, type TemplateSlot } from '../data/templates';
 import type { ExerciseId } from '../types/exercises';
 import type { CanonicalTemplateDay, SessionLog, TemplateDay } from '../types/session';
 import {
@@ -62,9 +62,9 @@ export function isPlannedDeload(block: MesocycleBlock, weekIndex: number): boole
   return (block === 'A' || block === 'B') && weekIndex === 4;
 }
 
-/** C1 and C2 drop every non-T1 slot. This app has no separate T2/T3 tag. */
+/** C2 drops every non-T1 slot. C1 keeps accessories at two sets. No separate T2/T3 tag. */
 export function dropAccessorySlots(block: MesocycleBlock, weekIndex: number): boolean {
-  return block === 'C' && (weekIndex === 1 || weekIndex === 2);
+  return block === 'C' && weekIndex === 2;
 }
 
 export function trainingMaxesForBlock(block: MesocycleBlock | null): TrainingMaxes {
@@ -176,19 +176,19 @@ const BLOCK_B_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Presc
     A: uniform(60, 3, 4),
     B: uniform(42.5, 3, 5),
     C: uniform(77.5, 3, 3),
-    D: uniform(42.5, 2, 5),
+    D: uniform(42.5, 3, 5),
   },
   2: {
     A: uniform(62.5, 3, 3),
     B: uniform(45, 3, 3),
     C: uniform(80, 3, 2),
-    D: uniform(42.5, 2, 4),
+    D: uniform(42.5, 3, 4),
   },
   3: {
     A: uniform(65, 3, 2),
     B: uniform(47.5, 3, 2),
     C: uniform(82.5, 3, 2),
-    D: uniform(42.5, 2, 3),
+    D: uniform(42.5, 3, 3),
   },
   4: {
     A: deload(47.5, 2, 4),
@@ -212,6 +212,131 @@ const BLOCK_C_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Presc
     D: { ...uniform(40, 2, 2), note: 'Frozen.' },
   },
 };
+
+const BACKOFF_RPE_VALUE = BACKOFF_RPE;
+const PAUSED_RPE_LABEL = '6–7';
+
+/** [weight, sets, reps] after the top sets. Absent on deload, C2, and Day D. */
+const VOLUME_BACKOFF: Partial<
+  Record<MesocycleBlock, Partial<Record<BlockWeek, Partial<Record<CanonicalTemplateDay, [number, number, number]>>>>>
+> = {
+  B: {
+    1: { A: [55, 3, 5], B: [37.5, 3, 6], C: [67.5, 2, 5] },
+    2: { A: [55, 3, 5], B: [37.5, 3, 6], C: [67.5, 2, 5] },
+    3: { A: [55, 2, 5], B: [37.5, 2, 6], C: [67.5, 2, 5] },
+  },
+  C: {
+    1: { A: [55, 1, 5], B: [37.5, 1, 5], C: [67.5, 1, 5] },
+  },
+};
+
+/** Day C paused bench [sets, reps]. B1–B3 are 3×6; C1 is 2×5. */
+const PAUSED_BENCH: Partial<Record<MesocycleBlock, Partial<Record<BlockWeek, [number, number]>>>> = {
+  B: { 1: [3, 6], 2: [3, 6], 3: [3, 6] },
+  C: { 1: [2, 5] },
+};
+
+/**
+ * Extra rows for this week: back-off sets, and on Day C a paused bench.
+ * These are not part of the T1 prescription, so a hold repeats the top sets
+ * and leaves these loads on the table for the current week.
+ */
+export function volumeSlotsFor(
+  block: MesocycleBlock,
+  weekIndex: number,
+  day: CanonicalTemplateDay,
+): TemplateSlot[] {
+  const slots: TemplateSlot[] = [];
+  const backoff = VOLUME_BACKOFF[block]?.[weekIndex as BlockWeek]?.[day];
+  if (backoff) slots.push(backoffSlot(day, backoffExercise(day), backoff[0], backoff[1], backoff[2]));
+  if (day === 'C') {
+    const paused = PAUSED_BENCH[block]?.[weekIndex as BlockWeek];
+    if (paused) slots.push(pausedBenchSlot(paused[0], paused[1]));
+  }
+  return slots;
+}
+
+/**
+ * B1–B3 accessories gain one set (seed 3 → 4, optionals 2 → 3) at RPE 7.
+ * B4 and C1 keep the first two seed sets and their seed RPEs.
+ * Other weeks return the slot unchanged. Kilograms and reps stay on the seed.
+ */
+export function accessorySlotForWeek(
+  slot: TemplateSlot,
+  block: MesocycleBlock,
+  weekIndex: number,
+): TemplateSlot {
+  if (slot.role === 'T1') return slot;
+  if (block === 'B' && weekIndex >= 1 && weekIndex <= 3) {
+    return resizeAccessory(slot, Math.min(4, slot.sets.length + 1), BACKOFF_RPE_VALUE);
+  }
+  if ((block === 'B' && weekIndex === 4) || (block === 'C' && weekIndex === 1)) {
+    return resizeAccessory(slot, Math.min(2, slot.sets.length), null);
+  }
+  return slot;
+}
+
+function backoffExercise(day: CanonicalTemplateDay): ExerciseId {
+  if (day === 'A') return 'squat_low_bar';
+  if (day === 'B') return 'bench_regular';
+  return 'deadlift_conventional';
+}
+
+function backoffSlot(
+  day: CanonicalTemplateDay,
+  exerciseId: ExerciseId,
+  weight_kg: number,
+  set_count: number,
+  reps: number,
+): TemplateSlot {
+  return {
+    slot_id: `${day.toLowerCase()}-backoff`,
+    role: 'T1',
+    exercise_id: exerciseId,
+    alternatives: [],
+    displayName: `${exerciseName(exerciseId)} · back-off`,
+    note: 'Back-off.',
+    volumeKind: 'backoff',
+    skipWarmup: true,
+    sets: Array.from({ length: set_count }, (_, index) => ({
+      weight_kg,
+      reps,
+      rpe: BACKOFF_RPE_VALUE,
+      rest_sec: 180,
+      part_label: set_count === 1 ? 'Backoff' : `B${index + 1}`,
+    })),
+  };
+}
+
+function pausedBenchSlot(set_count: number, reps: number): TemplateSlot {
+  return {
+    slot_id: 'c-paused-bench',
+    role: 'T1',
+    exercise_id: 'bench_regular',
+    alternatives: [],
+    displayName: 'Bench press · paused',
+    note: 'Paused. RPE 6–7.',
+    volumeKind: 'paused',
+    sets: Array.from({ length: set_count }, (_, index) => ({
+      weight_kg: 35,
+      reps,
+      rpe: index === set_count - 1 ? 7 : 6,
+      rpe_label: PAUSED_RPE_LABEL,
+      rest_sec: 180,
+    })),
+  };
+}
+
+function resizeAccessory(slot: TemplateSlot, count: number, rpe: number | null): TemplateSlot {
+  const sets = Array.from({ length: count }, (_, index) => {
+    const src = slot.sets[Math.min(index, slot.sets.length - 1)];
+    if (rpe == null) return { ...src };
+    const next: SeedSet = { ...src, rpe };
+    delete next.rpe_label;
+    return next;
+  });
+  return { ...slot, sets };
+}
 
 function uniform(weight_kg: number, set_count: number, reps: number): T1Prescription {
   return {

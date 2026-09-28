@@ -150,6 +150,7 @@ function asLift(value: unknown, label: string): LoggedLift {
     sets: row.sets.map((set, index) => asSet(set, `${label}.sets[${index}]`)),
   };
   if (typeof row.style === 'string') lift.style = row.style;
+  if (typeof row.slot_id === 'string' && row.slot_id) lift.slot_id = row.slot_id;
   if (
     row.equipment === 'barbell' ||
     row.equipment === 'cable' ||

@@ -119,7 +119,16 @@ export function shortLadder(workKg: number, kind: WarmupKind = 'squat'): WarmupS
   return [full[0], full[full.length - 1]];
 }
 
-export function warmupSeedSets(workKg: number, kind: WarmupKind): SeedSet[] {
+/** A row whose work sets are all back-off parts already followed the top-set ladder. */
+function backoffOnly(sets: readonly { warmup?: boolean; part_label?: string }[]): boolean {
+  const work = sets.filter((set) => !set.warmup);
+  return (
+    work.length > 0 &&
+    work.every((set) => set.part_label === 'Backoff' || /^B\d+$/.test(set.part_label ?? ''))
+  );
+}
+
+function warmupSeedSets(workKg: number, kind: WarmupKind): SeedSet[] {
   const steps = warmupLadder(workKg, kind);
   return steps.map((step, index) => ({
     weight_kg: step.weight_kg,
@@ -161,6 +170,8 @@ export function refreshDraftWarmups<T extends { exercise_id: ExerciseId; sets: L
 ): T[] {
   return lifts.map((lift) => ({
     ...lift,
-    sets: attachWarmups(lift.sets, warmupKindFor(lift.exercise_id)),
+    sets: backoffOnly(lift.sets)
+      ? lift.sets
+      : attachWarmups(lift.sets, warmupKindFor(lift.exercise_id)),
   }));
 }

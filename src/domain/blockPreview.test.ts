@@ -156,14 +156,17 @@ describe('block preview loads', () => {
     expect(monday?.date).toBe('2026-10-05');
     expect(monday?.phaseLabel).toBe('Strength');
     expect(monday?.exercises[0]?.workLabel).toBe('60 kg · 3 × 4');
-    expect(monday?.exercises[1]?.workLabel).toBe('50 kg · 3 × 8');
+    expect(monday?.exercises[1]?.workLabel).toBe('55 kg · 3 × 5');
+    expect(monday?.exercises[2]?.workLabel).toBe('50 kg · 4 × 8');
     expectSameTargets('2026-10-05', 'A', monday?.exercises ?? []);
 
     const blockC = weeks.find((week) => week.id === 'C-1');
     expect(blockC?.sessions[0]?.phaseLabel).toBe('Peak');
-    expect(blockC?.sessions[0]?.exercises.map((row) => row.workLabel)).toEqual([
+    expect(blockC?.sessions[0]?.exercises.slice(0, 2).map((row) => row.workLabel)).toEqual([
       '67.5 kg × 1 then 60 kg × 2 × 2',
+      '55 kg · 1 × 5',
     ]);
+    expect(blockC?.sessions[0]?.exercises.some((row) => row.workLabel === '50 kg · 2 × 8')).toBe(true);
     expect(blockC?.sessions[0]?.frozen).toBe(false);
     expectSameTargets('2026-11-02', 'A', blockC?.sessions[0]?.exercises ?? []);
   });

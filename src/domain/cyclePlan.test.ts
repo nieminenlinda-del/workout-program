@@ -43,23 +43,23 @@ describe('Block B and C planned T1s', () => {
     expect(t1PrescriptionFor('B', '2026-10-06')?.reps).toBe(5);
     expect(workKg('2026-10-08', 'C')).toEqual([77.5, 77.5, 77.5]);
     expect(t1PrescriptionFor('C', '2026-10-08')?.reps).toBe(3);
-    expect(workKg('2026-10-09', 'D')).toEqual([42.5, 42.5]);
-    expect(t1PrescriptionFor('D', '2026-10-09')?.reps).toBe(5);
-    expect(dayTemplateForDate('A', '2026-10-05').slots.length).toBe(DAY_TEMPLATES.A.slots.length);
+    expect(workKg('2026-10-09', 'D')).toEqual([42.5, 42.5, 42.5]);
+    expect(t1PrescriptionFor('D', '2026-10-09')).toMatchObject({ set_count: 3, reps: 5 });
+    expect(dayTemplateForDate('A', '2026-10-05').slots.length).toBe(DAY_TEMPLATES.A.slots.length + 1);
   });
 
   it('B2 week of 12 Oct', () => {
     expect(t1PrescriptionFor('A', '2026-10-12')).toMatchObject({ weight_kg: 62.5, set_count: 3, reps: 3 });
     expect(t1PrescriptionFor('B', '2026-10-13')).toMatchObject({ weight_kg: 45, set_count: 3, reps: 3 });
     expect(t1PrescriptionFor('C', '2026-10-15')).toMatchObject({ weight_kg: 80, set_count: 3, reps: 2 });
-    expect(t1PrescriptionFor('D', '2026-10-16')).toMatchObject({ weight_kg: 42.5, set_count: 2, reps: 4 });
+    expect(t1PrescriptionFor('D', '2026-10-16')).toMatchObject({ weight_kg: 42.5, set_count: 3, reps: 4 });
   });
 
   it('B3 week of 19 Oct', () => {
     expect(t1PrescriptionFor('A', '2026-10-19')).toMatchObject({ weight_kg: 65, set_count: 3, reps: 2 });
     expect(t1PrescriptionFor('B', '2026-10-20')).toMatchObject({ weight_kg: 47.5, set_count: 3, reps: 2 });
     expect(t1PrescriptionFor('C', '2026-10-22')).toMatchObject({ weight_kg: 82.5, set_count: 3, reps: 2 });
-    expect(t1PrescriptionFor('D', '2026-10-23')).toMatchObject({ weight_kg: 42.5, set_count: 2, reps: 3 });
+    expect(t1PrescriptionFor('D', '2026-10-23')).toMatchObject({ weight_kg: 42.5, set_count: 3, reps: 3 });
   });
 
   it('B4 week of 26 Oct is a deload at RPE 5–6', () => {
@@ -77,14 +77,27 @@ describe('Block B and C planned T1s', () => {
     expect(labels('2026-10-26', 'A')[0]).toBe('47.5 kg · 2 × 4');
   });
 
-  it('C1 week of 2 Nov is capped top plus backoff and drops accessories', () => {
-    expect(labels('2026-11-02', 'A')).toEqual(['67.5 kg × 1 then 60 kg × 2 × 2']);
-    expect(labels('2026-11-03', 'B')).toEqual(['47.5 kg × 1 then 42.5 kg × 2 × 2']);
-    expect(labels('2026-11-05', 'C')).toEqual(['87.5 kg × 1 then 77.5 kg × 2 × 2']);
-    expect(labels('2026-11-06', 'D')).toEqual(['40 kg · 2 × 3']);
+  it('C1 week of 2 Nov keeps the capped top sets, adds one back-off, and brings accessories back at 2 sets', () => {
+    expect(labels('2026-11-02', 'A').slice(0, 2)).toEqual([
+      '67.5 kg × 1 then 60 kg × 2 × 2',
+      '55 kg · 1 × 5',
+    ]);
+    expect(labels('2026-11-03', 'B').slice(0, 2)).toEqual([
+      '47.5 kg × 1 then 42.5 kg × 2 × 2',
+      '37.5 kg · 1 × 5',
+    ]);
+    expect(labels('2026-11-05', 'C').slice(0, 3)).toEqual([
+      '87.5 kg × 1 then 77.5 kg × 2 × 2',
+      '67.5 kg · 1 × 5',
+      '35 kg · 2 × 5',
+    ]);
+    expect(labels('2026-11-06', 'D')[0]).toBe('40 kg · 2 × 3');
     const monday = dayTemplateForDate('A', '2026-11-02');
-    expect(monday.slots.map((slot) => slot.role)).toEqual(['T1']);
     expect(monday.slots[0]?.sets.map((set) => set.part_label)).toEqual(['Top', 'B1', 'B2']);
+    expect(monday.slots[1]?.displayName).toBe('Low-bar squat · back-off');
+    expect(monday.slots.filter((slot) => slot.role !== 'T1').every((slot) => slot.sets.length === 2)).toBe(
+      true,
+    );
     expect(getMesocycleContext('2026-11-02').freezeProgression).toBe(false);
   });
 
@@ -111,7 +124,9 @@ describe('Block B hold rule', () => {
     const today = plannedDayPreview(DAY_TEMPLATES.A, [hard], '2026-10-12');
     expect(today[0]?.workLabel).toBe('60 kg · 3 × 4');
     expect(today[0]?.note).toBe('Held: last top set RPE 9');
-    expect(today[1]?.workLabel).toBe('50 kg · 3 × 8');
+    expect(today[1]?.workLabel).toBe('55 kg · 3 × 5');
+    expect(today[1]?.note).toBe('Back-off.');
+    expect(today.find((row) => row.name === 'RDL')?.workLabel).toBe('50 kg · 4 × 8');
     const draft = createDraftSession('A', '2026-10-12', [hard]);
     expect(draft.lifts[0]?.sets.filter((set) => !set.warmup).map((set) => set.weight_kg)).toEqual([
       60, 60, 60,
@@ -178,6 +193,83 @@ describe('Block B hold rule', () => {
     expect(
       shouldApplyHold({ frozen: false, block: 'B', steppingUp: true, topRpe: 9 }),
     ).toBe(true);
+  });
+});
+
+describe('Block B volume rows', () => {
+  it('B1–B3 add back-offs, a paused Day C bench, three Day D sets, and one extra accessory set', () => {
+    expect(labels('2026-10-05', 'A').slice(0, 3)).toEqual([
+      '60 kg · 3 × 4',
+      '55 kg · 3 × 5',
+      '50 kg · 4 × 8',
+    ]);
+    expect(labels('2026-10-06', 'B').slice(0, 2)).toEqual(['42.5 kg · 3 × 5', '37.5 kg · 3 × 6']);
+    expect(labels('2026-10-08', 'C').slice(0, 3)).toEqual([
+      '77.5 kg · 3 × 3',
+      '67.5 kg · 2 × 5',
+      '35 kg · 3 × 6',
+    ]);
+    expect(labels('2026-10-09', 'D')[0]).toBe('42.5 kg · 3 × 5');
+
+    expect(labels('2026-10-12', 'A')[1]).toBe('55 kg · 3 × 5');
+    expect(labels('2026-10-19', 'A')[1]).toBe('55 kg · 2 × 5');
+    expect(labels('2026-10-20', 'B')[1]).toBe('37.5 kg · 2 × 6');
+    expect(labels('2026-10-22', 'C')[1]).toBe('67.5 kg · 2 × 5');
+    expect(labels('2026-10-23', 'D')[0]).toBe('42.5 kg · 3 × 3');
+
+    const monday = dayTemplateForDate('A', '2026-10-05');
+    const backoff = monday.slots[1];
+    expect(backoff?.sets.map((set) => set.part_label)).toEqual(['B1', 'B2', 'B3']);
+    expect(backoff?.skipWarmup).toBe(true);
+    expect(monday.slots[2]?.sets).toHaveLength(4);
+    expect(monday.slots[2]?.sets.every((set) => set.rpe === 7 && set.weight_kg === 50)).toBe(true);
+    const friday = dayTemplateForDate('D', '2026-10-09');
+    expect(friday.slots.find((slot) => slot.slot_id === 'd-curl')?.sets).toHaveLength(3);
+    expect(friday.slots.find((slot) => slot.slot_id === 'd-tri')?.sets).toHaveLength(3);
+
+    const deadlift = dayTemplateForDate('C', '2026-10-08');
+    expect(deadlift.slots[2]?.displayName).toBe('Bench press · paused');
+    expect(deadlift.slots[2]?.sets.map((set) => set.rpe_label)).toEqual(['6–7', '6–7', '6–7']);
+    const draft = createDraftSession('C', '2026-10-08');
+    expect(draft.lifts[1]?.name).toBe('Conventional deadlift · back-off');
+    expect(draft.lifts[1]?.sets.some((set) => set.warmup)).toBe(false);
+    expect(draft.lifts[2]?.name).toBe('Bench press · paused');
+    expect(draft.lifts[0]?.sets.some((set) => set.warmup)).toBe(true);
+  });
+
+  it('B4 drops back-offs and the Day C bench, and keeps two accessory sets', () => {
+    const squat = labels('2026-10-26', 'A');
+    expect(squat[0]).toBe('47.5 kg · 2 × 4');
+    expect(squat.some((row) => row.startsWith('55 kg'))).toBe(false);
+    expect(dayTemplateForDate('A', '2026-10-26').slots[1]?.sets).toHaveLength(2);
+    const deadlift = dayTemplateForDate('C', '2026-10-29');
+    expect(deadlift.slots.map((slot) => slot.displayName ?? slot.exercise_id)).not.toContain(
+      'Bench press · paused',
+    );
+    expect(deadlift.slots.some((slot) => slot.volumeKind === 'backoff')).toBe(false);
+    expect(deadlift.slots.filter((slot) => slot.role !== 'T1').every((slot) => slot.sets.length === 2)).toBe(
+      true,
+    );
+  });
+
+  it('holds the top sets and leaves that week’s back-off on the listed load', () => {
+    const heavy = loggedTop('A', '2026-10-12', 9);
+    const today = plannedDayPreview(DAY_TEMPLATES.A, [heavy], '2026-10-19');
+    expect(today[0]?.workLabel).toBe('62.5 kg · 3 × 3');
+    expect(today[0]?.note).toBe('Held: last top set RPE 9');
+    expect(today[1]?.workLabel).toBe('55 kg · 2 × 5');
+    expect(today[1]?.note).toBe('Back-off.');
+  });
+
+  it('leaves C2 and the test week without the extra rows', () => {
+    const c2 = dayTemplateForDate('A', '2026-11-09');
+    expect(c2.slots).toHaveLength(1);
+    expect(c2.slots[0]?.volumeKind).toBeUndefined();
+    const opener = dayTemplateForDate('A', '2026-11-16');
+    expect(opener.slots.map((slot) => slot.exercise_id)).toEqual(['squat_low_bar', 'bench_regular']);
+    expect(opener.slots.some((slot) => slot.volumeKind)).toBe(false);
+    const pull = dayTemplateForDate('C', '2026-11-17');
+    expect(pull.slots.map((slot) => slot.displayName ?? slot.slot_id)).toEqual(['tw-dl', 'tw-bench-2']);
   });
 });
 

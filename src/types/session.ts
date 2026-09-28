@@ -46,6 +46,8 @@ export interface LoggedLift {
   name: string;
   style?: string;
   exercise_id: ExerciseId;
+  /** Template slot this lift was built from. Keeps a back-off row apart from the top sets. */
+  slot_id?: string;
   /** Snapshot of catalog equipment. Older logs omit this — derive from `exercise_id`. */
   equipment?: Equipment;
   /** Barbell mass in kg (15 women’s / 20 standard). Omitted on DB / BW / bands / cable. */

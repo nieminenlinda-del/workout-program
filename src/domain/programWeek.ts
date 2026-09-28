@@ -2,6 +2,7 @@ import { DAY_TEMPLATES, type DayTemplate, type TemplateSlot } from '../data/temp
 import type { CanonicalTemplateDay, SessionLog } from '../types/session';
 import { MESOCYCLE_WINDOWS, type MesocycleBlock } from '../types/phase2';
 import {
+  accessorySlotForWeek,
   blockPrescription,
   dropAccessorySlots,
   expandPrescription,
@@ -12,6 +13,7 @@ import {
   shouldApplyHold,
   templateOverrideForDate,
   topSetRpeInWeek,
+  volumeSlotsFor,
   type T1Prescription,
 } from './cyclePlan';
 import { calendarYmd } from './lastPerformance';
@@ -172,7 +174,8 @@ export function t1PrescriptionFor(
 
 /**
  * Overlay the week's T1 onto the seed template.
- * Test-week dates replace the whole day. C1/C2 drop non-T1 slots.
+ * Test-week dates replace the whole day. C2 drops non-T1 slots.
+ * B1–B3 and C1 add back-off rows (and a Day C paused bench) after the top sets.
  */
 export function applyProgramWeek(
   template: DayTemplate,
@@ -187,7 +190,10 @@ export function applyProgramWeek(
   const ctx = blockWeekContext(asOf);
   let slots = template.slots.map((slot) => overlayT1(slot, rx));
   if (ctx && dropAccessorySlots(ctx.block, ctx.weekIndex)) {
-    slots = slots.filter((slot) => slot.role === 'T1');
+    slots = slots.filter((slot) => slot.role === 'T1' && !slot.volumeKind);
+  } else if (ctx) {
+    slots = slots.map((slot) => accessorySlotForWeek(slot, ctx.block, ctx.weekIndex));
+    slots = insertAfterTopSet(slots, volumeSlotsFor(ctx.block, ctx.weekIndex, template.id));
   }
   let next: DayTemplate = { ...template, slots };
   if (options.hold) next = applyHold(template.id, asOf, next, options.logs ?? [], options.testDate);
@@ -203,7 +209,7 @@ export function dayTemplateForDate(
 }
 
 function overlayT1(slot: TemplateSlot, rx: T1Prescription): TemplateSlot {
-  if (slot.role !== 'T1') return slot;
+  if (slot.role !== 'T1' || slot.volumeKind) return slot;
   const rest = slot.sets[0]?.rest_sec ?? 180;
   const sets = expandPrescription(rx, rest);
   return {
@@ -246,6 +252,13 @@ function applyHold(
     ...template,
     slots: template.slots.map((slot) => overlayT1(slot, held)),
   };
+}
+
+function insertAfterTopSet(slots: TemplateSlot[], extras: TemplateSlot[]): TemplateSlot[] {
+  if (extras.length === 0) return slots;
+  const index = slots.findIndex((slot) => slot.role === 'T1' && !slot.volumeKind);
+  if (index < 0) return [...extras, ...slots];
+  return [...slots.slice(0, index + 1), ...extras, ...slots.slice(index + 1)];
 }
 
 function productWeekStart(day: string, ctx: { block: MesocycleBlock; weekIndex: number }): string {

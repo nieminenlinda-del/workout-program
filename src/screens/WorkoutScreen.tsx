@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
 import { isAssistedLoad, isTimedHold, type ExerciseId } from '../types/exercises';
-import { DAY_TEMPLATES, exerciseName, type DayTemplate } from '../data/templates';
+import { exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
+import { dayTemplateForDate } from '../domain/programWeek';
 import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
 import { lastMatchingPerformance } from '../domain/lastPerformance';
 import { laterSameKindUnlogged, setDisplayLabel, workSets } from '../domain/sets';
@@ -55,7 +56,7 @@ export function WorkoutScreen({
   const [openLift, setOpenLift] = useState(0);
 
   const day = canonicalTemplateDay(draft.template_day);
-  const template = DAY_TEMPLATES[day];
+  const template = dayTemplateForDate(day, draft.date, { logs: history, hold: true });
   const progress = completedSetCount(draft);
 
   const lastByExercise = useMemo(() => {
@@ -76,7 +77,7 @@ export function WorkoutScreen({
     setActive(null);
     unlockTimerAudio();
     const restSec =
-      slotForLift(template, draft.lifts[liftIndex])?.sets[setIndex]?.rest_sec ?? 90;
+      slotForLift(template, draft.lifts[liftIndex], liftIndex)?.sets[setIndex]?.rest_sec ?? 90;
     setRest({ seconds: restSec, name: draft.lifts[liftIndex]?.name ?? 'Lift' });
   };
 
@@ -87,7 +88,7 @@ export function WorkoutScreen({
   };
 
   const activeLift = active ? draft.lifts[active.liftIndex] : undefined;
-  const activeSlot = activeLift ? slotForLift(template, activeLift) : undefined;
+  const activeSlot = active && activeLift ? slotForLift(template, activeLift, active.liftIndex) : undefined;
   const activeEquipOptions =
     activeSlot && slotAllowsEquipmentPicker(activeSlot) ? equipmentOptionsForSlot(activeSlot) : [];
 
@@ -117,7 +118,7 @@ export function WorkoutScreen({
 
       <div className="workout-lifts">
       {draft.lifts.map((lift, liftIndex) => {
-        const slot = slotForLift(template, lift) ?? template.slots[liftIndex];
+        const slot = slotForLift(template, lift, liftIndex);
         const expanded = openLift === liftIndex;
         const last = lastByExercise.get(lift.exercise_id) ?? null;
         const work = workSets(lift.sets);
@@ -140,7 +141,8 @@ export function WorkoutScreen({
               <div>
                 <p className="kicker">{slot?.role ?? 'lift'}</p>
                 <h2>{lift.name}</h2>
-                <LastPerformanceHint performance={last} />
+                {slot?.note ? <p className="muted">{slot.note}</p> : null}
+                <LastPerformanceHint performance={slot?.volumeKind === 'backoff' ? null : last} />
               </div>
               <span className="lift-count">
                 {workDone}/{work.length || lift.sets.length}
@@ -301,8 +303,15 @@ export function WorkoutScreen({
   );
 }
 
-function slotForLift(template: DayTemplate, lift: LoggedLift) {
-  return template.slots.find(
-    (s) => s.exercise_id === lift.exercise_id || s.alternatives.includes(lift.exercise_id),
+function slotForLift(template: DayTemplate, lift: LoggedLift, index: number) {
+  if (lift.slot_id) {
+    const match = template.slots.find((slot) => slot.slot_id === lift.slot_id);
+    if (match) return match;
+  }
+  return (
+    template.slots[index] ??
+    template.slots.find(
+      (slot) => slot.exercise_id === lift.exercise_id || slot.alternatives.includes(lift.exercise_id),
+    )
   );
 }

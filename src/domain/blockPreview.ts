@@ -246,18 +246,17 @@ function trainSession(
 ): BlockPreviewSession {
   const meso = getMesocycleContext(date, testDate);
   const template = dayTemplateForDate(day, date, { testDate });
-  const mainLifts = template.slots.filter((slot) => slot.role === 'T1').length;
   const projected = date > today;
   const log = claimLog(logs, date, day, used);
   const summaries = template.slots.map((slot) => plannedLiftSummary(slot));
+  const combined = template.title.includes('+') || template.title === '1RM test';
   return {
     date,
     kind: 'train',
     templateDay: day,
-    heading:
-      mainLifts > 1
-        ? `${weekdayShort(date)} ${formatDayMonth(date)} · ${template.title}`
-        : `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
+    heading: combined
+      ? `${weekdayShort(date)} ${formatDayMonth(date)} · ${template.title}`
+      : `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
     title: template.title,
     phaseLabel: previewPhaseLabel(meso.phase ?? 'accumulate'),
     projected,

@@ -41,7 +41,7 @@ export interface MesocycleWindow {
   defaultPhase: BlockPhase;
 }
 
-export const TEST_DAY = '2026-11-21';
+export const TEST_DAY = '2026-11-20';
 
 /** Active meet/test target for this cycle. After this date, mode returns to hypertrophy unless a new date is set. */
 export const TARGET_TEST_DATE = TEST_DAY;
@@ -52,7 +52,7 @@ export type TestLift = (typeof TEST_LIFT_ORDER)[number];
 /**
  * Juggernaut PowerCombo program switch for the Phase 2 engine.
  * Hypertrophy when no test is on the calendar; peak (`strength_peak`) while
- * preparing for a test/meet (this cycle: toward TARGET_TEST_DATE / 2026-11-21).
+ * preparing for a test/meet (this cycle: toward TARGET_TEST_DATE / Fri 20 Nov 2026).
  *
  * Phase 1 session logging must not read or persist this field.
  */
@@ -115,7 +115,7 @@ export const HYPERTROPHY_PROGRESSION_HOOK: HypertrophyProgressionHook = {
 };
 
 /**
- * This cycle: strength_peak through 2026-11-21, then hypertrophy
+ * This cycle: strength_peak through Fri 20 Nov 2026, then hypertrophy
  * unless a later `target_test_date` is supplied to the calendar hook.
  */
 export const CURRENT_CYCLE = {
@@ -138,7 +138,7 @@ export function progressionRulesFor(training_mode: TrainingMode): PowerComboProg
 
 /**
  * Calendar windows for the 2026 test cycle (authoritative).
- * Block A 7 Sep–4 Oct · B 5 Oct–1 Nov · C 2–21 Nov (ends on test day).
+ * Block A 7 Sep–4 Oct · B 5 Oct–1 Nov · C 2 Nov–Fri 20 Nov (ends on test day).
  * Contiguous: each block starts the day after the previous ends.
  */
 export const MESOCYCLE_WINDOWS: readonly MesocycleWindow[] = [

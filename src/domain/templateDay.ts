@@ -64,7 +64,7 @@ export function defaultTemplateDayForDate(ymd: string): CanonicalTemplateDay | n
 
 /**
  * Calendar letter including rest — Health join + gym picker share this map.
- * `testDate` selects the Saturday or Friday test-week layout. Default is Saturday 21 Nov.
+ * `testDate` is the test day (`TEST_DAY`, Fri 20 Nov 2026). Monday of that week is squat + bench; Tuesday is deadlift + bench.
  */
 export function calendarTemplateDay(
   ymd: string,

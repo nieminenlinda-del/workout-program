@@ -38,7 +38,7 @@ describe('block preview phases and weeks', () => {
     expect(previewPhaseLabel('test')).toBe('Test');
   });
 
-  it('runs from the current product week through the 21 Nov test', () => {
+  it('runs from the current product week through the Fri 20 Nov test', () => {
     const weeks = buildBlockPreview(AS_OF, []);
     expect(weeks.map((week) => week.id)).toEqual([
       'A-3',
@@ -78,11 +78,11 @@ describe('block preview phases and weeks', () => {
     expect(weeks.at(-1)).toMatchObject({
       label: 'Block C · Week 3',
       start: '2026-11-16',
-      end: '2026-11-21',
+      end: '2026-11-20',
       phaseLabel: 'Peak · Test',
       projected: true,
     });
-    expect(formatWeekRange('2026-11-16', '2026-11-21')).toBe('16–21 Nov');
+    expect(formatWeekRange('2026-11-16', '2026-11-20')).toBe('16–20 Nov');
   });
 
   it('keeps the Kraft trip: Wed C, Thu D, Friday rest', () => {
@@ -177,12 +177,12 @@ describe('block preview loads', () => {
     expect(week?.sessions.find((session) => session.date === '2026-09-24')?.projected).toBe(true);
   });
 
-  it('lists Saturday 21 Nov planned attempts and the frozen test-week sessions', () => {
+  it('lists Fri 20 Nov planned attempts and the frozen test-week sessions', () => {
     const last = weeks.at(-1);
     expect(last?.sessions.map((session) => `${session.date} ${session.heading}`)).toEqual([
       '2026-11-16 Mon 16 Nov · Squat + bench',
-      '2026-11-18 Wed 18 Nov · Deadlift + bench',
-      '2026-11-21 Sat 21 Nov · 1RM test',
+      '2026-11-17 Tue 17 Nov · Deadlift + bench',
+      '2026-11-20 Fri 20 Nov · 1RM test',
     ]);
     const opener = last?.sessions[0];
     expect(opener?.frozen).toBe(true);
@@ -193,8 +193,8 @@ describe('block preview loads', () => {
     expect(pull?.exercises.map((row) => row.workLabel)).toEqual(['65 kg · 2 × 2', '40 kg · 2 × 1']);
     const test = last?.sessions.find((session) => session.kind === 'test');
     expect(test).toMatchObject({
-      date: '2026-11-21',
-      heading: 'Sat 21 Nov · 1RM test',
+      date: '2026-11-20',
+      heading: 'Fri 20 Nov · 1RM test',
       phaseLabel: 'Test',
       projected: true,
     });

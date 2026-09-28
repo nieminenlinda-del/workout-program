@@ -17,11 +17,10 @@ export function addCalendarDays(ymd: string, days: number): string {
 }
 
 /**
- * Test week relative to `testDate` (default Saturday 21 Nov 2026).
+ * Test week relative to `testDate` (`TEST_DAY`, Fri 20 Nov 2026).
  *
- * Saturday test: Mon squat + bench, Wed deadlift + bench, Thu–Fri rest.
- * Friday test: Mon squat + bench, Tue deadlift + bench, Wed–Thu rest.
- * Any other weekday uses the Saturday spacing (opener Monday, pull two days later).
+ * Monday of that week is squat + bench, the next day is deadlift + bench,
+ * the days after that are rest, and `testDate` is the test.
  * Null when `ymd` is outside Monday-of-test-week … test day.
  */
 export function testWeekRole(ymd: string, testDate: string = TEST_DAY): TestWeekRole | null {
@@ -31,9 +30,8 @@ export function testWeekRole(ymd: string, testDate: string = TEST_DAY): TestWeek
   if (day < monday || day > test) return null;
   if (day === test) return 'test';
   const offset = diffDays(monday, day);
-  const pullOffset = utcDate(test).getUTCDay() === 5 ? 1 : 2;
   if (offset === 0) return 'opener';
-  if (offset === pullOffset) return 'pull';
+  if (offset === 1) return 'pull';
   return 'rest';
 }
 

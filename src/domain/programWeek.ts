@@ -155,7 +155,7 @@ export interface ProgramWeekOptions {
    * off so future weeks stay the planned table (Projected).
    */
   hold?: boolean;
-  /** Layout for the test week. Defaults to `TEST_DAY` (Saturday 21 Nov 2026). */
+  /** Layout for the test week. Defaults to `TEST_DAY` (Fri 20 Nov 2026). */
   testDate?: string;
 }
 

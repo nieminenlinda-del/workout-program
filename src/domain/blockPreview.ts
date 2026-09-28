@@ -25,7 +25,7 @@ import { plannedLiftSummary, type PlannedLiftSummary } from './workoutPreview';
  * - accumulate → Hypertrophy (Block A)
  * - intensify → Strength (Block B)
  * - peak_overreach and peak_taper → Peak (Block C)
- * - test → Test (21 Nov)
+ * - test → Test (Fri 20 Nov)
  *
  * Home still shows PowerCombo `training_mode` strength_peak for this whole
  * cycle. That mode is not the week phase.

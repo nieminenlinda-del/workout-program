@@ -58,7 +58,8 @@ describe('Block preview screen', () => {
     expect(weeks[0]?.textContent).not.toContain('Deload');
     expect(weeks.filter((week) => week.textContent?.includes('Deload'))).toHaveLength(2);
     expect(weeks[1]?.textContent).toContain('Projected');
-    expect(container.textContent).toContain('Sat 21 Nov · 1RM test');
+    expect(container.textContent).toContain('Fri 20 Nov');
+    expect(container.textContent).toContain('Fri 20 Nov · 1RM test');
 
     const summary = weeks[1]?.querySelector('summary');
     expect(summary).toBeTruthy();

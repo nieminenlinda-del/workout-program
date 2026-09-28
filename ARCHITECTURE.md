@@ -90,19 +90,19 @@ Load selection for Block A T1s is a separate locked table (`src/domain/programWe
 | 3 (locked; from **20 Sep**) | **60 × 3×3** @ RPE ≤8 | **42.5 × 3×4** | **72.5 × 3×3** | **42.5 × 2×4** |
 | 4 (deload, 28 Sep–4 Oct) | **45 × 2×5** @ RPE 5–6 | **32.5 × 2×5** | **55 × 2×5** | **32.5 × 2×5** |
 
-Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Week 4 is the deload above. Accessories stay on the seed template through Block B. Block B/C T1s are the coach tables in `src/domain/cyclePlan.ts` (TMs squat **75** / bench **52.5** / deadlift **92.5** from 5 Oct). C1 and C2 drop non-T1 slots. The test is **Saturday 21 Nov 2026** (`TEST_DAY`).
+Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Week 4 is the deload above. Accessories stay on the seed template through Block B. Block B/C T1s are the coach tables in `src/domain/cyclePlan.ts` (TMs squat **75** / bench **52.5** / deadlift **92.5** from 5 Oct). C1 and C2 drop non-T1 slots. The test is **Fri 20 Nov 2026** (`TEST_DAY`).
 
 | Block | Window | Default phase |
 | --- | --- | --- |
 | A | 2026-09-07 → 2026-10-04 | `accumulate` |
 | B | 2026-10-05 → 2026-11-01 | `intensify` |
-| C | 2026-11-02 → 2026-11-21 | `peak_overreach` |
+| C | 2026-11-02 → 2026-11-20 | `peak_overreach` |
 
 Block C refinements already encoded in the hook (`TEST_DAY` is the one date to edit):
 
 - **2026-11-09** onward (C2 and the test week) → progression frozen
 - Monday of the test week (**2026-11-16**) through the day before the test → `peak_taper`
-- **Saturday 2026-11-21** → `test`
+- **Fri 20 Nov 2026** → `test`
 
 `BlockPhase`: `accumulate | intensify | peak_overreach | peak_taper | test`.
 
@@ -120,7 +120,7 @@ type ProgramMode = 'hypertrophy' | 'peak'; // same switch; peak === strength_pea
 - **No `target_test_date`** → **`hypertrophy`**.
 - **While a test date is set and `asOf <= target_test_date`** → **`strength_peak`**. That includes accumulate, intensify, and off-block dates before the test — not only `peak_overreach` / `peak_taper` / `test`.
 - **After the test date** → auto **`hypertrophy`**, unless a later `target_test_date` is set.
-- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-21`. Mode is **`strength_peak` from day one** of Block A (2026-09-07) through the test date — not only `peak_overreach` / `peak_taper` / `test`. From 2026-11-22 the hook returns `hypertrophy`. Seeded TMs (docs only): squat **72.5** / bench **52.5** / deadlift **90** kg.
+- **This cycle:** `CURRENT_CYCLE.target_test_date = 2026-11-20`. Mode is **`strength_peak` from day one** of Block A (2026-09-07) through the test date — not only `peak_overreach` / `peak_taper` / `test`. From 2026-11-21 the hook returns `hypertrophy`. Seeded TMs (docs only): squat **72.5** / bench **52.5** / deadlift **90** kg.
 
 **Strength auto-prog** (`STRENGTH_PEAK_PROGRESSION_HOOK`, used when `training_mode === "strength_peak"`)
 

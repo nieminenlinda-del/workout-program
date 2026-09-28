@@ -150,7 +150,7 @@ describe('Block B hold rule', () => {
     expect(c2[0]?.note).toBe('Frozen.');
 
     const heavyOpener = loggedTop('A', '2026-11-16', 9);
-    const testWeek = dayTemplateForDate('A', '2026-11-18', { logs: [heavyOpener], hold: true });
+    const testWeek = dayTemplateForDate('A', '2026-11-17', { logs: [heavyOpener], hold: true });
     expect(testWeek.title).toBe('Deadlift + bench');
     expect(testWeek.slots.map((slot) => slot.sets.map((set) => set.weight_kg))).toEqual([
       [65, 65],
@@ -181,33 +181,26 @@ describe('Block B hold rule', () => {
   });
 });
 
-describe('test week layouts', () => {
-  it('Saturday 21 Nov: Mon squat + bench, Wed deadlift + bench, Thu–Fri rest', () => {
+describe('Fri 20 Nov test week', () => {
+  it('opens Monday, pulls Tuesday, rests Wednesday and Thursday, and tests Friday', () => {
     expect(testWeekRole('2026-11-16')).toBe('opener');
-    expect(testWeekRole('2026-11-17')).toBe('rest');
-    expect(testWeekRole('2026-11-18')).toBe('pull');
+    expect(testWeekRole('2026-11-17')).toBe('pull');
+    expect(testWeekRole('2026-11-18')).toBe('rest');
     expect(testWeekRole('2026-11-19')).toBe('rest');
-    expect(testWeekRole('2026-11-20')).toBe('rest');
-    expect(testWeekRole('2026-11-21')).toBe('test');
-    expect(calendarTemplateDay('2026-11-17')).toBe('rest');
+    expect(testWeekRole('2026-11-20')).toBe('test');
+    expect(testWeekRole('2026-11-21')).toBeNull();
+    expect(calendarTemplateDay('2026-11-17')).toBe('C');
+    expect(calendarTemplateDay('2026-11-18')).toBe('rest');
     expect(defaultTemplateDayForDate('2026-11-16')).toBe('A');
     expect(labels('2026-11-16', 'B')).toEqual(['52.5 kg · 2 × 2', '37.5 kg · 2 × 2']);
-    expect(dayTemplateForDate('A', '2026-11-21').slots.map((slot) => slot.plan_label)).toEqual([
+    expect(labels('2026-11-17', 'A')).toEqual(['65 kg · 2 × 2', '40 kg · 2 × 1']);
+    expect(dayTemplateForDate('A', '2026-11-20').slots.map((slot) => slot.plan_label)).toEqual([
       'Planned · 70 / 75 / 77.5–80 kg',
       'Planned · 50 / 52.5 / 55–57.5 kg',
       'Planned · 87.5 / 92.5–95 / 97.5–100 kg',
     ]);
-    expect(getMesocycleContext('2026-11-21').isTestDay).toBe(true);
-  });
-
-  it('Friday 20 Nov shifts the pull to Tuesday and rests Wednesday and Thursday', () => {
-    const friday = '2026-11-20';
-    expect(testWeekRole('2026-11-16', friday)).toBe('opener');
-    expect(testWeekRole('2026-11-17', friday)).toBe('pull');
-    expect(testWeekRole('2026-11-18', friday)).toBe('rest');
-    expect(testWeekRole('2026-11-19', friday)).toBe('rest');
-    expect(testWeekRole('2026-11-20', friday)).toBe('test');
-    const week = buildBlockPreview('2026-11-16', [], friday)[0];
+    expect(getMesocycleContext('2026-11-20').isTestDay).toBe(true);
+    const week = buildBlockPreview('2026-11-16', [])[0];
     expect(week?.sessions.map((session) => `${session.date} ${session.heading}`)).toEqual([
       '2026-11-16 Mon 16 Nov · Squat + bench',
       '2026-11-17 Tue 17 Nov · Deadlift + bench',

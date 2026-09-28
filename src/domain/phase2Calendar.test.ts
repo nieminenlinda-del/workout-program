@@ -16,7 +16,7 @@ import {
 } from '../types/phase2';
 
 describe('phase 2 calendar hook', () => {
-  it('is strength_peak from day one of this cycle while the 2026-11-21 test date is set', () => {
+  it('is strength_peak from day one of this cycle while the Fri 20 Nov test date is set', () => {
     expect(getMesocycleContext('2026-09-06').training_mode).toBe('strength_peak');
     expect(getMesocycleContext('2026-09-06').block).toBeNull();
     expect(getMesocycleContext('2026-09-07').training_mode).toBe('strength_peak');
@@ -40,7 +40,7 @@ describe('phase 2 calendar hook', () => {
     expect(resolveTrainingMode('2026-09-07', 'accumulate', TARGET_TEST_DATE)).toBe('strength_peak');
     expect(resolveTrainingMode('2026-09-07', null, null)).toBe('hypertrophy');
     expect(CURRENT_CYCLE).toEqual({
-      target_test_date: '2026-11-21',
+      target_test_date: '2026-11-20',
       peak_training_mode: 'strength_peak',
       post_test_training_mode: 'hypertrophy',
     });
@@ -50,7 +50,7 @@ describe('phase 2 calendar hook', () => {
     expect(MESOCYCLE_WINDOWS.map((w) => [w.block, w.start, w.end])).toEqual([
       ['A', '2026-09-07', '2026-10-04'],
       ['B', '2026-10-05', '2026-11-01'],
-      ['C', '2026-11-02', '2026-11-21'],
+      ['C', '2026-11-02', '2026-11-20'],
     ]);
     expect(SEED_TRAINING_MAXES).toEqual({ squat_kg: 72.5, bench_kg: 52.5, deadlift_kg: 90 });
   });
@@ -72,9 +72,10 @@ describe('phase 2 calendar hook', () => {
   });
 
   it('returns to hypertrophy after the test unless a next test is set', () => {
-    expect(getMesocycleContext('2026-11-22').training_mode).toBe('hypertrophy');
-    expect(resolveTrainingMode('2026-11-22', 'test', TARGET_TEST_DATE)).toBe('hypertrophy');
-    expect(resolveTrainingMode('2026-11-22', 'test', '2026-12-15')).toBe('strength_peak');
+    expect(getMesocycleContext('2026-11-20').training_mode).toBe('strength_peak');
+    expect(getMesocycleContext('2026-11-21').training_mode).toBe('hypertrophy');
+    expect(resolveTrainingMode('2026-11-21', 'test', TARGET_TEST_DATE)).toBe('hypertrophy');
+    expect(resolveTrainingMode('2026-11-21', 'test', '2026-12-15')).toBe('strength_peak');
   });
 
   it('keeps PowerCombo progression hooks documented and unimplemented', () => {
@@ -94,7 +95,7 @@ describe('phase 2 calendar hook', () => {
     expect(progressionRulesFor('strength_peak').rules).toBe(STRENGTH_PEAK_PROGRESSION_HOOK);
     expect(progressionRulesFor('hypertrophy').rules).toBe(HYPERTROPHY_PROGRESSION_HOOK);
     expect(programModeFrom('strength_peak')).toBe('peak');
-    expect(getMesocycleContext('2026-11-21').program_mode).toBe('peak');
+    expect(getMesocycleContext(TEST_DAY).program_mode).toBe('peak');
     expect(() =>
       progressionEngineStub.proposeNext({
         logs: [],

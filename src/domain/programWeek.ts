@@ -1,23 +1,23 @@
-import { DAY_TEMPLATES, type DayTemplate, type SeedSet, type TemplateSlot } from '../data/templates';
-import type { CanonicalTemplateDay } from '../types/session';
+import { DAY_TEMPLATES, type DayTemplate, type TemplateSlot } from '../data/templates';
+import type { CanonicalTemplateDay, SessionLog } from '../types/session';
 import { MESOCYCLE_WINDOWS, type MesocycleBlock } from '../types/phase2';
+import {
+  blockPrescription,
+  dropAccessorySlots,
+  expandPrescription,
+  holdNote,
+  isPlannedDeload,
+  isStepUp,
+  previousWeekAnchor,
+  shouldApplyHold,
+  templateOverrideForDate,
+  topSetRpeInWeek,
+  type T1Prescription,
+} from './cyclePlan';
 import { calendarYmd } from './lastPerformance';
+import { isProgressionFrozen } from './testWeek';
 
-/** Kraft-locked T1 work prescription for one template day. */
-export interface T1Prescription {
-  weight_kg: number;
-  set_count: number;
-  reps: number;
-  /** Per-set RPE; length matches `set_count`. */
-  rpe: number[];
-  /**
-   * Target shown wherever the app prints a planned RPE, when that target is a
-   * band rather than one number per set (Week 4 deload: `5–6`).
-   */
-  rpe_label?: string;
-  /** Coaching line under the T1 name (Week 2–3 squat soft-cap, Week 4 deload). */
-  note?: string;
-}
+export type { T1Prescription, T1Wave } from './cyclePlan';
 
 /**
  * Kraft trip: Linda started Block A Week 3 early on Sun 2026-09-20 (A+B same day).
@@ -86,7 +86,7 @@ export type BlockAT1Week = 1 | 2 | 3 | 4;
  * DL 72.5×3×3; bench volume 42.5×2×4.
  * Week 4 (Mon 28 Sep–Sun 4 Oct) is a deload, all T1s @ RPE 5–6:
  * squat 45×2×5; bench 32.5×2×5; DL 55×2×5 (Wed or Thu); Fri bench 32.5×2×5.
- * A later Block A week would hold Week 3. Block B starts 5 Oct and is not in this table.
+ * A later Block A week would hold Week 3. Block B and C tables live in `cyclePlan`.
  * Accessories stay on the seed template.
  */
 export const BLOCK_A_T1_BY_WEEK: Record<BlockAT1Week, Record<CanonicalTemplateDay, T1Prescription>> = {
@@ -136,47 +136,148 @@ function blockATableWeek(weekIndex: number): BlockAT1Week {
   return 3;
 }
 
-/** Block A Week 4 (28 Sep–4 Oct 2026). False for Block B/C, including their week 4. */
+/** Block A Week 4 (28 Sep–4 Oct 2026). Block B week 4 is a separate deload. */
 export function isBlockADeloadWeek(asOf: string): boolean {
   const ctx = blockWeekContext(asOf);
   return ctx?.block === 'A' && ctx.weekIndex === 4;
 }
 
-/** Week 1 / 2 / 3 row; Week 4 deload; later Block A weeks hold Week 3. Null off-block / other blocks. */
+/** Block A week 4 and Block B week 4. */
+export function isDeloadWeek(asOf: string): boolean {
+  const ctx = blockWeekContext(asOf);
+  return Boolean(ctx && isPlannedDeload(ctx.block, ctx.weekIndex));
+}
+
+export interface ProgramWeekOptions {
+  logs?: readonly SessionLog[];
+  /**
+   * Today and a new draft apply the Block B hold. Block preview leaves this
+   * off so future weeks stay the planned table (Projected).
+   */
+  hold?: boolean;
+  /** Layout for the test week. Defaults to `TEST_DAY` (Fri 20 Nov 2026). */
+  testDate?: string;
+}
+
+/** Week 1 / 2 / 3 row; Week 4 deload; later Block A weeks hold Week 3. Block B/C use their tables. Null off-block. */
 export function t1PrescriptionFor(
   day: CanonicalTemplateDay,
   asOf: string,
 ): T1Prescription | null {
   const ctx = blockWeekContext(asOf);
-  if (!ctx || ctx.block !== 'A') return null;
-  return BLOCK_A_T1_BY_WEEK[blockATableWeek(ctx.weekIndex)][day];
+  if (!ctx) return null;
+  if (ctx.block === 'A') return BLOCK_A_T1_BY_WEEK[blockATableWeek(ctx.weekIndex)][day];
+  return blockPrescription(ctx.block, ctx.weekIndex, day);
 }
 
-/** Overlay Block A T1 kg/reps onto the seed template. Accessories unchanged. */
-export function applyProgramWeek(template: DayTemplate, asOf: string): DayTemplate {
+/**
+ * Overlay the week's T1 onto the seed template.
+ * Test-week dates replace the whole day. C1/C2 drop non-T1 slots.
+ */
+export function applyProgramWeek(
+  template: DayTemplate,
+  asOf: string,
+  options: ProgramWeekOptions = {},
+): DayTemplate {
+  const override = templateOverrideForDate(asOf, options.testDate);
+  if (override) return override;
+
   const rx = t1PrescriptionFor(template.id, asOf);
   if (!rx) return template;
-  return {
-    ...template,
-    slots: template.slots.map((slot) => overlayT1(slot, rx)),
-  };
+  const ctx = blockWeekContext(asOf);
+  let slots = template.slots.map((slot) => overlayT1(slot, rx));
+  if (ctx && dropAccessorySlots(ctx.block, ctx.weekIndex)) {
+    slots = slots.filter((slot) => slot.role === 'T1');
+  }
+  let next: DayTemplate = { ...template, slots };
+  if (options.hold) next = applyHold(template.id, asOf, next, options.logs ?? [], options.testDate);
+  return next;
 }
 
-export function dayTemplateForDate(day: CanonicalTemplateDay, asOf: string): DayTemplate {
-  return applyProgramWeek(DAY_TEMPLATES[day], asOf);
+export function dayTemplateForDate(
+  day: CanonicalTemplateDay,
+  asOf: string,
+  options: ProgramWeekOptions = {},
+): DayTemplate {
+  return applyProgramWeek(DAY_TEMPLATES[day], asOf, options);
 }
 
 function overlayT1(slot: TemplateSlot, rx: T1Prescription): TemplateSlot {
   if (slot.role !== 'T1') return slot;
   const rest = slot.sets[0]?.rest_sec ?? 180;
-  const sets: SeedSet[] = Array.from({ length: rx.set_count }, (_, i) => ({
-    weight_kg: rx.weight_kg,
-    reps: rx.reps,
-    rpe: rx.rpe[i] ?? rx.rpe[rx.rpe.length - 1] ?? 7,
-    rest_sec: rest,
-    ...(rx.rpe_label ? { rpe_label: rx.rpe_label } : {}),
-  }));
-  return rx.note ? { ...slot, sets, note: rx.note } : { ...slot, sets, note: undefined };
+  const sets = expandPrescription(rx, rest);
+  return {
+    ...slot,
+    sets,
+    note: rx.note,
+    plan_label: rx.plan_label,
+  };
+}
+
+function applyHold(
+  day: CanonicalTemplateDay,
+  asOf: string,
+  template: DayTemplate,
+  logs: readonly SessionLog[],
+  testDate?: string,
+): DayTemplate {
+  const ctx = blockWeekContext(asOf);
+  const planned = t1PrescriptionFor(day, asOf);
+  if (!ctx || !planned) return template;
+  const start = productWeekStart(asOf, ctx);
+  const anchor = previousWeekAnchor(asOf, start);
+  const previous = anchor ? t1PrescriptionFor(day, anchor) : null;
+  const frozen = isProgressionFrozen(asOf, testDate);
+  const bounds = anchor ? weekBounds(anchor) : null;
+  const topRpe = bounds ? topSetRpeInWeek(logs, day, bounds.start, bounds.end) : null;
+  if (
+    !previous ||
+    !shouldApplyHold({
+      frozen,
+      block: ctx.block,
+      steppingUp: isStepUp(planned, previous),
+      topRpe,
+    })
+  ) {
+    return template;
+  }
+  const held: T1Prescription = { ...previous, note: holdNote(topRpe ?? 0) };
+  return {
+    ...template,
+    slots: template.slots.map((slot) => overlayT1(slot, held)),
+  };
+}
+
+function productWeekStart(day: string, ctx: { block: MesocycleBlock; weekIndex: number }): string {
+  let cursor = day.slice(0, 10);
+  for (let i = 0; i < 8; i += 1) {
+    const prev = addDays(cursor, -1);
+    const prevCtx = blockWeekContext(prev);
+    if (!prevCtx || prevCtx.block !== ctx.block || prevCtx.weekIndex !== ctx.weekIndex) return cursor;
+    cursor = prev;
+  }
+  return cursor;
+}
+
+function weekBounds(anchor: string): { start: string; end: string } | null {
+  const ctx = blockWeekContext(anchor);
+  if (!ctx) return null;
+  const start = productWeekStart(anchor, ctx);
+  let end = anchor.slice(0, 10);
+  for (let i = 0; i < 8; i += 1) {
+    const next = addDays(end, 1);
+    const nextCtx = blockWeekContext(next);
+    if (!nextCtx || nextCtx.block !== ctx.block || nextCtx.weekIndex !== ctx.weekIndex) break;
+    end = next;
+  }
+  return { start, end };
+}
+
+function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function utcMs(ymd: string): number {

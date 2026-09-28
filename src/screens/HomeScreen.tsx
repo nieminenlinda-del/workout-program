@@ -2,7 +2,8 @@ import { TemplatePicker } from '../components/TemplatePicker';
 import { WorkoutPreview } from '../components/WorkoutPreview';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { DAY_TEMPLATES } from '../data/templates';
-import { isBlockADeloadWeek } from '../domain/programWeek';
+import { trainingMaxesForBlock } from '../domain/cyclePlan';
+import { blockWeekContext, dayTemplateForDate, isDeloadWeek } from '../domain/programWeek';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
 import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
@@ -44,7 +45,9 @@ export function HomeScreen({
   onSeedMon14: () => Promise<number>;
 }) {
   const template = DAY_TEMPLATES[templateDay];
+  const planned = dayTemplateForDate(templateDay, date, { logs: history, hold: true });
   const meso = getMesocycleContext(date);
+  const maxes = trainingMaxesForBlock(blockWeekContext(date)?.block ?? null);
   const offerWeek1Restore = shouldOfferHomeWeek1Restore(
     plannedDayPreview(template, history, date),
   );
@@ -77,7 +80,7 @@ export function HomeScreen({
           >
             Block {meso.block} · {meso.phase.replaceAll('_', ' ')}
             {meso.weekIndex ? ` · week ${meso.weekIndex}` : ''}
-            {isBlockADeloadWeek(date) ? ' · deload' : ''} ·{' '}
+            {isDeloadWeek(date) ? ' · deload' : ''} ·{' '}
             {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>
@@ -112,8 +115,8 @@ export function HomeScreen({
       <section className="card">
         <p className="kicker">Template day</p>
         <TemplatePicker value={templateDay} onChange={onTemplateDay} />
-        <h2 className="template-heading">{template.title}</h2>
-        <p className="muted">{template.focus}</p>
+        <h2 className="template-heading">{planned.title}</h2>
+        <p className="muted">{planned.focus}</p>
         <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
         {recoveryCard}
         <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
@@ -126,8 +129,8 @@ export function HomeScreen({
       </button>
 
       <p className="tm-note">
-        Training maxes (docs only): squat {SEED_TRAINING_MAXES.squat_kg} · bench{' '}
-        {SEED_TRAINING_MAXES.bench_kg} · deadlift {SEED_TRAINING_MAXES.deadlift_kg} kg
+        {maxes === SEED_TRAINING_MAXES ? 'Training maxes (docs only)' : 'Training maxes'}: squat{' '}
+        {maxes.squat_kg} · bench {maxes.bench_kg} · deadlift {maxes.deadlift_kg} kg
       </p>
 
       <button type="button" className="btn btn-ghost btn-block" onClick={onHistory}>

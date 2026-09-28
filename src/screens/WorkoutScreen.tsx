@@ -219,7 +219,7 @@ export function WorkoutScreen({
                     onClick={() => setActive({ liftIndex, setIndex })}
                   >
                     <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>
-                      {setDisplayLabel(lift.sets, setIndex)}
+                      {set.part_label ?? setDisplayLabel(lift.sets, setIndex)}
                     </span>
                     <span className="set-main">
                       {set.completed ? (
@@ -235,7 +235,9 @@ export function WorkoutScreen({
                       ) : (
                         <span>
                           <span className="set-plan-label">Plan</span>{' '}
-                          {formatPlanLoad(set, timed, assisted)}
+                          {set.weight_label
+                            ? `${set.weight_label} kg × ${set.reps}${set.amrap ? '+' : ''}`
+                            : formatPlanLoad(set, timed, assisted)}
                           <em> @ {formatShownRpe(set)} RPE</em>
                         </span>
                       )}

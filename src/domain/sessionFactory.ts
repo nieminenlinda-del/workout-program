@@ -3,6 +3,7 @@ import type {
   CanonicalTemplateDay,
   LoggedLift,
   SessionDraft,
+  SessionLog,
   TemplateDay,
 } from '../types/session';
 import { DEFAULT_READINESS } from '../types/session';
@@ -18,8 +19,12 @@ export function newSessionId(): string {
   return `ses_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-export function liftsFromTemplate(day: CanonicalTemplateDay, asOf = todayIsoDate()): LoggedLift[] {
-  const template = dayTemplateForDate(day, asOf);
+export function liftsFromTemplate(
+  day: CanonicalTemplateDay,
+  asOf = todayIsoDate(),
+  logs: readonly SessionLog[] = [],
+): LoggedLift[] {
+  const template = dayTemplateForDate(day, asOf, { logs, hold: true });
   return template.slots.map((slot) => {
     const meta = EXERCISE_CATALOG[slot.exercise_id];
     return {
@@ -38,6 +43,8 @@ export function liftsFromTemplate(day: CanonicalTemplateDay, asOf = todayIsoDate
           target_weight_kg: s.weight_kg,
           target_reps: s.reps,
           ...(s.rpe_label ? { rpe_label: s.rpe_label } : {}),
+          ...(s.part_label ? { part_label: s.part_label } : {}),
+          ...(s.weight_label ? { weight_label: s.weight_label } : {}),
         })),
         warmupKindFor(slot.exercise_id),
       ),
@@ -48,6 +55,7 @@ export function liftsFromTemplate(day: CanonicalTemplateDay, asOf = todayIsoDate
 export function createDraftSession(
   templateDay: TemplateDay = 'A',
   date = todayIsoDate(),
+  logs: readonly SessionLog[] = [],
 ): SessionDraft {
   const canonical = canonicalTemplateDay(templateDay);
   return {
@@ -55,7 +63,7 @@ export function createDraftSession(
     date,
     template_day: canonical,
     readiness: withComputedLight(DEFAULT_READINESS),
-    lifts: liftsFromTemplate(canonical, date),
+    lifts: liftsFromTemplate(canonical, date, logs),
     pain_flag: false,
     notes: '',
     status: 'draft',

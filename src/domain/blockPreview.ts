@@ -11,6 +11,7 @@ import {
 } from '../types/phase2';
 import { calendarYmd, isLoggedWorkSet } from './lastPerformance';
 import { getMesocycleContext } from './phase2Calendar';
+import { isPlannedDeload, templateOverrideForDate } from './cyclePlan';
 import { blockWeekContext, dayTemplateForDate } from './programWeek';
 import { workSets } from './sets';
 import { calendarTemplateDay, canonicalTemplateDay } from './templateDay';
@@ -24,17 +25,15 @@ import { plannedLiftSummary, type PlannedLiftSummary } from './workoutPreview';
  * - accumulate → Hypertrophy (Block A)
  * - intensify → Strength (Block B)
  * - peak_overreach and peak_taper → Peak (Block C)
- * - test → Test (21 Nov)
+ * - test → Test (Fri 20 Nov)
  *
  * Home still shows PowerCombo `training_mode` strength_peak for this whole
  * cycle. That mode is not the week phase.
  *
- * Loads: `dayTemplateForDate` → `applyProgramWeek` → `t1PrescriptionFor`,
- * the same weekly targets as Today and `createDraftSession`. Block A week 4
- * is the deload row. A later Block A week would hold Week 3. Blocks B–C have
- * no Kraft table, so T1s stay on the seed template. Sessions after `asOf` are
- * marked projected. The test day does not invent attempt weights
- * (`t1PrescriptionFor` has none).
+ * Loads: `dayTemplateForDate` → the planned week table. Block A week 4 and
+ * Block B week 4 are deloads. Block B/C use the coach tables. Preview does
+ * not apply the Block B hold — Today does, from logged top-set RPE. Sessions
+ * after `asOf` are marked projected. The test day lists planned attempts.
  */
 export const PREVIEW_PHASE_LABEL: Record<BlockPhase, 'Hypertrophy' | 'Strength' | 'Peak' | 'Test'> = {
   accumulate: 'Hypertrophy',
@@ -169,7 +168,7 @@ export function buildBlockPreview(
       };
     }
     draft.end = cursor;
-    const session = sessionForDate(cursor, today, logs, used);
+    const session = sessionForDate(cursor, today, logs, used, end);
     if (session) draft.sessions.push(session);
   }
   if (draft) weeks.push(finishWeek(draft, today));
@@ -206,7 +205,7 @@ function finishWeek(draft: WeekDraft, today: string): BlockPreviewWeek {
     end: draft.end,
     rangeLabel: formatWeekRange(draft.start, draft.end),
     phaseLabel: phaseLabelFor(sessions),
-    deload: draft.block === 'A' && draft.weekIndex === 4,
+    deload: isPlannedDeload(draft.block, draft.weekIndex),
     current: todayCtx?.block === draft.block && todayCtx.weekIndex === draft.weekIndex,
     completed: sessions.length > 0 && sessions.every((session) => session.completed),
     projected: sessions.length > 0 && sessions.every((session) => session.projected),
@@ -227,13 +226,14 @@ function sessionForDate(
   today: string,
   logs: readonly SessionLog[],
   used: Set<string>,
+  testDate: string,
 ): BlockPreviewSession | null {
-  const meso = getMesocycleContext(date);
-  if (meso.isTestDay) return testSession(date, today, logs, used);
+  const meso = getMesocycleContext(date, testDate);
+  if (meso.isTestDay) return testSession(date, today, logs, used, testDate);
 
-  const mapped = calendarTemplateDay(date);
+  const mapped = calendarTemplateDay(date, testDate);
   if (mapped === 'rest') return null;
-  return trainSession(date, mapped, today, logs, used);
+  return trainSession(date, mapped, today, logs, used, testDate);
 }
 
 function trainSession(
@@ -242,9 +242,11 @@ function trainSession(
   today: string,
   logs: readonly SessionLog[],
   used: Set<string>,
+  testDate: string,
 ): BlockPreviewSession {
-  const meso = getMesocycleContext(date);
-  const template = dayTemplateForDate(day, date);
+  const meso = getMesocycleContext(date, testDate);
+  const template = dayTemplateForDate(day, date, { testDate });
+  const mainLifts = template.slots.filter((slot) => slot.role === 'T1').length;
   const projected = date > today;
   const log = claimLog(logs, date, day, used);
   const summaries = template.slots.map((slot) => plannedLiftSummary(slot));
@@ -252,7 +254,10 @@ function trainSession(
     date,
     kind: 'train',
     templateDay: day,
-    heading: `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
+    heading:
+      mainLifts > 1
+        ? `${weekdayShort(date)} ${formatDayMonth(date)} · ${template.title}`
+        : `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
     title: template.title,
     phaseLabel: previewPhaseLabel(meso.phase ?? 'accumulate'),
     projected,
@@ -269,8 +274,11 @@ function testSession(
   today: string,
   logs: readonly SessionLog[],
   used: Set<string>,
+  testDate: string,
 ): BlockPreviewSession {
   const log = claimLog(logs, date, 'test', used);
+  const template = templateOverrideForDate(date, testDate);
+  const summaries = template ? template.slots.map((slot) => plannedLiftSummary(slot)) : [];
   return {
     date,
     kind: 'test',
@@ -281,9 +289,9 @@ function testSession(
     projected: date > today,
     frozen: true,
     completed: log != null,
-    exercises: [],
+    exercises: summaries.map((summary) => exerciseFromSummary(summary, date > today)),
     testNote:
-      'Squat, then bench, then deadlift. No accessories. Attempt weights are not programmed — progression is frozen, and the weekly target table has no test-day loads.',
+      'Planned attempts. Squat, then bench, then deadlift. No accessories. A range is the coach’s window for that attempt, not a single prescribed kilo.',
     logged: log ? loggedLines(log) : [],
   };
 }
@@ -314,7 +322,7 @@ function extraLoggedSessions(
     const date = calendarYmd(log.date);
     if (!date || date < week.start || date > week.end) continue;
     const day = canonicalTemplateDay(log.template_day);
-    extras.push(trainSession(date, day, today, logs, used));
+    extras.push(trainSession(date, day, today, logs, used, TARGET_TEST_DATE));
   }
   return extras;
 }

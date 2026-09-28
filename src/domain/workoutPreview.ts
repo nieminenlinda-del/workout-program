@@ -20,6 +20,8 @@ export interface PlannedSetLine {
   rpe: number;
   /** Planned band such as `5–6`, when the target is not a single RPE. */
   rpe_label?: string;
+  part_label?: string;
+  weight_label?: string;
   amrap: boolean;
   rest_sec: number;
   warmup: boolean;
@@ -103,14 +105,58 @@ export function formatWarmupLabel(sets: SeedSet[]): string | null {
   return `W ${kg.join(' → ')}`;
 }
 
-/** Collapsed work line, e.g. `57.5 kg · 3 × 4`. Mixed kg falls back to the scheme only. */
+/**
+ * Collapsed work line, e.g. `57.5 kg · 3 × 4`.
+ * Mixed loads read as two parts: `67.5 kg × 1 then 60 kg × 2 × 2`.
+ */
 export function formatWorkLabel(sets: SeedSet[], timed = false, assisted = false): string {
   const work = workSets(sets);
   const scheme = formatSetScheme(sets, timed);
   if (work.length === 0) return scheme;
+  const waves = formatWaveLabel(work, timed, assisted);
+  if (waves) return waves;
   const first = work[0].weight_kg;
-  if (work.some((s) => s.weight_kg !== first)) return scheme;
   return `${formatLoad(first, assisted)} · ${scheme}`;
+}
+
+function formatWaveLabel(
+  work: readonly SeedSet[],
+  timed: boolean,
+  assisted: boolean,
+): string | null {
+  const groups: { weight: number; label?: string; reps: number; count: number; amrap: boolean }[] = [];
+  for (const set of work) {
+    const amrap = Boolean(set.amrap);
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      last.weight === set.weight_kg &&
+      last.label === set.weight_label &&
+      last.reps === set.reps &&
+      last.amrap === amrap
+    ) {
+      last.count += 1;
+    } else {
+      groups.push({
+        weight: set.weight_kg,
+        label: set.weight_label,
+        reps: set.reps,
+        count: 1,
+        amrap,
+      });
+    }
+  }
+  const mixed = groups.length > 1 || Boolean(groups[0]?.label);
+  if (!mixed) return null;
+  const unit = timed ? 's' : '';
+  return groups
+    .map((group) => {
+      const kg = group.label ? `${group.label} kg` : formatLoad(group.weight, assisted);
+      const reps = `${group.reps}${unit}${group.amrap ? '+' : ''}`;
+      if (group.count === 1 && group.reps === 1 && !group.amrap) return `${kg} × ${reps}`;
+      return `${kg} × ${group.count} × ${reps}`;
+    })
+    .join(' then ');
 }
 
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
@@ -125,7 +171,7 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
     scheme: formatSetScheme(sets, timed),
-    workLabel: formatWorkLabel(sets, timed, assisted),
+    workLabel: slot.plan_label ?? formatWorkLabel(sets, timed, assisted),
     warmupLabel: formatWarmupLabel(sets),
     restLabel: restSec != null ? formatRestLabel(restSec) : null,
     note: slot.note ?? null,
@@ -133,11 +179,13 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
     assisted,
     sets: sets.map((set, index) => ({
       setNumber: index + 1,
-      label: setDisplayLabel(sets, index),
+      label: set.part_label ?? setDisplayLabel(sets, index),
       weight_kg: set.weight_kg,
       reps: set.reps,
       rpe: set.rpe,
       ...(set.rpe_label ? { rpe_label: set.rpe_label } : {}),
+      ...(set.part_label ? { part_label: set.part_label } : {}),
+      ...(set.weight_label ? { weight_label: set.weight_label } : {}),
       amrap: Boolean(set.amrap),
       rest_sec: set.rest_sec,
       warmup: isWarmupSet(set),
@@ -156,7 +204,7 @@ export function plannedDayPreview(
   logs: readonly SessionLog[] = [],
   asOf: string,
 ): PlannedLiftPreview[] {
-  const resolved = applyProgramWeek(template, asOf);
+  const resolved = applyProgramWeek(template, asOf, { logs, hold: true });
   return resolved.slots.map((slot) => {
     const last = lastMatchingPerformance(logs, slot.exercise_id, resolved.id, asOf);
     return {

@@ -4,7 +4,7 @@ Mobile-first PWA for gym-phone session logging. Phase 1 is **today’s workout o
 
 **Live app:** [https://nieminenlinda-del.github.io/workout-program/](https://nieminenlinda-del.github.io/workout-program/)
 
-Phase 2 auto-progression is not implemented, but the Home chip already resolves PowerCombo mode. This cycle starts **Block A 2026-09-07 → 2026-10-04**, then B intensify and C peak through the **2026-11-21** test. Mode is **`strength_peak` from day one** while that test date is set; from 2026-11-22 it returns to `hypertrophy`. Seeded TMs: squat **72.5** / bench **52.5** / deadlift **90** kg. See [ARCHITECTURE.md](./ARCHITECTURE.md).
+Phase 2’s generic engine stub is still unimplemented. This cycle’s loads are the coach tables: Block A **2026-09-07 → 2026-10-04**, Block B, then Block C through the **Fri 20 Nov 2026** test (`TEST_DAY`). Mode is **`strength_peak` from day one** while that test date is set; from the day after the test it returns to `hypertrophy`. Block A seed TMs: squat **72.5** / bench **52.5** / deadlift **90** kg. Block B onward: squat **75** / bench **52.5** / deadlift **92.5** kg. See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Install on iPhone
 

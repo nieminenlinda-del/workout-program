@@ -65,9 +65,9 @@ export function WorkoutPreview({
                 <ol className="preview-sets">
                   {lift.sets.map((set) => (
                     <li key={set.setNumber} className={`preview-set ${set.warmup ? 'warmup' : ''}`}>
-                      <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>{set.label}</span>
+                      <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>{set.part_label ?? set.label}</span>
                       <span className="set-main">
-                        {formatLoad(set.weight_kg, lift.assisted)} × {set.reps}
+                        {set.weight_label ? `${set.weight_label} kg` : formatLoad(set.weight_kg, lift.assisted)} × {set.reps}
                         {lift.timed ? 's' : ''}
                         {set.amrap ? '+' : ''}
                         <em> @ {formatShownRpe(set)} RPE</em>

@@ -1,0 +1,377 @@
+import type { DayTemplate, SeedSet, TemplateSlot } from '../data/templates';
+import type { ExerciseId } from '../types/exercises';
+import type { CanonicalTemplateDay, SessionLog, TemplateDay } from '../types/session';
+import {
+  BLOCK_B_TRAINING_MAXES,
+  SEED_TRAINING_MAXES,
+  TEST_DAY,
+  type MesocycleBlock,
+  type TrainingMaxes,
+} from '../types/phase2';
+import { calendarYmd, topWorkSet } from './lastPerformance';
+import { addCalendarDays, testWeekRole } from './testWeek';
+
+export { addCalendarDays, mondayOnOrBefore, testWeekRole } from './testWeek';
+export type { TestWeekRole } from './testWeek';
+
+/** One slice of a T1: a uniform block, or a top single / backoff. */
+export interface T1Wave {
+  weight_kg: number;
+  set_count: number;
+  reps: number;
+  rpe?: number[];
+  rpe_label?: string;
+  /** `Top` or `Backoff`. */
+  part?: string;
+  /** Display weight when the attempt is a range. */
+  weight_label?: string;
+}
+
+/** Kraft-locked T1 work prescription for one template day. */
+export interface T1Prescription {
+  weight_kg: number;
+  set_count: number;
+  reps: number;
+  /** Per-set RPE; length matches `set_count` when `waves` is absent. */
+  rpe: number[];
+  /**
+   * Target shown wherever the app prints a planned RPE, when that target is a
+   * band rather than one number per set (deload weeks: `5–6`).
+   */
+  rpe_label?: string;
+  /** Coaching line under the T1 name. */
+  note?: string;
+  /** Top + backoff. `weight_kg` stays the top-set load for the hold check. */
+  waves?: T1Wave[];
+  plan_label?: string;
+}
+
+/**
+ * Block B auto-progression hold. A top set logged above this RPE repeats the
+ * previous week's load instead of the planned step up. 8.5 does not hold.
+ */
+export const HOLD_RPE_ABOVE = 8.5;
+
+/** Working-set target when the coach locked loads but not an RPE. Deloads stay 5–6. */
+const WORK_RPE = 8;
+const BACKOFF_RPE = 7;
+
+const DELOAD_NOTE = 'Deload. RPE 5–6.';
+
+export function isPlannedDeload(block: MesocycleBlock, weekIndex: number): boolean {
+  return (block === 'A' || block === 'B') && weekIndex === 4;
+}
+
+/** C1 and C2 drop every non-T1 slot. This app has no separate T2/T3 tag. */
+export function dropAccessorySlots(block: MesocycleBlock, weekIndex: number): boolean {
+  return block === 'C' && (weekIndex === 1 || weekIndex === 2);
+}
+
+export function trainingMaxesForBlock(block: MesocycleBlock | null): TrainingMaxes {
+  if (block === 'B' || block === 'C') return BLOCK_B_TRAINING_MAXES;
+  return SEED_TRAINING_MAXES;
+}
+
+export function isStepUp(planned: T1Prescription, previous: T1Prescription): boolean {
+  if (planned.weight_kg < previous.weight_kg) return false;
+  return prescriptionKey(planned) !== prescriptionKey(previous);
+}
+
+export function shouldApplyHold(input: {
+  frozen: boolean;
+  block: MesocycleBlock | null;
+  steppingUp: boolean;
+  topRpe: number | null;
+}): boolean {
+  if (input.frozen || input.block !== 'B' || !input.steppingUp) return false;
+  return input.topRpe != null && input.topRpe > HOLD_RPE_ABOVE;
+}
+
+export function holdNote(rpe: number): string {
+  const shown = Number.isInteger(rpe) ? String(rpe) : String(rpe);
+  return `Held: last top set RPE ${shown}`;
+}
+
+export function blockPrescription(
+  block: MesocycleBlock,
+  weekIndex: number,
+  day: CanonicalTemplateDay,
+): T1Prescription | null {
+  if (block === 'B') return BLOCK_B_T1[weekIndex as BlockWeek]?.[day] ?? null;
+  if (block === 'C') return BLOCK_C_T1[weekIndex as BlockWeek]?.[day] ?? null;
+  return null;
+}
+
+/** Full session for a test-week training day or the test day. Null on ordinary dates. */
+export function templateOverrideForDate(ymd: string, testDate: string = TEST_DAY): DayTemplate | null {
+  const role = testWeekRole(ymd, testDate);
+  if (role === 'opener') return openerTemplate();
+  if (role === 'pull') return pullTemplate();
+  if (role === 'test') return testAttemptTemplate();
+  return null;
+}
+
+export function expandPrescription(rx: T1Prescription, restSec: number): SeedSet[] {
+  const waves = rx.waves?.length
+    ? rx.waves
+    : [
+        {
+          weight_kg: rx.weight_kg,
+          set_count: rx.set_count,
+          reps: rx.reps,
+          rpe: rx.rpe,
+          rpe_label: rx.rpe_label,
+        },
+      ];
+  const sets: SeedSet[] = [];
+  for (const wave of waves) {
+    for (let i = 0; i < wave.set_count; i += 1) {
+      sets.push({
+        weight_kg: wave.weight_kg,
+        reps: wave.reps,
+        rpe: wave.rpe?.[i] ?? wave.rpe?.[wave.rpe.length - 1] ?? rx.rpe[i] ?? rx.rpe[rx.rpe.length - 1] ?? WORK_RPE,
+        rest_sec: restSec,
+        ...(wave.rpe_label ? { rpe_label: wave.rpe_label } : {}),
+        ...(wave.part ? { part_label: partLabel(wave, i) } : {}),
+        ...(wave.weight_label ? { weight_label: wave.weight_label } : {}),
+      });
+    }
+  }
+  return sets;
+}
+
+/** Previous product week, using the day before this week starts. */
+export function previousWeekAnchor(asOf: string, weekStart: string): string | null {
+  const prev = addCalendarDays(weekStart, -1);
+  if (prev >= asOf.slice(0, 10)) return null;
+  return prev;
+}
+
+export function topSetRpeInWeek(
+  logs: readonly SessionLog[],
+  day: CanonicalTemplateDay,
+  start: string,
+  end: string,
+): number | null {
+  const rows = logs
+    .filter((log) => {
+      const date = calendarYmd(log.date);
+      return (
+        Boolean(date) &&
+        date >= start &&
+        date <= end &&
+        sameTemplateDay(log.template_day, day)
+      );
+    })
+    .sort((a, b) => (calendarYmd(b.date) ?? '').localeCompare(calendarYmd(a.date) ?? ''));
+  const latest = rows[0];
+  const top = latest ? topWorkSet(latest.lifts[0]?.sets ?? []) : null;
+  return top ? top.rpe : null;
+}
+
+type BlockWeek = 1 | 2 | 3 | 4;
+
+const BLOCK_B_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Prescription>>> = {
+  1: {
+    A: uniform(60, 3, 4),
+    B: uniform(42.5, 3, 5),
+    C: uniform(77.5, 3, 3),
+    D: uniform(42.5, 2, 5),
+  },
+  2: {
+    A: uniform(62.5, 3, 3),
+    B: uniform(45, 3, 3),
+    C: uniform(80, 3, 2),
+    D: uniform(42.5, 2, 4),
+  },
+  3: {
+    A: uniform(65, 3, 2),
+    B: uniform(47.5, 3, 2),
+    C: uniform(82.5, 3, 2),
+    D: uniform(42.5, 2, 3),
+  },
+  4: {
+    A: deload(47.5, 2, 4),
+    B: deload(32.5, 2, 5),
+    C: deload(57.5, 2, 3),
+    D: deload(32.5, 2, 5),
+  },
+};
+
+const BLOCK_C_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Prescription>>> = {
+  1: {
+    A: topBackoff(67.5, 1, 60, 2, 2, 'Capped.'),
+    B: topBackoff(47.5, 1, 42.5, 2, 2, 'Capped.'),
+    C: topBackoff(87.5, 1, 77.5, 2, 2, 'Capped.'),
+    D: { ...uniform(40, 2, 3), note: 'Capped.' },
+  },
+  2: {
+    A: topBackoff(70, 1, 60, 2, 2, 'Frozen.'),
+    B: topBackoff(50, 1, 42.5, 2, 2, 'Frozen.'),
+    C: topBackoff(90, 1, 77.5, 1, 2, 'Deadlift early in the week. Frozen.'),
+    D: { ...uniform(40, 2, 2), note: 'Frozen.' },
+  },
+};
+
+function uniform(weight_kg: number, set_count: number, reps: number): T1Prescription {
+  return {
+    weight_kg,
+    set_count,
+    reps,
+    rpe: Array.from({ length: set_count }, () => WORK_RPE),
+  };
+}
+
+function deload(weight_kg: number, set_count: number, reps: number): T1Prescription {
+  return {
+    weight_kg,
+    set_count,
+    reps,
+    rpe: [5, 6],
+    rpe_label: '5–6',
+    note: DELOAD_NOTE,
+  };
+}
+
+function topBackoff(
+  topKg: number,
+  topReps: number,
+  backKg: number,
+  backSets: number,
+  backReps: number,
+  note: string,
+): T1Prescription {
+  const waves: T1Wave[] = [
+    { weight_kg: topKg, set_count: 1, reps: topReps, rpe: [WORK_RPE], part: 'Top' },
+    {
+      weight_kg: backKg,
+      set_count: backSets,
+      reps: backReps,
+      rpe: Array.from({ length: backSets }, () => BACKOFF_RPE),
+      part: 'Backoff',
+    },
+  ];
+  return {
+    weight_kg: topKg,
+    set_count: 1 + backSets,
+    reps: topReps,
+    rpe: [WORK_RPE, ...Array.from({ length: backSets }, () => BACKOFF_RPE)],
+    note,
+    waves,
+  };
+}
+
+function partLabel(wave: T1Wave, index: number): string {
+  if (!wave.part) return '';
+  if (wave.part === 'Backoff') return wave.set_count === 1 ? 'Backoff' : `B${index + 1}`;
+  if (wave.set_count === 1) return wave.part;
+  return `${wave.part} ${index + 1}`;
+}
+
+function openerTemplate(): DayTemplate {
+  return pairedTemplate('A', 'Mon', 'Squat + bench', 'Test week opener. Frozen.', [
+    lift('tw-squat', 'squat_low_bar', uniformSets(52.5, 2, 2)),
+    lift('tw-bench', 'bench_regular', uniformSets(37.5, 2, 2)),
+  ]);
+}
+
+function pullTemplate(): DayTemplate {
+  return pairedTemplate('C', 'Wed', 'Deadlift + bench', 'Test week pull. Frozen.', [
+    lift('tw-dl', 'deadlift_conventional', uniformSets(65, 2, 2)),
+    lift('tw-bench-2', 'bench_regular', uniformSets(40, 2, 1)),
+  ]);
+}
+
+export const PLANNED_ATTEMPT_LABELS = {
+  squat: '70 / 75 / 77.5–80',
+  bench: '50 / 52.5 / 55–57.5',
+  deadlift: '87.5 / 92.5–95 / 97.5–100',
+} as const;
+
+function testAttemptTemplate(): DayTemplate {
+  return pairedTemplate('A', 'Mon', '1RM test', 'Planned attempts. Squat, then bench, then deadlift.', [
+    attemptLift('test-squat', 'squat_low_bar', PLANNED_ATTEMPT_LABELS.squat, [
+      { weight_kg: 70 },
+      { weight_kg: 75 },
+      { weight_kg: 77.5, weight_label: '77.5–80' },
+    ]),
+    attemptLift('test-bench', 'bench_regular', PLANNED_ATTEMPT_LABELS.bench, [
+      { weight_kg: 50 },
+      { weight_kg: 52.5 },
+      { weight_kg: 55, weight_label: '55–57.5' },
+    ]),
+    attemptLift('test-dl', 'deadlift_conventional', PLANNED_ATTEMPT_LABELS.deadlift, [
+      { weight_kg: 87.5 },
+      { weight_kg: 92.5, weight_label: '92.5–95' },
+      { weight_kg: 97.5, weight_label: '97.5–100' },
+    ]),
+  ]);
+}
+
+function pairedTemplate(
+  id: CanonicalTemplateDay,
+  weekday: DayTemplate['weekday'],
+  title: string,
+  focus: string,
+  slots: TemplateSlot[],
+): DayTemplate {
+  return { id, weekday, title, focus, slots };
+}
+
+function lift(slotId: string, exerciseId: ExerciseId, sets: SeedSet[]): TemplateSlot {
+  return {
+    slot_id: slotId,
+    role: 'T1',
+    exercise_id: exerciseId,
+    alternatives: [],
+    note: 'Frozen.',
+    sets,
+  };
+}
+
+function attemptLift(
+  slotId: string,
+  exerciseId: ExerciseId,
+  attempts: string,
+  rows: { weight_kg: number; weight_label?: string }[],
+): TemplateSlot {
+  return {
+    slot_id: slotId,
+    role: 'T1',
+    exercise_id: exerciseId,
+    alternatives: [],
+    note: 'Planned attempts.',
+    plan_label: `Planned · ${attempts} kg`,
+    sets: rows.map((row) => ({
+      weight_kg: row.weight_kg,
+      reps: 1,
+      rpe: WORK_RPE,
+      rest_sec: 180,
+      ...(row.weight_label ? { weight_label: row.weight_label } : {}),
+    })),
+  };
+}
+
+function uniformSets(weight_kg: number, set_count: number, reps: number): SeedSet[] {
+  return Array.from({ length: set_count }, () => ({
+    weight_kg,
+    reps,
+    rpe: WORK_RPE,
+    rest_sec: 180,
+  }));
+}
+
+function prescriptionKey(rx: T1Prescription): string {
+  if (rx.waves?.length) {
+    return rx.waves.map((wave) => `${wave.weight_kg}x${wave.set_count}x${wave.reps}`).join('|');
+  }
+  return `${rx.weight_kg}x${rx.set_count}x${rx.reps}`;
+}
+
+function sameTemplateDay(day: TemplateDay, expected: CanonicalTemplateDay): boolean {
+  if (day === expected) return true;
+  if (expected === 'A') return day === 'Mon';
+  if (expected === 'B') return day === 'Tue';
+  if (expected === 'C') return day === 'Thu';
+  return day === 'Fri';
+}

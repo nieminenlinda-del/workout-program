@@ -39,11 +39,21 @@ function utcWeekday(ymd: string): number {
 }
 
 /**
+ * Today opens Day C on Wed 30 Sep 2026 so the Week 4 deadlift is on screen
+ * if she trains that morning. Thursday stays the scheduled Day C
+ * (`calendarTemplateDay`); this date is not a second preview session.
+ */
+export const BLOCK_A_WEEK4_DL_OPEN_DATE = '2026-09-30';
+
+/**
  * Default template letter for the date picker (null = rest / picker-driven).
  * Trip overrides win; otherwise Mon A / Tue B / Thu C / Fri D.
+ * Wed 30 Sep 2026 opens Day C (Week 4 deadlift) without listing that day twice.
  */
 export function defaultTemplateDayForDate(ymd: string): CanonicalTemplateDay | null {
-  const mapped = calendarTemplateDay(ymd);
+  const day = ymd.slice(0, 10);
+  if (day === BLOCK_A_WEEK4_DL_OPEN_DATE) return 'C';
+  const mapped = calendarTemplateDay(day);
   return mapped === 'rest' ? null : mapped;
 }
 

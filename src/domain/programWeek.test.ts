@@ -185,8 +185,18 @@ describe('Kraft trip day-of-week defaults', () => {
     expect(defaultTemplateDayForDate('2026-09-17')).toBe('C');
     expect(defaultTemplateDayForDate('2026-09-18')).toBe('D');
     expect(defaultTemplateDayForDate('2026-09-28')).toBe('A');
+    expect(defaultTemplateDayForDate('2026-09-29')).toBe('B');
     expect(defaultTemplateDayForDate('2026-10-01')).toBe('C');
     expect(defaultTemplateDayForDate('2026-10-02')).toBe('D');
+  });
+
+  it('Week 4 deadlift opens on Wed 30 Sep and stays scheduled on Thu 1 Oct; Sun 4 Oct is rest', () => {
+    expect(defaultTemplateDayForDate('2026-09-30')).toBe('C');
+    expect(calendarTemplateDay('2026-09-30')).toBe('rest');
+    expect(defaultTemplateDayForDate('2026-10-01')).toBe('C');
+    expect(calendarTemplateDay('2026-10-01')).toBe('C');
+    expect(defaultTemplateDayForDate('2026-10-04')).toBeNull();
+    expect(blockWeekContext('2026-10-04')?.weekIndex).toBe(4);
   });
 });
 

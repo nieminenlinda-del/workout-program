@@ -14,6 +14,7 @@ import {
   type MesocycleBlock,
   type TrainingMaxes,
 } from '../types/phase2';
+import { ACCESSORY_SEED_LOADS } from './accessoryProgression';
 import { calendarYmd, isLoggedWorkSet, topWorkSet } from './lastPerformance';
 import { addCalendarDays, testWeekRole } from './testWeek';
 
@@ -343,7 +344,6 @@ export const CLOSE_GRIP_SLOT = 'd-close-grip';
 export const MOVED_RDL_SLOT = 'd-hinge';
 export const VARIATION_STEP_KG = 2.5;
 export const PAUSED_DL_BASE_KG = 60;
-export const CLOSE_GRIP_BASE_KG = 40;
 
 const PAUSED_DL_NOTE = '2 s pause just below the knee. RPE 6–7.';
 const ACCESSORY_REST_SEC = 90;
@@ -399,26 +399,44 @@ export function variationLogInWeek(
   start: string,
   end: string,
 ): VariationLog {
+  const lift = latestSlotLift(logs, day, exerciseId, slotId, start, end);
+  const rpes = (lift?.sets ?? []).filter((set) => isLoggedWorkSet(set)).map((set) => set.rpe);
+  return { rpes, lastRpe: rpes.length > 0 ? rpes[rpes.length - 1] : null };
+}
+
+/** Completed work sets from the latest session that week, for accessory double progression. */
+export function accessorySetsInWeek(
+  logs: readonly SessionLog[],
+  day: CanonicalTemplateDay,
+  exerciseId: ExerciseId,
+  slotId: string,
+  start: string,
+  end: string,
+): { reps: number; rpe: number }[] {
+  const lift = latestSlotLift(logs, day, exerciseId, slotId, start, end);
+  return (lift?.sets ?? []).filter((set) => isLoggedWorkSet(set)).map((set) => ({ reps: set.reps, rpe: set.rpe }));
+}
+
+function latestSlotLift(
+  logs: readonly SessionLog[],
+  day: CanonicalTemplateDay,
+  exerciseId: ExerciseId,
+  slotId: string,
+  start: string,
+  end: string,
+) {
   const rows = logs
     .filter((log) => {
       const date = calendarYmd(log.date);
       return Boolean(date) && date >= start && date <= end && sameTemplateDay(log.template_day, day);
     })
     .sort((a, b) => (calendarYmd(b.date) ?? '').localeCompare(calendarYmd(a.date) ?? ''));
-  const latest = rows[0];
-  const lift = latest?.lifts.find((row) => row.slot_id === slotId || row.exercise_id === exerciseId);
-  const rpes = (lift?.sets ?? []).filter((set) => isLoggedWorkSet(set)).map((set) => set.rpe);
-  return { rpes, lastRpe: rpes.length > 0 ? rpes[rpes.length - 1] : null };
+  return rows[0]?.lifts.find((row) => row.slot_id === slotId || row.exercise_id === exerciseId);
 }
 
 /** Every completed work set is RPE 7 or lower. The log stores each set's RPE. */
 export function pausedDeadliftSteps(log: VariationLog): boolean {
   return log.rpes.length > 0 && log.rpes.every((rpe) => rpe <= 7);
-}
-
-/** Any completed work set is below RPE 6. RPE 6 holds. */
-export function closeGripSteps(log: VariationLog): boolean {
-  return log.rpes.some((rpe) => rpe < 6);
 }
 
 export function variationStepNote(rpe: number): string {
@@ -431,16 +449,9 @@ export function variationHeldNote(rpe: number, last = true): string {
 }
 
 /** RPE the Today note should cite for this week's step or hold. */
-export function variationCitedRpe(log: VariationLog, kind: 'paused-dl' | 'close-grip'): number | null {
+export function variationCitedRpe(log: VariationLog): number | null {
   if (log.rpes.length === 0) return null;
-  if (kind === 'paused-dl') {
-    return pausedDeadliftSteps(log) ? log.lastRpe : Math.max(...log.rpes);
-  }
-  if (closeGripSteps(log)) {
-    const qualifying = log.rpes.filter((rpe) => rpe < 6);
-    return qualifying[qualifying.length - 1] ?? log.lastRpe;
-  }
-  return log.lastRpe;
+  return pausedDeadliftSteps(log) ? log.lastRpe : Math.max(...log.rpes);
 }
 
 function shownRpe(rpe: number): string {
@@ -476,8 +487,8 @@ function closeGripSlot(): TemplateSlot {
     displayName: 'Close-grip bench press',
     skipWarmup: true,
     sets: Array.from({ length: 3 }, () => ({
-      weight_kg: CLOSE_GRIP_BASE_KG,
-      reps: 8,
+      weight_kg: ACCESSORY_SEED_LOADS['d-close-grip'].weight_kg,
+      reps: ACCESSORY_SEED_LOADS['d-close-grip'].reps,
       rpe: 7,
       rest_sec: ACCESSORY_REST_SEC,
     })),

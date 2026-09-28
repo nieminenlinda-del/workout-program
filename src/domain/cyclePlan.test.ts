@@ -439,31 +439,13 @@ describe('Block B main-lift variations', () => {
     });
   });
 
-  it('steps close-grip bench by 2.5 kg when a logged set is below RPE 6, and holds at RPE 6', () => {
+  it('does not add 2.5 kg next week when a close-grip set is under RPE 6', () => {
     const easy = loggedVariation('D', '2026-10-09', 'bench_close_grip', [7, 7, 5.5]);
     expect(closeGripRow('2026-10-16', [easy])).toMatchObject({
-      workLabel: '42.5 kg · 3 × 8',
-      note: '+2.5 kg: last RPE 5.5',
-    });
-    const earlyOnly = loggedVariation('D', '2026-10-09', 'bench_close_grip', [5, 7, 7]);
-    expect(closeGripRow('2026-10-16', [earlyOnly])).toMatchObject({
-      workLabel: '42.5 kg · 3 × 8',
-      note: '+2.5 kg: last RPE 5',
-    });
-    const atSix = loggedVariation('D', '2026-10-09', 'bench_close_grip', [6, 6, 6]);
-    expect(closeGripRow('2026-10-16', [atSix])).toMatchObject({
-      workLabel: '40 kg · 3 × 8',
-      note: 'Held: last RPE 6',
+      workLabel: '40 kg · 3 × 9',
+      note: '+1 rep target',
     });
     expect(closeGripRow('2026-10-16', [])?.note).toBeNull();
-    const carried = [
-      easy,
-      loggedVariation('D', '2026-10-16', 'bench_close_grip', [7, 6, 6]),
-    ];
-    expect(closeGripRow('2026-10-23', carried)).toMatchObject({
-      workLabel: '42.5 kg · 3 × 8',
-      note: 'Held: last RPE 6',
-    });
   });
 
   it('does not apply the variations on B4, C1, C2, or test week', () => {

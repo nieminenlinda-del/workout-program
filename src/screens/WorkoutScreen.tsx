@@ -30,6 +30,7 @@ import { NumberStepper } from '../components/NumberStepper';
 import { LastPerformanceHint } from '../components/LastPerformanceHint';
 import { EquipmentPicker } from '../components/EquipmentPicker';
 import { unlockTimerAudio } from '../domain/timerCue';
+import { inSessionJumpHint } from '../domain/accessoryProgression';
 
 interface ActiveSet {
   liftIndex: number;
@@ -131,6 +132,13 @@ export function WorkoutScreen({
         const workingKg = unloggedWork[0]
           ? prescriptionWeightKg(unloggedWork[0])
           : (work[work.length - 1]?.weight_kg ?? 0);
+        const jumpHint = inSessionJumpHint(
+          lift.exercise_id,
+          workingKg,
+          unloggedWork[0]?.reps ?? work[work.length - 1]?.reps ?? 0,
+          work.filter((set) => set.completed).map((set) => set.rpe),
+          unloggedWork.length,
+        );
         return (
           <section key={`${lift.exercise_id}-${liftIndex}`} className={`card lift-card ${expanded ? 'open' : ''}`}>
             <button
@@ -153,6 +161,8 @@ export function WorkoutScreen({
                 ) : null}
               </span>
             </button>
+
+            {jumpHint ? <p className="muted">{jumpHint}</p> : null}
 
             {slot && slotAllowsEquipmentPicker(slot) && equipmentOptionsForSlot(slot).length > 1 ? (
               <EquipmentPicker

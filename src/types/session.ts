@@ -36,6 +36,10 @@ export interface LoggedSet {
    * number on `rpe`. Missing on older drafts.
    */
   rpe_label?: string;
+  /** Top / backoff label copied from the plan. */
+  part_label?: string;
+  /** Planned range such as `77.5–80`. Logging still stores a number on `weight_kg`. */
+  weight_label?: string;
 }
 
 export interface LoggedLift {

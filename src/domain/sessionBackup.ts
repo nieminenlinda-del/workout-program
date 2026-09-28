@@ -112,6 +112,8 @@ function asSet(value: unknown, label: string): LoggedSet {
   if (typeof row.target_weight_kg === 'number') set.target_weight_kg = row.target_weight_kg;
   if (typeof row.target_reps === 'number') set.target_reps = row.target_reps;
   if (typeof row.rpe_label === 'string' && row.rpe_label) set.rpe_label = row.rpe_label;
+  if (typeof row.part_label === 'string' && row.part_label) set.part_label = row.part_label;
+  if (typeof row.weight_label === 'string' && row.weight_label) set.weight_label = row.weight_label;
   return set;
 }
 

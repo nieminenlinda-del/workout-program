@@ -156,8 +156,7 @@ describe('Block A Kraft T1 table (no auto +2.5)', () => {
     expect(t1PrescriptionFor('A', '2026-10-04')).toEqual({ weight_kg: 45, ...deload });
     expect(t1PrescriptionFor('C', '2026-10-04')?.weight_kg).toBe(55);
     expect(t1PrescriptionFor('A', '2026-09-06')).toBeNull();
-    expect(t1PrescriptionFor('A', '2026-10-05')).toBeNull();
-    expect(t1PrescriptionFor('C', '2026-10-05')).toBeNull();
+    expect(t1PrescriptionFor('A', '2026-11-22')).toBeNull();
   });
 
   it('does not invent +2.5 on bench or deadlift in weeks 1–2', () => {

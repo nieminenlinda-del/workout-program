@@ -1,4 +1,6 @@
 import type { CanonicalTemplateDay, TemplateDay } from '../types/session';
+import { TEST_DAY } from '../types/phase2';
+import { testWeekRole } from './testWeek';
 
 export const WEEKDAY_BY_LETTER: Record<CanonicalTemplateDay, 'Mon' | 'Tue' | 'Thu' | 'Fri'> = {
   A: 'Mon',
@@ -24,6 +26,9 @@ export const TEMPLATE_DAY_DATE_OVERRIDE: Readonly<Record<string, CanonicalTempla
   '2026-09-23': 'C',
   '2026-09-24': 'D',
   '2026-09-25': 'rest',
+  // Block C week 2: deadlift moves to Wednesday so it is done early.
+  '2026-11-11': 'C',
+  '2026-11-12': 'rest',
 };
 
 const LETTER_BY_UTC_WEEKDAY: Record<number, CanonicalTemplateDay | undefined> = {
@@ -57,9 +62,19 @@ export function defaultTemplateDayForDate(ymd: string): CanonicalTemplateDay | n
   return mapped === 'rest' ? null : mapped;
 }
 
-/** Calendar letter including rest — Health join + gym picker share this map. */
-export function calendarTemplateDay(ymd: string): CanonicalTemplateDay | 'rest' {
+/**
+ * Calendar letter including rest — Health join + gym picker share this map.
+ * `testDate` selects the Saturday or Friday test-week layout. Default is Saturday 21 Nov.
+ */
+export function calendarTemplateDay(
+  ymd: string,
+  testDate: string = TEST_DAY,
+): CanonicalTemplateDay | 'rest' {
   const day = ymd.slice(0, 10);
+  const role = testWeekRole(day, testDate);
+  if (role === 'rest' || role === 'test') return 'rest';
+  if (role === 'opener') return 'A';
+  if (role === 'pull') return 'C';
   const override = TEMPLATE_DAY_DATE_OVERRIDE[day];
   if (override) return override;
   return LETTER_BY_UTC_WEEKDAY[utcWeekday(day)] ?? 'rest';

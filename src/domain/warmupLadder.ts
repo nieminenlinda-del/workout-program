@@ -35,6 +35,8 @@ export function prescribedWorkWeightKg(sets: readonly { weight_kg: number; warmu
   const counted = work.filter((s) => !s.amrap);
   const pool = counted.length > 0 ? counted : work;
   if (pool.length === 0) return 0;
+  const distinct = new Set(pool.map((set) => set.weight_kg));
+  if (distinct.size > 1) return Math.max(...distinct);
   const freq = new Map<number, number>();
   let best = pool[0].weight_kg;
   let bestN = 0;

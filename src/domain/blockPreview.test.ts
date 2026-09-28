@@ -72,7 +72,8 @@ describe('block preview phases and weeks', () => {
       current: false,
       projected: true,
     });
-    expect(weeks.find((week) => week.id === 'B-4')?.deload).toBe(false);
+    expect(weeks.find((week) => week.id === 'B-4')?.deload).toBe(true);
+    expect(weeks.find((week) => week.id === 'B-1')?.deload).toBe(false);
     expect(weeks.find((week) => week.id === 'B-1')?.phaseLabel).toBe('Strength');
     expect(weeks.at(-1)).toMatchObject({
       label: 'Block C · Week 3',
@@ -149,17 +150,22 @@ describe('block preview loads', () => {
     );
   });
 
-  it('uses the same seed targets as Today once the Kraft table stops (Block B and C)', () => {
+  it('uses the Block B and C planned loads, and keeps them projected', () => {
     const blockB = weeks.find((week) => week.id === 'B-1');
     const monday = blockB?.sessions[0];
     expect(monday?.date).toBe('2026-10-05');
     expect(monday?.phaseLabel).toBe('Strength');
-    expect(monday?.exercises[0]?.workLabel).toBe('55 kg · 3 × 5');
+    expect(monday?.exercises[0]?.workLabel).toBe('60 kg · 3 × 4');
+    expect(monday?.exercises[1]?.workLabel).toBe('50 kg · 3 × 8');
     expectSameTargets('2026-10-05', 'A', monday?.exercises ?? []);
 
     const blockC = weeks.find((week) => week.id === 'C-1');
-    expectSameTargets('2026-11-02', 'A', blockC?.sessions[0]?.exercises ?? []);
     expect(blockC?.sessions[0]?.phaseLabel).toBe('Peak');
+    expect(blockC?.sessions[0]?.exercises.map((row) => row.workLabel)).toEqual([
+      '67.5 kg × 1 then 60 kg × 2 × 2',
+    ]);
+    expect(blockC?.sessions[0]?.frozen).toBe(false);
+    expectSameTargets('2026-11-02', 'A', blockC?.sessions[0]?.exercises ?? []);
   });
 
   it('marks only the days after today as projected inside the current week', () => {
@@ -171,21 +177,33 @@ describe('block preview loads', () => {
     expect(week?.sessions.find((session) => session.date === '2026-09-24')?.projected).toBe(true);
   });
 
-  it('lists the test protocol without inventing attempt loads', () => {
+  it('lists Saturday 21 Nov planned attempts and the frozen test-week sessions', () => {
     const last = weeks.at(-1);
-    const taper = last?.sessions.find((session) => session.date === '2026-11-17');
+    expect(last?.sessions.map((session) => `${session.date} ${session.heading}`)).toEqual([
+      '2026-11-16 Mon 16 Nov · Squat + bench',
+      '2026-11-18 Wed 18 Nov · Deadlift + bench',
+      '2026-11-21 Sat 21 Nov · 1RM test',
+    ]);
+    const opener = last?.sessions[0];
+    expect(opener?.frozen).toBe(true);
+    expect(opener?.phaseLabel).toBe('Peak');
+    expect(opener?.exercises.map((row) => row.workLabel)).toEqual(['52.5 kg · 2 × 2', '37.5 kg · 2 × 2']);
+    const pull = last?.sessions[1];
+    expect(pull?.frozen).toBe(true);
+    expect(pull?.exercises.map((row) => row.workLabel)).toEqual(['65 kg · 2 × 2', '40 kg · 2 × 1']);
     const test = last?.sessions.find((session) => session.kind === 'test');
-    expect(taper?.frozen).toBe(true);
-    expect(taper?.phaseLabel).toBe('Peak');
-    expect(last?.sessions.find((session) => session.date === '2026-11-16')?.frozen).toBe(false);
     expect(test).toMatchObject({
       date: '2026-11-21',
       heading: 'Sat 21 Nov · 1RM test',
       phaseLabel: 'Test',
-      exercises: [],
       projected: true,
     });
-    expect(test?.testNote).toMatch(/not programmed/);
+    expect(test?.exercises.map((row) => row.workLabel)).toEqual([
+      'Planned · 70 / 75 / 77.5–80 kg',
+      'Planned · 50 / 52.5 / 55–57.5 kg',
+      'Planned · 87.5 / 92.5–95 / 97.5–100 kg',
+    ]);
+    expect(test?.testNote).toMatch(/Planned attempts/);
     expect(test?.title).toBe('Low-bar squat → Bench press → Conventional deadlift');
   });
 });

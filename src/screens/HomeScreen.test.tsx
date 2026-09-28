@@ -231,7 +231,8 @@ describe('HomeScreen Block A week chip and T1 preview', () => {
     const next = mount(<HomeScreen {...homeProps({ date: '2026-10-05', templateDay: 'A' })} />);
     nodes.push(next);
     expect(next.container.textContent).not.toMatch(/deload/i);
-    expect(next.container.textContent).toContain('55 kg · 3 × 5');
+    expect(next.container.textContent).toContain('60 kg · 3 × 4');
+    expect(next.container.textContent).toContain('squat 75');
   });
 
   it('on Thu 24 Sep Day D shows bench volume 42.5 × 2×4', () => {

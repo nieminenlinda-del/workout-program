@@ -17,6 +17,13 @@ export const SEED_TRAINING_MAXES: TrainingMaxes = {
   deadlift_kg: 90,
 };
 
+/** Block B onward (5 Oct through the test). Shown on Today; not the Block A seed. */
+export const BLOCK_B_TRAINING_MAXES: TrainingMaxes = {
+  squat_kg: 75,
+  bench_kg: 52.5,
+  deadlift_kg: 92.5,
+};
+
 export type MesocycleBlock = 'A' | 'B' | 'C';
 
 export type BlockPhase =
@@ -153,7 +160,7 @@ export const MESOCYCLE_WINDOWS: readonly MesocycleWindow[] = [
     block: 'C',
     label: 'Peak',
     start: '2026-11-02',
-    end: '2026-11-21',
+    end: TEST_DAY,
     defaultPhase: 'peak_overreach',
   },
 ] as const;

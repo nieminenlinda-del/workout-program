@@ -88,9 +88,9 @@ Load selection for Block A T1s is a separate locked table (`src/domain/programWe
 | 1 (rebase) | 47.5 × 3×5 | 40 × 3×5 | 70 × 3×5 | 40 × 2×5 |
 | 2 (locked) | **57.5 × 3×4** @ RPE ≤7 (55 if first set off) | 40 × 3×5 | 70 × 3×4 | 40 × 2×5 |
 | 3 (locked; from **20 Sep**) | **60 × 3×3** @ RPE ≤8 | **42.5 × 3×4** | **72.5 × 3×3** | **42.5 × 2×4** |
-| ≥4 | hold week 3 until Kraft locks week 4 | hold | hold | hold |
+| 4 (deload, 28 Sep–4 Oct) | **45 × 2×5** @ RPE 5–6 | **32.5 × 2×5** | **55 × 2×5** | **32.5 × 2×5** |
 
-Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Accessories stay on the seed template. Off-block / Block B–C use the static seed T1s.
+Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Week 4 is the deload above. Accessories stay on the seed template through Block B. Block B/C T1s are the coach tables in `src/domain/cyclePlan.ts` (TMs squat **75** / bench **52.5** / deadlift **92.5** from 5 Oct). C1 and C2 drop non-T1 slots. The test is **Saturday 21 Nov 2026** (`TEST_DAY`).
 
 | Block | Window | Default phase |
 | --- | --- | --- |
@@ -98,10 +98,11 @@ Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, rep
 | B | 2026-10-05 → 2026-11-01 | `intensify` |
 | C | 2026-11-02 → 2026-11-21 | `peak_overreach` |
 
-Block C refinements already encoded in the hook:
+Block C refinements already encoded in the hook (`TEST_DAY` is the one date to edit):
 
-- from **2026-11-17** → `peak_taper`
-- **2026-11-21** → `test`
+- **2026-11-09** onward (C2 and the test week) → progression frozen
+- Monday of the test week (**2026-11-16**) through the day before the test → `peak_taper`
+- **Saturday 2026-11-21** → `test`
 
 `BlockPhase`: `accumulate | intensify | peak_overreach | peak_taper | test`.
 

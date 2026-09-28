@@ -86,11 +86,11 @@ export function useSessionFlow(repo: SessionRepository) {
 
   const startSession = useCallback(
     async (templateDay: TemplateDay) => {
-      const next = createDraftSession(templateDay, todayIsoDate());
+      const next = createDraftSession(templateDay, todayIsoDate(), history);
       await persistDraft(next);
       setView('readiness');
     },
-    [persistDraft],
+    [history, persistDraft],
   );
 
   const resumeSession = useCallback(() => {

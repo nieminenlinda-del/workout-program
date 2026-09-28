@@ -31,8 +31,9 @@ export function BlockPreviewScreen({
         This week through the 21 Nov test. Read-only — nothing here is logged.
       </p>
       <p className="muted block-preview-lede">
-        Hypertrophy is Block A, Strength is Block B, Peak is Block C, Test is 21 Nov. Loads match
-        Today. Future weights say Projected — they can still change.
+        Hypertrophy is Block A, Strength is Block B, Peak is Block C, Test is Saturday 21 Nov.
+        Future weights say Projected — they are the planned table. Today can hold a Block B step
+        when last week’s top set was above RPE 8.5.
       </p>
 
       {weeks.length === 0 ? (

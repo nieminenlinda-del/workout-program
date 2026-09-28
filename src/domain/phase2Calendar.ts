@@ -7,6 +7,7 @@ import {
   programModeFrom,
 } from '../types/phase2';
 import { programWeekIndex } from './programWeek';
+import { isProgressionFrozen, mondayOnOrBefore } from './testWeek';
 
 function isoDate(value: string | Date): string {
   if (typeof value === 'string') return value.slice(0, 10);
@@ -46,14 +47,21 @@ export function getMesocycleContext(
   const isTestDay = Boolean(targetTestDate) && date === targetTestDate;
   const window = MESOCYCLE_WINDOWS.find((w) => date >= w.start && date <= w.end) ?? null;
 
+  const testMonday = targetTestDate ? mondayOnOrBefore(targetTestDate) : null;
   let phase = window?.defaultPhase ?? null;
   if (isTestDay) {
     phase = 'test';
-  } else if (window?.block === 'C' && date >= '2026-11-17' && date < (targetTestDate ?? TEST_DAY)) {
+  } else if (
+    window?.block === 'C' &&
+    testMonday &&
+    targetTestDate &&
+    date >= testMonday &&
+    date < targetTestDate
+  ) {
     phase = 'peak_taper';
   }
 
-  const freezeProgression = phase === 'peak_taper' || phase === 'test';
+  const freezeProgression = isProgressionFrozen(date, targetTestDate ?? TEST_DAY);
   const training_mode = resolveTrainingMode(date, phase, targetTestDate);
   const program_mode: ProgramMode = programModeFrom(training_mode);
 

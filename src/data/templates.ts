@@ -7,6 +7,10 @@ export interface SeedSet {
   rpe: number;
   /** Planned RPE band, shown instead of `rpe` (Week 4 deload `5–6`). */
   rpe_label?: string;
+  /** Top vs backoff, shown on the set row (`Top`, `B1`). */
+  part_label?: string;
+  /** Planned weight when it is a range (`77.5–80`). `weight_kg` is the low end for the logger. */
+  weight_label?: string;
   amrap?: boolean;
   rest_sec: number;
   warmup?: boolean;
@@ -20,12 +24,14 @@ export interface TemplateSlot {
   optional?: boolean;
   /** Coaching line (e.g. Week 2 squat soft-cap). */
   note?: string;
+  /** Replaces the computed work line (test-day attempt list). */
+  plan_label?: string;
   sets: SeedSet[];
 }
 
 export interface DayTemplate {
   id: CanonicalTemplateDay;
-  weekday: 'Mon' | 'Tue' | 'Thu' | 'Fri';
+  weekday: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri';
   title: string;
   focus: string;
   slots: TemplateSlot[];

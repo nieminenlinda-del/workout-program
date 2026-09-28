@@ -90,7 +90,7 @@ Load selection for Block A T1s is a separate locked table (`src/domain/programWe
 | 3 (locked; from **20 Sep**) | **60 × 3×3** @ RPE ≤8 | **42.5 × 3×4** | **72.5 × 3×3** | **42.5 × 2×4** |
 | 4 (deload, 28 Sep–4 Oct) | **45 × 2×5** @ RPE 5–6 | **32.5 × 2×5** | **55 × 2×5** | **32.5 × 2×5** |
 
-Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Week 4 is the deload above. Accessories stay on the seed template through Block B. Block B/C T1s are the coach tables in `src/domain/cyclePlan.ts` (TMs squat **75** / bench **52.5** / deadlift **92.5** from 5 Oct). C1 and C2 drop non-T1 slots. The test is **Fri 20 Nov 2026** (`TEST_DAY`).
+Bench and DL **hold load** week 1 → 2. Only squat steps up (47.5 → 57.5, reps 5 → 4); DL reps 5 → 4. Week 3 Kraft-locked: squat **60 × 3×3**, bench **42.5 × 3×4**, DL **72.5 × 3×3**, D **42.5 × 2×4**. Week 4 is the deload above. Block A accessories stay on the seed template. Block B/C T1s are the coach tables in `src/domain/cyclePlan.ts` (TMs squat **75** / bench **52.5** / deadlift **92.5** from 5 Oct). B1–B3 add back-off rows and a Day C paused bench, and accessories gain one set. B4 strips those extras and keeps two accessory sets. C1 adds one lighter back-off and keeps accessories at two sets. C2 drops non-T1 slots. The test is **Fri 20 Nov 2026** (`TEST_DAY`).
 
 | Block | Window | Default phase |
 | --- | --- | --- |

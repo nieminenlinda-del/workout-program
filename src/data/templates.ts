@@ -26,6 +26,15 @@ export interface TemplateSlot {
   note?: string;
   /** Replaces the computed work line (test-day attempt list). */
   plan_label?: string;
+  /** Row title when it should not be the catalog name (`Low-bar squat · back-off`). */
+  displayName?: string;
+  /**
+   * Extra work added beside the top sets. The T1 overlay and the hold rule
+   * leave these sets on the loads listed for this week.
+   */
+  volumeKind?: 'backoff' | 'paused';
+  /** The top sets already warmed this lift up. */
+  skipWarmup?: boolean;
   sets: SeedSet[];
 }
 

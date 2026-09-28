@@ -27,27 +27,26 @@ export function liftsFromTemplate(
   const template = dayTemplateForDate(day, asOf, { logs, hold: true });
   return template.slots.map((slot) => {
     const meta = EXERCISE_CATALOG[slot.exercise_id];
+    const sets = slot.sets.map((s) => ({
+      weight_kg: s.weight_kg,
+      reps: s.reps,
+      rpe: s.rpe,
+      completed: false,
+      amrap: s.amrap,
+      warmup: s.warmup,
+      target_weight_kg: s.weight_kg,
+      target_reps: s.reps,
+      ...(s.rpe_label ? { rpe_label: s.rpe_label } : {}),
+      ...(s.part_label ? { part_label: s.part_label } : {}),
+      ...(s.weight_label ? { weight_label: s.weight_label } : {}),
+    }));
     return {
-      name: meta.name,
+      name: slot.displayName ?? meta.name,
       style: meta.style,
       exercise_id: slot.exercise_id,
+      slot_id: slot.slot_id,
       equipment: exerciseEquipment(slot.exercise_id),
-      sets: attachWarmups(
-        slot.sets.map((s) => ({
-          weight_kg: s.weight_kg,
-          reps: s.reps,
-          rpe: s.rpe,
-          completed: false,
-          amrap: s.amrap,
-          warmup: s.warmup,
-          target_weight_kg: s.weight_kg,
-          target_reps: s.reps,
-          ...(s.rpe_label ? { rpe_label: s.rpe_label } : {}),
-          ...(s.part_label ? { part_label: s.part_label } : {}),
-          ...(s.weight_label ? { weight_label: s.weight_label } : {}),
-        })),
-        warmupKindFor(slot.exercise_id),
-      ),
+      sets: slot.skipWarmup ? sets : attachWarmups(sets, warmupKindFor(slot.exercise_id)),
     };
   });
 }

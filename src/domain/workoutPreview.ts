@@ -160,14 +160,14 @@ function formatWaveLabel(
 }
 
 export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
-  const sets = attachWarmups(slot.sets, warmupKindFor(slot.exercise_id));
+  const sets = slot.skipWarmup ? slot.sets : attachWarmups(slot.sets, warmupKindFor(slot.exercise_id));
   const restSec = uniformRestSeconds(sets);
   const timed = isTimedHold(slot.exercise_id);
   const assisted = isAssistedLoad(slot.exercise_id);
   return {
     slot_id: slot.slot_id,
     role: slot.role,
-    name: exerciseName(slot.exercise_id),
+    name: slot.displayName ?? exerciseName(slot.exercise_id),
     alternatives: uniqueAltNames(slot.exercise_id, slot.alternatives),
     optional: Boolean(slot.optional),
     scheme: formatSetScheme(sets, timed),
@@ -206,7 +206,10 @@ export function plannedDayPreview(
 ): PlannedLiftPreview[] {
   const resolved = applyProgramWeek(template, asOf, { logs, hold: true });
   return resolved.slots.map((slot) => {
-    const last = lastMatchingPerformance(logs, slot.exercise_id, resolved.id, asOf);
+    const last =
+      slot.volumeKind === 'backoff'
+        ? null
+        : lastMatchingPerformance(logs, slot.exercise_id, resolved.id, asOf);
     return {
       ...plannedLiftSummary(slot),
       exercise_id: slot.exercise_id,

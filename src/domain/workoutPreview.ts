@@ -18,6 +18,8 @@ export interface PlannedSetLine {
   weight_kg: number;
   reps: number;
   rpe: number;
+  /** Planned band such as `5–6`, when the target is not a single RPE. */
+  rpe_label?: string;
   amrap: boolean;
   rest_sec: number;
   warmup: boolean;
@@ -135,6 +137,7 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
       weight_kg: set.weight_kg,
       reps: set.reps,
       rpe: set.rpe,
+      ...(set.rpe_label ? { rpe_label: set.rpe_label } : {}),
       amrap: Boolean(set.amrap),
       rest_sec: set.rest_sec,
       warmup: isWarmupSet(set),

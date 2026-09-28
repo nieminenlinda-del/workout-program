@@ -30,10 +30,11 @@ import { plannedLiftSummary, type PlannedLiftSummary } from './workoutPreview';
  * cycle. That mode is not the week phase.
  *
  * Loads: `dayTemplateForDate` → `applyProgramWeek` → `t1PrescriptionFor`,
- * the same weekly targets as Today and `createDraftSession`. Block A week ≥ 4
- * holds the Week 3 Kraft row. Blocks B–C have no Kraft table, so T1s stay on
- * the seed template. Sessions after `asOf` are marked projected. The test day
- * does not invent attempt weights (`t1PrescriptionFor` has none).
+ * the same weekly targets as Today and `createDraftSession`. Block A week 4
+ * is the deload row. A later Block A week would hold Week 3. Blocks B–C have
+ * no Kraft table, so T1s stay on the seed template. Sessions after `asOf` are
+ * marked projected. The test day does not invent attempt weights
+ * (`t1PrescriptionFor` has none).
  */
 export const PREVIEW_PHASE_LABEL: Record<BlockPhase, 'Hypertrophy' | 'Strength' | 'Peak' | 'Test'> = {
   accumulate: 'Hypertrophy',
@@ -107,6 +108,8 @@ export interface BlockPreviewWeek {
   end: string;
   rangeLabel: string;
   phaseLabel: string;
+  /** Block A Week 4 only. Block B/C week 4 is not this deload. */
+  deload: boolean;
   current: boolean;
   /** Every session in the week has a saved log. */
   completed: boolean;
@@ -115,9 +118,15 @@ export interface BlockPreviewWeek {
   sessions: BlockPreviewSession[];
 }
 
-export function formatWorkRpe(sets: readonly { rpe: number; warmup?: boolean }[]): string {
+export function formatWorkRpe(
+  sets: readonly { rpe: number; warmup?: boolean; rpe_label?: string }[],
+): string {
   const work = workSets(sets);
   if (work.length === 0) return '';
+  const band = work.every((set) => set.rpe_label && set.rpe_label === work[0]?.rpe_label)
+    ? work[0]?.rpe_label
+    : undefined;
+  if (band) return `RPE ${band}`;
   const values = work.map((set) => set.rpe);
   const unique = [...new Set(values)];
   if (unique.length === 1) return `RPE ${unique[0]}`;
@@ -197,6 +206,7 @@ function finishWeek(draft: WeekDraft, today: string): BlockPreviewWeek {
     end: draft.end,
     rangeLabel: formatWeekRange(draft.start, draft.end),
     phaseLabel: phaseLabelFor(sessions),
+    deload: draft.block === 'A' && draft.weekIndex === 4,
     current: todayCtx?.block === draft.block && todayCtx.weekIndex === draft.weekIndex,
     completed: sessions.length > 0 && sessions.every((session) => session.completed),
     projected: sessions.length > 0 && sessions.every((session) => session.projected),

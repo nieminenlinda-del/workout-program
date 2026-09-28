@@ -187,6 +187,53 @@ describe('HomeScreen Block A week chip and T1 preview', () => {
     expect(container.textContent).toContain('72.5 kg · 3 × 3');
   });
 
+  it('on Mon 28 Sep shows the week 4 deload squat 45 × 2×5 @ RPE 5–6', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-09-28', templateDay: 'A' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 4/i);
+    expect(container.textContent).toMatch(/deload/i);
+    expect(container.textContent).toContain('45 kg · 2 × 5');
+    expect(container.textContent).toContain('Deload. RPE 5–6.');
+
+    const squat = [...container.querySelectorAll('button.preview-lift')].find((el) =>
+      el.textContent?.includes('Low-bar squat'),
+    );
+    act(() => {
+      squat?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(container.textContent).toContain('@ 5–6 RPE');
+  });
+
+  it('on Wed 30 Sep and Thu 1 Oct Day C shows the deload deadlift', () => {
+    for (const date of ['2026-09-30', '2026-10-01']) {
+      const { container, root } = mount(
+        <HomeScreen {...homeProps({ date, templateDay: 'C' })} />,
+      );
+      nodes.push({ container, root });
+      expect(container.textContent).toMatch(/week 4/i);
+      expect(container.textContent).toMatch(/deload/i);
+      expect(container.textContent).toContain('55 kg · 2 × 5');
+      expect(container.textContent).toContain('Deload. RPE 5–6.');
+    }
+  });
+
+  it('on Sun 4 Oct still shows the deload, and the chip is not a deload the next block', () => {
+    const { container, root } = mount(
+      <HomeScreen {...homeProps({ date: '2026-10-04', templateDay: 'A' })} />,
+    );
+    nodes.push({ container, root });
+    expect(container.textContent).toMatch(/week 4/i);
+    expect(container.textContent).toMatch(/deload/i);
+    expect(container.textContent).toContain('45 kg · 2 × 5');
+
+    const next = mount(<HomeScreen {...homeProps({ date: '2026-10-05', templateDay: 'A' })} />);
+    nodes.push(next);
+    expect(next.container.textContent).not.toMatch(/deload/i);
+    expect(next.container.textContent).toContain('55 kg · 3 × 5');
+  });
+
   it('on Thu 24 Sep Day D shows bench volume 42.5 × 2×4', () => {
     const { container, root } = mount(
       <HomeScreen {...homeProps({ date: '2026-09-24', templateDay: 'D' })} />,

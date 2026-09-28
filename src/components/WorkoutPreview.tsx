@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { DayTemplate } from '../data/templates';
 import type { SessionLog } from '../types/session';
 import { formatClock } from '../domain/countdown';
+import { formatShownRpe } from '../domain/setPrescription';
 import { formatLoad, plannedDayPreview } from '../domain/workoutPreview';
 import { historyVisibilityLine, lastLogGapLine } from '../domain/sessionBackup';
 import { LastPerformanceHint } from './LastPerformanceHint';
@@ -69,7 +70,7 @@ export function WorkoutPreview({
                         {formatLoad(set.weight_kg, lift.assisted)} × {set.reps}
                         {lift.timed ? 's' : ''}
                         {set.amrap ? '+' : ''}
-                        <em> @ {set.rpe} RPE</em>
+                        <em> @ {formatShownRpe(set)} RPE</em>
                       </span>
                       <span className="preview-rest">{formatClock(set.rest_sec)}</span>
                     </li>

@@ -1247,6 +1247,11 @@ button {
   border-color: rgba(61, 204, 122, 0.45);
 }
 
+.block-badge.deload {
+  color: var(--yellow);
+  border-color: rgba(230, 195, 74, 0.55);
+}
+
 .block-week-chevron {
   flex: 0 0 auto;
   width: 1.25rem;

@@ -2,6 +2,7 @@ import { TemplatePicker } from '../components/TemplatePicker';
 import { WorkoutPreview } from '../components/WorkoutPreview';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { DAY_TEMPLATES } from '../data/templates';
+import { isBlockADeloadWeek } from '../domain/programWeek';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
 import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
@@ -75,7 +76,8 @@ export function HomeScreen({
             title="Phase 2 calendar hook — engine not implemented"
           >
             Block {meso.block} · {meso.phase.replaceAll('_', ' ')}
-            {meso.weekIndex ? ` · week ${meso.weekIndex}` : ''} ·{' '}
+            {meso.weekIndex ? ` · week ${meso.weekIndex}` : ''}
+            {isBlockADeloadWeek(date) ? ' · deload' : ''} ·{' '}
             {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>

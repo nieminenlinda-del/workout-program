@@ -31,6 +31,11 @@ export interface LoggedSet {
    */
   target_weight_kg?: number;
   target_reps?: number;
+  /**
+   * Programmed RPE when the target is a band (`5–6`). Logging still writes a
+   * number on `rpe`. Missing on older drafts.
+   */
+  rpe_label?: string;
 }
 
 export interface LoggedLift {

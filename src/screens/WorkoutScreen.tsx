@@ -9,6 +9,7 @@ import { laterSameKindUnlogged, setDisplayLabel, workSets } from '../domain/sets
 import {
   formatLoggedLoad,
   formatPlanLoad,
+  formatShownRpe,
   loggedDiffersFromPlan,
   prescriptionWeightKg,
 } from '../domain/setPrescription';
@@ -235,7 +236,7 @@ export function WorkoutScreen({
                         <span>
                           <span className="set-plan-label">Plan</span>{' '}
                           {formatPlanLoad(set, timed, assisted)}
-                          <em> @ {set.rpe} RPE</em>
+                          <em> @ {formatShownRpe(set)} RPE</em>
                         </span>
                       )}
                     </span>

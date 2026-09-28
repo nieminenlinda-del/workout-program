@@ -25,6 +25,7 @@ const REQUIRED_PRIMARIES = [
 const REQUIRED_SUBS = [
   'squat_low_bar_box',
   'squat_low_bar_tempo',
+  'squat_low_bar_paused',
   'squat_goblet',
   'bench_floor_regular',
   'push_up',
@@ -34,6 +35,7 @@ const REQUIRED_SUBS = [
 
 const REQUIRED_ACCESSORIES = [
   'rdl',
+  'deadlift_paused',
   'good_morning_light',
   'goblet_squat',
   'front_squat_light',
@@ -57,6 +59,7 @@ const REQUIRED_ACCESSORIES = [
   'curl_db',
   'tricep_pushdown_band',
   'cable_rope_pushdown',
+  'bench_close_grip',
 ];
 
 describe('exercise catalog', () => {

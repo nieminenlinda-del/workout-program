@@ -23,6 +23,23 @@ function labels(date: string, day: CanonicalTemplateDay): string[] {
   return plannedDayPreview(DAY_TEMPLATES[day], [], date).map((row) => row.workLabel);
 }
 
+function loggedVariation(
+  day: CanonicalTemplateDay,
+  date: string,
+  exerciseId: SessionLog['lifts'][number]['exercise_id'],
+  rpes: number[],
+): SessionLog {
+  const draft = createDraftSession(day, date);
+  draft.status = 'complete';
+  const lift = draft.lifts.find((row) => row.exercise_id === exerciseId);
+  const work = lift?.sets.filter((set) => !set.warmup) ?? [];
+  work.forEach((set, index) => {
+    set.completed = true;
+    set.rpe = rpes[index] ?? rpes[rpes.length - 1] ?? 7;
+  });
+  return draft;
+}
+
 function loggedTop(day: CanonicalTemplateDay, date: string, rpe: number): SessionLog {
   const draft = createDraftSession(day, date);
   draft.status = 'complete';
@@ -126,7 +143,8 @@ describe('Block B hold rule', () => {
     expect(today[0]?.note).toBe('Held: last top set RPE 9');
     expect(today[1]?.workLabel).toBe('55 kg · 3 × 5');
     expect(today[1]?.note).toBe('Back-off.');
-    expect(today.find((row) => row.name === 'RDL')?.workLabel).toBe('50 kg · 4 × 8');
+    expect(today.find((row) => row.name === 'Paused conventional deadlift')?.workLabel).toBe('60 kg · 3 × 3');
+    expect(today.find((row) => row.name === 'RDL')).toBeUndefined();
     const draft = createDraftSession('A', '2026-10-12', [hard]);
     expect(draft.lifts[0]?.sets.filter((set) => !set.warmup).map((set) => set.weight_kg)).toEqual([
       60, 60, 60,
@@ -201,7 +219,7 @@ describe('Block B volume rows', () => {
     expect(labels('2026-10-05', 'A').slice(0, 3)).toEqual([
       '60 kg · 3 × 4',
       '55 kg · 3 × 5',
-      '50 kg · 4 × 8',
+      '60 kg · 3 × 3',
     ]);
     expect(labels('2026-10-06', 'B').slice(0, 2)).toEqual(['42.5 kg · 3 × 5', '37.5 kg · 3 × 6']);
     expect(labels('2026-10-08', 'C').slice(0, 3)).toEqual([
@@ -221,11 +239,24 @@ describe('Block B volume rows', () => {
     const backoff = monday.slots[1];
     expect(backoff?.sets.map((set) => set.part_label)).toEqual(['B1', 'B2', 'B3']);
     expect(backoff?.skipWarmup).toBe(true);
-    expect(monday.slots[2]?.sets).toHaveLength(4);
-    expect(monday.slots[2]?.sets.every((set) => set.rpe === 7 && set.weight_kg === 50)).toBe(true);
+    expect(monday.slots[2]?.exercise_id).toBe('deadlift_paused');
+    expect(monday.slots[2]?.sets).toHaveLength(3);
+    expect(monday.slots[2]?.sets.every((set) => set.weight_kg === 60 && set.reps === 3)).toBe(true);
+    expect(monday.slots.some((slot) => slot.exercise_id === 'rdl')).toBe(false);
     const friday = dayTemplateForDate('D', '2026-10-09');
     expect(friday.slots.find((slot) => slot.slot_id === 'd-curl')?.sets).toHaveLength(3);
-    expect(friday.slots.find((slot) => slot.slot_id === 'd-tri')?.sets).toHaveLength(3);
+    expect(friday.slots.find((slot) => slot.slot_id === 'd-hinge')?.sets).toEqual([
+      expect.objectContaining({ weight_kg: 50, reps: 8, rpe: 7 }),
+      expect.objectContaining({ weight_kg: 50, reps: 8, rpe: 7 }),
+      expect.objectContaining({ weight_kg: 50, reps: 8, rpe: 7 }),
+      expect.objectContaining({ weight_kg: 50, reps: 8, rpe: 7 }),
+    ]);
+    expect(friday.slots.find((slot) => slot.slot_id === 'd-close-grip')?.sets).toEqual([
+      expect.objectContaining({ weight_kg: 40, reps: 8, rpe: 7 }),
+      expect.objectContaining({ weight_kg: 40, reps: 8, rpe: 7 }),
+      expect.objectContaining({ weight_kg: 40, reps: 8, rpe: 7 }),
+    ]);
+    expect(friday.slots.some((slot) => slot.exercise_id === 'cable_rope_pushdown')).toBe(false);
 
     const deadlift = dayTemplateForDate('C', '2026-10-08');
     expect(deadlift.slots[2]?.displayName).toBe('Bench press · paused');
@@ -303,5 +334,175 @@ describe('Fri 20 Nov test week', () => {
       '40 kg · 2 × 1',
     ]);
     expect(week?.sessions[2]?.exercises[0]?.workLabel).toBe('Planned · 70 / 75 / 77.5–80 kg');
+  });
+});
+
+describe('Block B main-lift variations', () => {
+  const pauseCue = '2 s pause just below the knee. RPE 6–7.';
+
+  function pausedRow(date: string, logs: SessionLog[] = []) {
+    return plannedDayPreview(DAY_TEMPLATES.A, logs, date).find(
+      (row) => row.exercise_id === 'deadlift_paused',
+    );
+  }
+
+  function closeGripRow(date: string, logs: SessionLog[] = []) {
+    return plannedDayPreview(DAY_TEMPLATES.D, logs, date).find(
+      (row) => row.exercise_id === 'bench_close_grip',
+    );
+  }
+
+  it('puts the paused deadlift on Day A and the RDL plus close-grip on Day D for B1–B3', () => {
+    for (const date of ['2026-10-05', '2026-10-12', '2026-10-19']) {
+      const monday = dayTemplateForDate('A', date);
+      const paused = monday.slots.find((slot) => slot.slot_id === 'a-paused-dl');
+      expect(paused?.sets.map((set) => set.weight_kg)).toEqual([60, 60, 60]);
+      expect(paused?.sets.map((set) => set.rpe_label)).toEqual(['6–7', '6–7', '6–7']);
+      expect(paused?.note).toBe(pauseCue);
+      expect(monday.slots.some((slot) => slot.exercise_id === 'rdl')).toBe(false);
+    }
+    for (const date of ['2026-10-09', '2026-10-16', '2026-10-23']) {
+      const friday = dayTemplateForDate('D', date);
+      const rdl = friday.slots.find((slot) => slot.slot_id === 'd-hinge');
+      const close = friday.slots.find((slot) => slot.slot_id === 'd-close-grip');
+      const squat = friday.slots.find((slot) => slot.slot_id === 'd-squat');
+      expect(friday.slots.map((slot) => slot.slot_id).slice(0, 2)).toEqual(['d-t1', 'd-hinge']);
+      expect(rdl?.sets.map((set) => [set.weight_kg, set.reps, set.rpe])).toEqual([
+        [50, 8, 7],
+        [50, 8, 7],
+        [50, 8, 7],
+        [50, 8, 7],
+      ]);
+      expect(close?.optional).toBeFalsy();
+      expect(close?.sets.map((set) => [set.weight_kg, set.reps, set.rpe])).toEqual([
+        [40, 8, 7],
+        [40, 8, 7],
+        [40, 8, 7],
+      ]);
+      expect(squat?.sets.map((set) => set.weight_kg)).toEqual([30, 30, 30, 30]);
+      expect(squat?.alternatives).toContain('squat_low_bar_paused');
+      expect(friday.slots.some((slot) => slot.slot_id === 'd-tri')).toBe(false);
+    }
+    const thursday = dayTemplateForDate('C', '2026-10-08');
+    expect(thursday.slots.find((slot) => slot.slot_id === 'c-paused-bench')?.sets.map((set) => set.weight_kg)).toEqual([
+      35, 35, 35,
+    ]);
+    expect(thursday.slots.find((slot) => slot.slot_id === 'c-hinge')?.exercise_id).toBe('rdl');
+    expect(thursday.slots.some((slot) => slot.alternatives.includes('squat_low_bar_paused'))).toBe(false);
+  });
+
+  it('steps the paused deadlift by 2.5 kg when every logged work set is RPE 7 or lower', () => {
+    const easy = loggedVariation('A', '2026-10-05', 'deadlift_paused', [6, 6.5, 7]);
+    expect(pausedRow('2026-10-12', [easy])).toMatchObject({
+      workLabel: '62.5 kg · 3 × 3',
+      note: '+2.5 kg: last RPE 7',
+    });
+    const both = [
+      easy,
+      loggedVariation('A', '2026-10-12', 'deadlift_paused', [6, 6, 6.5]),
+    ];
+    expect(pausedRow('2026-10-19', both)).toMatchObject({
+      workLabel: '65 kg · 3 × 3',
+      note: '+2.5 kg: last RPE 6.5',
+    });
+    const draft = createDraftSession('A', '2026-10-12', [easy]);
+    expect(
+      draft.lifts
+        .find((lift) => lift.exercise_id === 'deadlift_paused')
+        ?.sets.filter((set) => !set.warmup)
+        .map((set) => set.weight_kg),
+    ).toEqual([62.5, 62.5, 62.5]);
+  });
+
+  it('holds the paused deadlift when any work set is above RPE 7, and keeps the load when nothing was logged', () => {
+    const hard = loggedVariation('A', '2026-10-05', 'deadlift_paused', [6, 8, 6.5]);
+    expect(pausedRow('2026-10-12', [hard])).toMatchObject({
+      workLabel: '60 kg · 3 × 3',
+      note: 'Held: RPE 8',
+    });
+    expect(pausedRow('2026-10-12', [])?.workLabel).toBe('60 kg · 3 × 3');
+    expect(pausedRow('2026-10-12', [])?.note).toBe(pauseCue);
+
+    const stepped = loggedVariation('A', '2026-10-05', 'deadlift_paused', [7, 7, 7]);
+    expect(pausedRow('2026-10-19', [stepped])).toMatchObject({
+      workLabel: '62.5 kg · 3 × 3',
+      note: pauseCue,
+    });
+  });
+
+  it('leaves B2 and B3 block preview on the base paused-deadlift load', () => {
+    const easy = loggedVariation('A', '2026-10-05', 'deadlift_paused', [6, 6, 6]);
+    const week = buildBlockPreview('2026-10-12', [easy]).find((row) => row.id === 'B-2');
+    expect(week?.sessions[0]?.exercises.find((row) => row.name === 'Paused conventional deadlift')).toMatchObject({
+      workLabel: '60 kg · 3 × 3',
+      note: pauseCue,
+    });
+  });
+
+  it('steps close-grip bench by 2.5 kg when a logged set is below RPE 6, and holds at RPE 6', () => {
+    const easy = loggedVariation('D', '2026-10-09', 'bench_close_grip', [7, 7, 5.5]);
+    expect(closeGripRow('2026-10-16', [easy])).toMatchObject({
+      workLabel: '42.5 kg · 3 × 8',
+      note: '+2.5 kg: last RPE 5.5',
+    });
+    const earlyOnly = loggedVariation('D', '2026-10-09', 'bench_close_grip', [5, 7, 7]);
+    expect(closeGripRow('2026-10-16', [earlyOnly])).toMatchObject({
+      workLabel: '42.5 kg · 3 × 8',
+      note: '+2.5 kg: last RPE 5',
+    });
+    const atSix = loggedVariation('D', '2026-10-09', 'bench_close_grip', [6, 6, 6]);
+    expect(closeGripRow('2026-10-16', [atSix])).toMatchObject({
+      workLabel: '40 kg · 3 × 8',
+      note: 'Held: last RPE 6',
+    });
+    expect(closeGripRow('2026-10-16', [])?.note).toBeNull();
+    const carried = [
+      easy,
+      loggedVariation('D', '2026-10-16', 'bench_close_grip', [7, 6, 6]),
+    ];
+    expect(closeGripRow('2026-10-23', carried)).toMatchObject({
+      workLabel: '42.5 kg · 3 × 8',
+      note: 'Held: last RPE 6',
+    });
+  });
+
+  it('does not apply the variations on B4, C1, C2, or test week', () => {
+    const b4 = dayTemplateForDate('A', '2026-10-26', { hold: true, logs: [
+      loggedVariation('A', '2026-10-19', 'deadlift_paused', [6, 6, 6]),
+    ] });
+    expect(b4.slots.some((slot) => slot.exercise_id === 'deadlift_paused')).toBe(false);
+    expect(b4.slots.find((slot) => slot.slot_id === 'a-hinge')?.sets).toHaveLength(2);
+    expect(dayTemplateForDate('D', '2026-10-30').slots.some((slot) => slot.exercise_id === 'bench_close_grip')).toBe(
+      false,
+    );
+    expect(dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-tri')?.sets).toHaveLength(2);
+    expect(
+      dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-squat')?.alternatives,
+    ).not.toContain('squat_low_bar_paused');
+
+    const c1 = dayTemplateForDate('A', '2026-11-02');
+    expect(c1.slots.find((slot) => slot.slot_id === 'a-hinge')?.sets.map((set) => [set.weight_kg, set.reps])).toEqual([
+      [50, 8],
+      [50, 8],
+    ]);
+    expect(c1.slots.some((slot) => slot.exercise_id === 'deadlift_paused')).toBe(false);
+    const c1Deadlift = dayTemplateForDate('C', '2026-11-05');
+    expect(c1Deadlift.slots.find((slot) => slot.slot_id === 'c-hinge')?.sets).toHaveLength(2);
+    expect(c1Deadlift.slots.find((slot) => slot.slot_id === 'c-paused-bench')?.sets).toHaveLength(2);
+    expect(dayTemplateForDate('D', '2026-11-06').slots.some((slot) => slot.exercise_id === 'rdl')).toBe(false);
+    expect(dayTemplateForDate('D', '2026-11-06').slots.some((slot) => slot.exercise_id === 'bench_close_grip')).toBe(
+      false,
+    );
+
+    expect(dayTemplateForDate('A', '2026-11-09').slots.map((slot) => slot.exercise_id)).toEqual(['squat_low_bar']);
+    expect(dayTemplateForDate('A', '2026-11-16').slots.map((slot) => slot.exercise_id)).toEqual([
+      'squat_low_bar',
+      'bench_regular',
+    ]);
+    expect(dayTemplateForDate('A', '2026-11-20').slots.map((slot) => slot.exercise_id)).toEqual([
+      'squat_low_bar',
+      'bench_regular',
+      'deadlift_conventional',
+    ]);
   });
 });

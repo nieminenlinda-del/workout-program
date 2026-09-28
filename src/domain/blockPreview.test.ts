@@ -157,7 +157,8 @@ describe('block preview loads', () => {
     expect(monday?.phaseLabel).toBe('Strength');
     expect(monday?.exercises[0]?.workLabel).toBe('60 kg · 3 × 4');
     expect(monday?.exercises[1]?.workLabel).toBe('55 kg · 3 × 5');
-    expect(monday?.exercises[2]?.workLabel).toBe('50 kg · 4 × 8');
+    expect(monday?.exercises[2]?.workLabel).toBe('60 kg · 3 × 3');
+    expect(monday?.exercises[2]?.name).toBe('Paused conventional deadlift');
     expectSameTargets('2026-10-05', 'A', monday?.exercises ?? []);
 
     const blockC = weeks.find((week) => week.id === 'C-1');

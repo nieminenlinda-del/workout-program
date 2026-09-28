@@ -12,6 +12,7 @@ export const PRIMARY_EXERCISE_IDS = [
 export const SUB_EXERCISE_IDS = [
   'squat_low_bar_box',
   'squat_low_bar_tempo',
+  'squat_low_bar_paused',
   'squat_goblet',
   'bench_floor_regular',
   'push_up',
@@ -21,6 +22,7 @@ export const SUB_EXERCISE_IDS = [
 
 export const ACCESSORY_EXERCISE_IDS = [
   'rdl',
+  'deadlift_paused',
   'good_morning_light',
   'goblet_squat',
   'front_squat_light',
@@ -44,6 +46,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'curl_db',
   'tricep_pushdown_band',
   'cable_rope_pushdown',
+  'bench_close_grip',
 ] as const;
 
 export const EXERCISE_IDS = [
@@ -151,6 +154,14 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
   squat_low_bar_tempo: {
     id: 'squat_low_bar_tempo',
     name: 'Low-bar tempo squat',
+    role: 'sub',
+    pattern: 'squat',
+    style: 'low_bar',
+    equipment: 'barbell',
+  },
+  squat_low_bar_paused: {
+    id: 'squat_low_bar_paused',
+    name: 'Paused low-bar squat',
     role: 'sub',
     pattern: 'squat',
     style: 'low_bar',
@@ -316,6 +327,20 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'accessory',
     pattern: 'arm',
     equipment: 'cable',
+  },
+  deadlift_paused: {
+    id: 'deadlift_paused',
+    name: 'Paused conventional deadlift',
+    role: 'accessory',
+    pattern: 'hinge',
+    equipment: 'barbell',
+  },
+  bench_close_grip: {
+    id: 'bench_close_grip',
+    name: 'Close-grip bench press',
+    role: 'accessory',
+    pattern: 'bench',
+    equipment: 'barbell',
   },
 };
 

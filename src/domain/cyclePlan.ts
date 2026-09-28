@@ -1,4 +1,10 @@
-import { exerciseName, type DayTemplate, type SeedSet, type TemplateSlot } from '../data/templates';
+import {
+  DAY_TEMPLATES,
+  exerciseName,
+  type DayTemplate,
+  type SeedSet,
+  type TemplateSlot,
+} from '../data/templates';
 import type { ExerciseId } from '../types/exercises';
 import type { CanonicalTemplateDay, SessionLog, TemplateDay } from '../types/session';
 import {
@@ -8,7 +14,7 @@ import {
   type MesocycleBlock,
   type TrainingMaxes,
 } from '../types/phase2';
-import { calendarYmd, topWorkSet } from './lastPerformance';
+import { calendarYmd, isLoggedWorkSet, topWorkSet } from './lastPerformance';
 import { addCalendarDays, testWeekRole } from './testWeek';
 
 export { addCalendarDays, mondayOnOrBefore, testWeekRole } from './testWeek';
@@ -325,6 +331,164 @@ function pausedBenchSlot(set_count: number, reps: number): TemplateSlot {
       rest_sec: 180,
     })),
   };
+}
+
+/** B1–B3 only. B4, Block C, and the test week keep the seed accessories. */
+export function blockBVariationWeek(block: MesocycleBlock, weekIndex: number): boolean {
+  return block === 'B' && weekIndex >= 1 && weekIndex <= 3;
+}
+
+export const PAUSED_DEADLIFT_SLOT = 'a-paused-dl';
+export const CLOSE_GRIP_SLOT = 'd-close-grip';
+export const MOVED_RDL_SLOT = 'd-hinge';
+export const VARIATION_STEP_KG = 2.5;
+export const PAUSED_DL_BASE_KG = 60;
+export const CLOSE_GRIP_BASE_KG = 40;
+
+const PAUSED_DL_NOTE = '2 s pause just below the knee. RPE 6–7.';
+const ACCESSORY_REST_SEC = 90;
+
+/**
+ * Day A swaps the RDL for a paused conventional deadlift.
+ * Day D receives that week's Day A RDL prescription and swaps cable rope
+ * pushdown for close-grip bench. The front-squat slot gains the existing
+ * paused low-bar alternative. Loads here are the B1 bases; Today applies
+ * the log rule on top.
+ */
+export function withBlockBVariations(
+  slots: TemplateSlot[],
+  day: CanonicalTemplateDay,
+  block: MesocycleBlock,
+  weekIndex: number,
+): TemplateSlot[] {
+  if (day === 'A') {
+    return slots.map((slot) => (slot.slot_id === 'a-hinge' ? pausedDeadliftSlot() : slot));
+  }
+  if (day !== 'D') return slots;
+  const moved = movedRdlSlot(block, weekIndex);
+  const next = slots.map((slot) => {
+    if (slot.slot_id === 'd-tri') return closeGripSlot();
+    if (slot.slot_id === 'd-squat' && !slot.alternatives.includes('squat_low_bar_paused')) {
+      const alternatives: ExerciseId[] = [...slot.alternatives, 'squat_low_bar_paused'];
+      return { ...slot, alternatives };
+    }
+    return slot;
+  });
+  const index = next.findIndex((slot) => slot.role === 'T1' && !slot.volumeKind);
+  if (!moved) return next;
+  if (index < 0) return [moved, ...next];
+  return [...next.slice(0, index + 1), moved, ...next.slice(index + 1)];
+}
+
+export interface VariationLog {
+  /** Completed work sets, session order. Empty when that week has no log. */
+  rpes: number[];
+  /** Last completed work set, or null when nothing was logged. */
+  lastRpe: number | null;
+}
+
+/**
+ * Latest session that week for this template day. Matches `slot_id` first,
+ * then `exercise_id`. Warmups and sets marked incomplete stay out.
+ */
+export function variationLogInWeek(
+  logs: readonly SessionLog[],
+  day: CanonicalTemplateDay,
+  exerciseId: ExerciseId,
+  slotId: string,
+  start: string,
+  end: string,
+): VariationLog {
+  const rows = logs
+    .filter((log) => {
+      const date = calendarYmd(log.date);
+      return Boolean(date) && date >= start && date <= end && sameTemplateDay(log.template_day, day);
+    })
+    .sort((a, b) => (calendarYmd(b.date) ?? '').localeCompare(calendarYmd(a.date) ?? ''));
+  const latest = rows[0];
+  const lift = latest?.lifts.find((row) => row.slot_id === slotId || row.exercise_id === exerciseId);
+  const rpes = (lift?.sets ?? []).filter((set) => isLoggedWorkSet(set)).map((set) => set.rpe);
+  return { rpes, lastRpe: rpes.length > 0 ? rpes[rpes.length - 1] : null };
+}
+
+/** Every completed work set is RPE 7 or lower. The log stores each set's RPE. */
+export function pausedDeadliftSteps(log: VariationLog): boolean {
+  return log.rpes.length > 0 && log.rpes.every((rpe) => rpe <= 7);
+}
+
+/** Any completed work set is below RPE 6. RPE 6 holds. */
+export function closeGripSteps(log: VariationLog): boolean {
+  return log.rpes.some((rpe) => rpe < 6);
+}
+
+export function variationStepNote(rpe: number): string {
+  return `+2.5 kg: last RPE ${shownRpe(rpe)}`;
+}
+
+export function variationHeldNote(rpe: number, last = true): string {
+  const label = last ? 'last RPE' : 'RPE';
+  return `Held: ${label} ${shownRpe(rpe)}`;
+}
+
+/** RPE the Today note should cite for this week's step or hold. */
+export function variationCitedRpe(log: VariationLog, kind: 'paused-dl' | 'close-grip'): number | null {
+  if (log.rpes.length === 0) return null;
+  if (kind === 'paused-dl') {
+    return pausedDeadliftSteps(log) ? log.lastRpe : Math.max(...log.rpes);
+  }
+  if (closeGripSteps(log)) {
+    const qualifying = log.rpes.filter((rpe) => rpe < 6);
+    return qualifying[qualifying.length - 1] ?? log.lastRpe;
+  }
+  return log.lastRpe;
+}
+
+function shownRpe(rpe: number): string {
+  return Number.isInteger(rpe) ? String(rpe) : String(rpe);
+}
+
+function pausedDeadliftSlot(): TemplateSlot {
+  const setCount = 3;
+  return {
+    slot_id: PAUSED_DEADLIFT_SLOT,
+    role: 'accessory',
+    exercise_id: 'deadlift_paused',
+    alternatives: [],
+    displayName: 'Paused conventional deadlift',
+    note: PAUSED_DL_NOTE,
+    skipWarmup: true,
+    sets: Array.from({ length: setCount }, (_, index) => ({
+      weight_kg: PAUSED_DL_BASE_KG,
+      reps: 3,
+      rpe: index === setCount - 1 ? 7 : 6,
+      rpe_label: '6–7',
+      rest_sec: ACCESSORY_REST_SEC,
+    })),
+  };
+}
+
+function closeGripSlot(): TemplateSlot {
+  return {
+    slot_id: CLOSE_GRIP_SLOT,
+    role: 'accessory',
+    exercise_id: 'bench_close_grip',
+    alternatives: [],
+    displayName: 'Close-grip bench press',
+    skipWarmup: true,
+    sets: Array.from({ length: 3 }, () => ({
+      weight_kg: CLOSE_GRIP_BASE_KG,
+      reps: 8,
+      rpe: 7,
+      rest_sec: ACCESSORY_REST_SEC,
+    })),
+  };
+}
+
+/** The Day A RDL after this week's accessory rule, parked on Day D. */
+function movedRdlSlot(block: MesocycleBlock, weekIndex: number): TemplateSlot | null {
+  const hinge = DAY_TEMPLATES.A.slots.find((slot) => slot.slot_id === 'a-hinge');
+  if (!hinge) return null;
+  return { ...accessorySlotForWeek(hinge, block, weekIndex), slot_id: MOVED_RDL_SLOT };
 }
 
 function resizeAccessory(slot: TemplateSlot, count: number, rpe: number | null): TemplateSlot {

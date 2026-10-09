@@ -488,3 +488,88 @@ describe('Block B main-lift variations', () => {
     ]);
   });
 });
+
+describe('B2–B3 unilateral dumbbell accessories', () => {
+  const cue = 'Start with the right side, match reps on the left.';
+
+  function armRow(day: CanonicalTemplateDay, date: string, exerciseId: 'bench_db_single' | 'row_db_single') {
+    return plannedDayPreview(DAY_TEMPLATES[day], [], date).find((row) => row.exercise_id === exerciseId);
+  }
+
+  it('adds a single-arm press on Day B and a single-arm row on Day D for B2 and B3', () => {
+    for (const date of ['2026-10-13', '2026-10-20']) {
+      const day = dayTemplateForDate('B', date);
+      const slot = day.slots.at(-1);
+      expect(slot?.slot_id).toBe('b-db-press');
+      expect(slot?.exercise_id).toBe('bench_db_single');
+      expect(slot?.sets.map((set) => [set.weight_kg, set.reps, set.rpe])).toEqual([
+        [8, 10, 7],
+        [8, 10, 7],
+        [8, 10, 7],
+      ]);
+      expect(armRow('B', date, 'bench_db_single')).toMatchObject({
+        name: 'Single-arm DB bench / floor press',
+        workLabel: '8 kg · 3 × 10 / arm',
+        note: cue,
+      });
+      const draft = createDraftSession('B', date);
+      const lift = draft.lifts.find((row) => row.exercise_id === 'bench_db_single');
+      expect(lift?.sets.map((set) => [set.weight_kg, set.reps, set.rpe, set.completed])).toEqual([
+        [8, 10, 7, false],
+        [8, 10, 7, false],
+        [8, 10, 7, false],
+      ]);
+    }
+
+    for (const date of ['2026-10-16', '2026-10-23']) {
+      const day = dayTemplateForDate('D', date);
+      const slot = day.slots.at(-1);
+      expect(slot?.slot_id).toBe('d-db-row');
+      expect(slot?.exercise_id).toBe('row_db_single');
+      expect(slot?.sets).toHaveLength(3);
+      expect(armRow('D', date, 'row_db_single')).toMatchObject({
+        name: 'Single-arm DB row',
+        workLabel: '8 kg · 3 × 10 / arm',
+        note: cue,
+      });
+      expect(day.slots.some((row) => row.exercise_id === 'bench_close_grip')).toBe(true);
+    }
+  });
+
+  it('leaves B1, the B4 deload, other days, and later blocks unchanged', () => {
+    for (const [day, date] of [
+      ['B', '2026-10-06'],
+      ['D', '2026-10-09'],
+      ['B', '2026-10-27'],
+      ['D', '2026-10-30'],
+      ['A', '2026-10-12'],
+      ['C', '2026-10-15'],
+      ['B', '2026-11-03'],
+      ['D', '2026-11-06'],
+      ['B', '2026-09-15'],
+    ] as const) {
+      const slots = dayTemplateForDate(day, date).slots;
+      expect(slots.some((slot) => slot.exercise_id === 'bench_db_single' || slot.exercise_id === 'row_db_single')).toBe(
+        false,
+      );
+    }
+    expect(dayTemplateForDate('B', '2026-10-27').slots.find((slot) => slot.slot_id === 'b-press')?.sets).toHaveLength(
+      2,
+    );
+    expect(dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-curl')?.sets).toHaveLength(
+      2,
+    );
+  });
+
+  it('keeps B3 at 3×10 per arm after a logged B2', () => {
+    const logged = loggedVariation('B', '2026-10-13', 'bench_db_single', [7, 7, 7]);
+    const next = plannedDayPreview(DAY_TEMPLATES.B, [logged], '2026-10-20').find(
+      (row) => row.exercise_id === 'bench_db_single',
+    );
+    expect(next).toMatchObject({
+      workLabel: '8 kg · 3 × 10 / arm',
+      note: cue,
+    });
+    expect(next?.sets.map((set) => set.reps)).toEqual([10, 10, 10]);
+  });
+});

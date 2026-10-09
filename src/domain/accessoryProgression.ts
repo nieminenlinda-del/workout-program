@@ -80,7 +80,14 @@ export interface AccessorySetLog {
 const RESET_NOTE = 'Reset −7.5%: 2 sessions missed';
 
 export function isDoubleProgressionSlot(slot: TemplateSlot): boolean {
-  return slot.role !== 'T1' && !slot.volumeKind && slot.exercise_id !== 'deadlift_paused';
+  return (
+    slot.role !== 'T1' &&
+    !slot.volumeKind &&
+    slot.exercise_id !== 'deadlift_paused' &&
+    // B2–B3 unilateral accessories stay 3×10. A logged B2 must not rewrite B3.
+    slot.exercise_id !== 'bench_db_single' &&
+    slot.exercise_id !== 'row_db_single'
+  );
 }
 
 /** Copy the seed table onto the slot. B1–B3 clamp the target into the rep range. */

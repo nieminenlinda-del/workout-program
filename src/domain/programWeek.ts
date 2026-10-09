@@ -25,6 +25,7 @@ import {
   variationHeldNote,
   variationLogInWeek,
   variationStepNote,
+  unilateralSlotsFor,
   volumeSlotsFor,
   withBlockBVariations,
   type T1Prescription,
@@ -192,6 +193,7 @@ export function t1PrescriptionFor(
  * B1–B3 and C1 add back-off rows (and a Day C paused bench) after the top sets.
  * B1–B3 also swap Day A's RDL for a paused deadlift, move that RDL to Day D,
  * and run accessory double progression on Today.
+ * B2–B3 append a single-arm DB press on Day B and a single-arm DB row on Day D.
  */
 export function applyProgramWeek(
   template: DayTemplate,
@@ -217,6 +219,7 @@ export function applyProgramWeek(
       const clampReps = blockBVariationWeek(ctx.block, ctx.weekIndex);
       slots = slots.map((slot) => paintAccessorySeed(slot, clampReps));
     }
+    slots = [...slots, ...unilateralSlotsFor(ctx.block, ctx.weekIndex, template.id)];
   }
   let next: DayTemplate = { ...template, slots };
   if (options.hold) {

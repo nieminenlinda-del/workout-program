@@ -45,6 +45,7 @@ const REQUIRED_ACCESSORIES = [
   'glute_bridge',
   'row_barbell',
   'row_db',
+  'row_db_single',
   'overhead_press',
   'pull_up',
   'pull_up_cable',
@@ -60,6 +61,7 @@ const REQUIRED_ACCESSORIES = [
   'tricep_pushdown_band',
   'cable_rope_pushdown',
   'bench_close_grip',
+  'bench_db_single',
 ];
 
 describe('exercise catalog', () => {

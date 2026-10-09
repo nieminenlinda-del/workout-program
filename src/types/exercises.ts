@@ -32,6 +32,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'glute_bridge',
   'row_barbell',
   'row_db',
+  'row_db_single',
   'overhead_press',
   'pull_up',
   'pull_up_cable',
@@ -47,6 +48,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'tricep_pushdown_band',
   'cable_rope_pushdown',
   'bench_close_grip',
+  'bench_db_single',
 ] as const;
 
 export const EXERCISE_IDS = [
@@ -255,6 +257,13 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     equipment: 'barbell',
   },
   row_db: { id: 'row_db', name: 'DB row', role: 'accessory', pattern: 'row', equipment: 'dumbbells' },
+  row_db_single: {
+    id: 'row_db_single',
+    name: 'Single-arm DB row',
+    role: 'accessory',
+    pattern: 'row',
+    equipment: 'dumbbells',
+  },
   overhead_press: {
     id: 'overhead_press',
     name: 'Overhead press',
@@ -341,6 +350,13 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'accessory',
     pattern: 'bench',
     equipment: 'barbell',
+  },
+  bench_db_single: {
+    id: 'bench_db_single',
+    name: 'Single-arm DB bench / floor press',
+    role: 'accessory',
+    pattern: 'bench',
+    equipment: 'dumbbells',
   },
 };
 

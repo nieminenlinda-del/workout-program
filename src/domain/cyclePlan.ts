@@ -342,6 +342,8 @@ export function blockBVariationWeek(block: MesocycleBlock, weekIndex: number): b
 export const PAUSED_DEADLIFT_SLOT = 'a-paused-dl';
 export const CLOSE_GRIP_SLOT = 'd-close-grip';
 export const MOVED_RDL_SLOT = 'd-hinge';
+export const SINGLE_ARM_BENCH_SLOT = 'b-db-press';
+export const SINGLE_ARM_ROW_SLOT = 'd-db-row';
 export const VARIATION_STEP_KG = 2.5;
 export const PAUSED_DL_BASE_KG = 60;
 
@@ -473,6 +475,46 @@ function pausedDeadliftSlot(): TemplateSlot {
       reps: 3,
       rpe: index === setCount - 1 ? 7 : 6,
       rpe_label: '6–7',
+      rest_sec: ACCESSORY_REST_SEC,
+    })),
+  };
+}
+
+/**
+ * B2 (week of 12 Oct) and B3 only. Right arm lags on bench under fatigue.
+ * B1, the B4 deload, and every other block keep the seed accessories.
+ * The app has no per-arm field, so each round is one loggable set and the
+ * scheme plus the cue carry "per arm, right side first".
+ * Coach locked reps and RPE, not the dumbbell. 8 kg is the lightest
+ * programmed DB (the curl seed) so the logger has a starting plate.
+ */
+const SINGLE_ARM_DB_KG = 8;
+const SINGLE_ARM_CUE = 'Start with the right side, match reps on the left.';
+
+export function unilateralSlotsFor(
+  block: MesocycleBlock,
+  weekIndex: number,
+  day: CanonicalTemplateDay,
+): TemplateSlot[] {
+  if (block !== 'B' || (weekIndex !== 2 && weekIndex !== 3)) return [];
+  if (day === 'B') return [singleArmSlot(SINGLE_ARM_BENCH_SLOT, 'bench_db_single')];
+  if (day === 'D') return [singleArmSlot(SINGLE_ARM_ROW_SLOT, 'row_db_single')];
+  return [];
+}
+
+function singleArmSlot(slotId: string, exerciseId: ExerciseId): TemplateSlot {
+  return {
+    slot_id: slotId,
+    role: 'accessory',
+    exercise_id: exerciseId,
+    alternatives: [],
+    note: SINGLE_ARM_CUE,
+    plan_label: `${SINGLE_ARM_DB_KG} kg · 3 × 10 / arm`,
+    skipWarmup: true,
+    sets: Array.from({ length: 3 }, () => ({
+      weight_kg: SINGLE_ARM_DB_KG,
+      reps: 10,
+      rpe: BACKOFF_RPE_VALUE,
       rest_sec: ACCESSORY_REST_SEC,
     })),
   };

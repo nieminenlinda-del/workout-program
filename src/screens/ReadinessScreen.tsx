@@ -2,6 +2,7 @@ import type { ReadinessLight, SessionDraft } from '../types/session';
 import { READINESS_KEYS, shouldSuggestPainFlag, withComputedLight } from '../domain/readiness';
 import { ScorePicker } from '../components/ScorePicker';
 import { LightBadge } from '../components/LightBadge';
+import { PainFields } from '../components/PainFields';
 
 const LIGHTS: ReadinessLight[] = ['GREEN', 'YELLOW', 'RED'];
 
@@ -68,19 +69,7 @@ export function ReadinessScreen({
         </div>
       </section>
 
-      <button
-        type="button"
-        className={`toggle ${draft.pain_flag ? 'on' : ''}`}
-        onClick={() =>
-          onChange({
-            ...draft,
-            pain_flag: !draft.pain_flag,
-            updated_at: new Date().toISOString(),
-          })
-        }
-      >
-        Pain flag{suggested && !draft.pain_flag ? ' · suggested' : ''}
-      </button>
+      <PainFields draft={draft} suggested={suggested} onChange={onChange} />
 
       <button type="button" className="btn btn-primary btn-block" onClick={onContinue}>
         Today’s workout

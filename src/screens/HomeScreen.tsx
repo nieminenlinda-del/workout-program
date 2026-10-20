@@ -1,3 +1,4 @@
+import { AppTabs } from '../components/AppTabs';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { WorkoutPreview } from '../components/WorkoutPreview';
 import { SessionBackupCard } from '../components/SessionBackupCard';
@@ -21,6 +22,7 @@ export function HomeScreen({
   onStart,
   onResume,
   onHistory,
+  onDashboard = () => undefined,
   onBlockPreview,
   onInterval,
   onHealth,
@@ -37,6 +39,7 @@ export function HomeScreen({
   onStart: () => void;
   onResume: () => void;
   onHistory: () => void;
+  onDashboard?: () => void;
   onBlockPreview: () => void;
   onInterval: () => void;
   onHealth: () => void;
@@ -93,6 +96,8 @@ export function HomeScreen({
           </p>
         )}
       </header>
+
+      <AppTabs current="today" onToday={() => undefined} onDashboard={onDashboard} onLog={onHistory} />
 
       {draft ? (
         <section className="card resume-card">

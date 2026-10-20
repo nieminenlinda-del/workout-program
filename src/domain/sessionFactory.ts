@@ -1,4 +1,5 @@
-import { EXERCISE_CATALOG, exerciseEquipment } from '../types/exercises';
+import { EXERCISE_CATALOG, exerciseEquipment, type ExerciseId } from '../types/exercises';
+import { isBarbellSquat } from './dashboard';
 import type {
   CanonicalTemplateDay,
   LoggedLift,
@@ -46,6 +47,7 @@ export function liftsFromTemplate(
       exercise_id: slot.exercise_id,
       slot_id: slot.slot_id,
       equipment: exerciseEquipment(slot.exercise_id),
+      ...(isBarbellSquat(slot.exercise_id) ? { bar_position: 'low_bar' as const } : {}),
       sets: slot.skipWarmup ? sets : attachWarmups(sets, warmupKindFor(slot.exercise_id)),
     };
   });
@@ -64,6 +66,7 @@ export function createDraftSession(
     readiness: withComputedLight(DEFAULT_READINESS),
     lifts: liftsFromTemplate(canonical, date, logs),
     pain_flag: false,
+    pain_note: '',
     notes: '',
     status: 'draft',
     updated_at: new Date().toISOString(),
@@ -72,18 +75,35 @@ export function createDraftSession(
 
 export function swapLiftExercise(draft: SessionDraft, liftIndex: number, exerciseId: LoggedLift['exercise_id']): SessionDraft {
   const meta = EXERCISE_CATALOG[exerciseId];
-  const lifts = draft.lifts.map((lift, i) =>
-    i === liftIndex
-      ? {
-          ...lift,
-          exercise_id: exerciseId,
-          name: meta.name,
-          style: meta.style,
-          equipment: exerciseEquipment(exerciseId),
-        }
-      : lift,
+  const lifts = draft.lifts.map((lift, i) => {
+    if (i !== liftIndex) return lift;
+    const next: LoggedLift = {
+      ...lift,
+      exercise_id: exerciseId,
+      name: meta.name,
+      style: meta.style,
+      equipment: exerciseEquipment(exerciseId),
+    };
+    if (isBarbellSquat(exerciseId)) next.bar_position = lift.bar_position ?? 'low_bar';
+    else delete next.bar_position;
+    return next;
+  });
+  return { ...draft, lifts, updated_at: new Date().toISOString() };
+}
+
+export function setSquatBarPosition(
+  draft: SessionDraft,
+  liftIndex: number,
+  position: NonNullable<LoggedLift['bar_position']>,
+): SessionDraft {
+  const lifts = draft.lifts.map((lift, index) =>
+    index === liftIndex && isBarbellSquat(lift.exercise_id) ? { ...lift, bar_position: position } : lift,
   );
   return { ...draft, lifts, updated_at: new Date().toISOString() };
+}
+
+export function isBarbellSquatId(exerciseId: ExerciseId): boolean {
+  return isBarbellSquat(exerciseId);
 }
 
 export function completedSetCount(draft: SessionDraft): { done: number; total: number } {

@@ -260,4 +260,67 @@ describe('session backup JSON', () => {
   it('names the download with the calendar date', () => {
     expect(sessionBackupFilename('2026-09-14')).toBe('linda-lift-sessions-2026-09-14.json');
   });
+
+  it('loads a v1 backup without wiping seeded bodyweight', async () => {
+    const legacy = createDraftSession('A', '2026-09-14');
+    legacy.status = 'complete';
+    const file = {
+      schema: BACKUP_SCHEMA,
+      schema_version: 1,
+      sessions: [legacy],
+    };
+    const parsed = parseSessionBackupJson(JSON.stringify(file));
+    expect(parsed.schema_version).toBe(1);
+    expect(parsed.bodyweight).toEqual([]);
+    expect(parsed.sessions[0]?.pain_area).toBeUndefined();
+
+    const repo = createMemoryRepository();
+    const seeded = await repo.listBodyweight();
+    expect(seeded.map((row) => row.kg)).toEqual([61.2, 61.6, 62, 60.8, 61]);
+    await importSessionBackup(repo, parsed, 'merge');
+    await importSessionBackup(repo, parsed, 'replace');
+    expect(await repo.listBodyweight()).toEqual(seeded);
+    expect(await repo.listAllComplete()).toHaveLength(1);
+  });
+
+  it('round-trips pain area, bar position, and bodyweight, and replace writes the v2 list', async () => {
+    const draft = createDraftSession('A', '2026-10-19');
+    draft.status = 'complete';
+    draft.pain_flag = true;
+    draft.pain_area = 'right_shoulder';
+    draft.pain_note = 'Pinch at the bottom.';
+    draft.lifts[0]!.bar_position = 'high_bar';
+    const bodyweight = [{ week: '2026-10-26', kg: 61.4 }];
+    const exported = buildSessionBackup([draft], '2026-10-20T00:00:00.000Z', bodyweight);
+    expect(exported.schema_version).toBe(2);
+    expect(exported.bodyweight).toEqual(bodyweight);
+
+    const parsed = parseSessionBackupJson(JSON.stringify(exported));
+    expect(parsed.sessions[0]?.pain_area).toBe('right_shoulder');
+    expect(parsed.sessions[0]?.pain_note).toBe('Pinch at the bottom.');
+    expect(parsed.sessions[0]?.lifts[0]?.bar_position).toBe('high_bar');
+
+    const repo = createMemoryRepository();
+    await importSessionBackup(repo, parsed, 'merge');
+    const merged = await repo.listBodyweight();
+    expect(merged).toHaveLength(6);
+    expect(merged.at(-1)).toEqual(bodyweight[0]);
+
+    await importSessionBackup(repo, parsed, 'replace');
+    expect(await repo.listBodyweight()).toEqual(bodyweight);
+    expect((await repo.listAllComplete())[0]?.lifts[0]?.bar_position).toBe('high_bar');
+  });
+
+  it('rejects a v2 file whose bodyweight rows are not weigh-ins', () => {
+    expect(() =>
+      parseSessionBackupJson(
+        JSON.stringify({
+          schema: BACKUP_SCHEMA,
+          schema_version: 2,
+          sessions: [],
+          bodyweight: [{ week: 'Monday', kg: 61 }],
+        }),
+      ),
+    ).toThrow(/bodyweight/);
+  });
 });

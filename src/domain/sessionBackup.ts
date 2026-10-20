@@ -1,7 +1,10 @@
+import { isBodyweightEntry, type BodyweightEntry } from './bodyweight';
 import { isExerciseId } from '../types/exercises';
 import { DEFAULT_BAR_KG } from './equipment';
 import {
   DEFAULT_READINESS,
+  isBarPosition,
+  isPainArea,
   type CanonicalTemplateDay,
   type LoggedLift,
   type LoggedSet,
@@ -19,7 +22,9 @@ import { canonicalTemplateDay } from './templateDay';
 import { calendarYmd } from './lastPerformance';
 
 export const BACKUP_SCHEMA = 'linda-lift-sessions';
-export const BACKUP_SCHEMA_VERSION = 1;
+/** v1 sessions still load. v2 adds optional pain area, squat bar position, and weekly bodyweight. */
+export const BACKUP_SCHEMA_VERSION = 2;
+export const BACKUP_SCHEMA_VERSIONS = [1, 2] as const;
 
 export type ImportMode = 'merge' | 'replace';
 
@@ -66,6 +71,7 @@ export interface SessionBackup {
   schema_version: number;
   exported_at: string;
   sessions: SessionDraft[];
+  bodyweight: BodyweightEntry[];
 }
 
 export interface ParsedSessionBackup {
@@ -73,6 +79,7 @@ export interface ParsedSessionBackup {
   schema_version: number;
   exported_at?: string;
   sessions: SessionDraft[];
+  bodyweight: BodyweightEntry[];
 }
 
 export interface ImportResult {
@@ -161,6 +168,7 @@ function asLift(value: unknown, label: string): LoggedLift {
     lift.equipment = row.equipment;
   }
   if (typeof row.bar_kg === 'number') lift.bar_kg = row.bar_kg;
+  if (isBarPosition(row.bar_position)) lift.bar_position = row.bar_position;
   return lift;
 }
 
@@ -182,6 +190,8 @@ function asSession(value: unknown, label: string): SessionDraft {
     readiness: asReadiness(row.readiness),
     lifts: row.lifts.map((lift, index) => asLift(lift, `${label}.lifts[${index}]`)),
     pain_flag: Boolean(row.pain_flag),
+    ...(isPainArea(row.pain_area) ? { pain_area: row.pain_area } : {}),
+    ...(typeof row.pain_note === 'string' ? { pain_note: row.pain_note } : {}),
     notes: typeof row.notes === 'string' ? row.notes : '',
     status: 'complete',
     updated_at:
@@ -202,29 +212,51 @@ export function parseSessionBackupJson(text: string): ParsedSessionBackup {
   if (payload.schema !== BACKUP_SCHEMA) {
     throw new SessionBackupError('Not a linda-lift-sessions backup');
   }
-  if (payload.schema_version !== BACKUP_SCHEMA_VERSION) {
+  if (
+    payload.schema_version !== 1 &&
+    payload.schema_version !== 2
+  ) {
     throw new SessionBackupError(`Unknown schema_version ${String(payload.schema_version)}`);
   }
   if (!Array.isArray(payload.sessions)) {
     throw new SessionBackupError('sessions must be an array');
   }
+  const bodyweight =
+    payload.schema_version === 1 || payload.bodyweight == null
+      ? []
+      : asBodyweightList(payload.bodyweight);
   return {
     schema: BACKUP_SCHEMA,
-    schema_version: BACKUP_SCHEMA_VERSION,
+    schema_version: payload.schema_version,
     exported_at: typeof payload.exported_at === 'string' ? payload.exported_at : undefined,
     sessions: payload.sessions.map((row, index) => asSession(row, `sessions[${index}]`)),
+    bodyweight,
   };
+}
+
+function asBodyweightList(value: unknown): BodyweightEntry[] {
+  if (!Array.isArray(value)) {
+    throw new SessionBackupError('bodyweight must be an array');
+  }
+  return value.map((row, index) => {
+    if (!isBodyweightEntry(row)) {
+      throw new SessionBackupError(`bodyweight[${index}] needs week YYYY-MM-DD and kg`);
+    }
+    return { week: row.week, kg: row.kg };
+  });
 }
 
 export function buildSessionBackup(
   sessions: readonly (SessionDraft | SessionLog)[],
   exportedAt = new Date().toISOString(),
+  bodyweight: readonly BodyweightEntry[] = [],
 ): SessionBackup {
   return {
     schema: BACKUP_SCHEMA,
     schema_version: BACKUP_SCHEMA_VERSION,
     exported_at: exportedAt,
     sessions: sessions.map((row, index) => asSession(row, `sessions[${index}]`)),
+    bodyweight: bodyweight.map((row) => ({ week: row.week, kg: row.kg })),
   };
 }
 
@@ -271,11 +303,17 @@ export async function importSessionBackup(
   mode: ImportMode = 'merge',
 ): Promise<ImportResult> {
   if (mode === 'replace') {
-    const existing = await repo.listRecent(10_000);
+    const existing = await repo.listRecent(100_000);
     for (const row of existing) await repo.delete(row.session_id);
   }
   for (const session of backup.sessions) {
     await repo.save({ ...session, status: 'complete' });
+  }
+  if (backup.schema_version >= 2) {
+    if (mode === 'replace') await repo.replaceBodyweight(backup.bodyweight);
+    else {
+      for (const entry of backup.bodyweight) await repo.saveBodyweight(entry);
+    }
   }
   return { mode, sessions: backup.sessions.length };
 }

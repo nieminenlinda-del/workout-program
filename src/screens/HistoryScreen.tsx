@@ -1,5 +1,7 @@
-import type { SessionDraft } from '../types/session';
+import { PAIN_AREA_LABELS, type SessionDraft } from '../types/session';
+import { AppTabs } from '../components/AppTabs';
 import { LightBadge } from '../components/LightBadge';
+import { effectiveBarPosition, isBarbellSquat } from '../domain/dashboard';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
 import { completedSetCount } from '../domain/sessionFactory';
@@ -12,6 +14,7 @@ import { formatLoad } from '../domain/formatLoad';
 export function HistoryScreen({
   sessions,
   onBack,
+  onDashboard = () => undefined,
   onOpen,
   onExport,
   onImportSessions,
@@ -20,6 +23,7 @@ export function HistoryScreen({
 }: {
   sessions: SessionDraft[];
   onBack: () => void;
+  onDashboard?: () => void;
   onOpen: (session: SessionDraft) => void;
   onExport: () => void;
   onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
@@ -35,6 +39,7 @@ export function HistoryScreen({
         <h1>Session log</h1>
         <span />
       </header>
+      <AppTabs current="log" onToday={onBack} onDashboard={onDashboard} onLog={() => undefined} />
 
       {sessions.length === 0 ? (
         <SessionBackupCard
@@ -107,6 +112,12 @@ export function DetailScreen({
       <p className="muted">{formatDisplayDate(session.date)}</p>
       <LightBadge light={session.readiness.light} large />
       {session.pain_flag ? <p className="pain-note">Pain flag on</p> : null}
+      {session.pain_area ? (
+        <p className="pain-note">
+          {PAIN_AREA_LABELS[session.pain_area]}
+          {session.pain_note ? ` · ${session.pain_note}` : ''}
+        </p>
+      ) : null}
 
       {session.lifts.map((lift) => (
         <section key={lift.exercise_id + lift.name} className="card">
@@ -117,6 +128,9 @@ export function DetailScreen({
               EXERCISE_CATALOG[lift.exercise_id]?.role !== 'primary' ? EQUIPMENT_LABELS[eq] : null,
               eq === 'barbell' && lift.bar_kg ? `${lift.bar_kg} kg bar` : null,
             ].filter(Boolean);
+            if (isBarbellSquat(lift.exercise_id)) {
+              bits.unshift(effectiveBarPosition(lift) === 'high_bar' ? 'High-bar' : 'Low-bar');
+            }
             return bits.length ? <p className="muted">{bits.join(' · ')}</p> : null;
           })()}
           <ul className="detail-sets">

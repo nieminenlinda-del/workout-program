@@ -1,9 +1,10 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { BODYWEIGHT_SEED, type BodyweightEntry } from '../domain/bodyweight';
 import type { SessionDraft } from '../types/session';
 import { isCompleteSession, sortSessionsNewestFirst, type SessionRepository } from './repository';
 
 const DB_NAME = 'linda-lift';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const DRAFT_KEY = 'current';
 
 interface LiftDB extends DBSchema {
@@ -15,6 +16,10 @@ interface LiftDB extends DBSchema {
   drafts: {
     key: string;
     value: SessionDraft;
+  };
+  bodyweight: {
+    key: string;
+    value: BodyweightEntry;
   };
 }
 
@@ -30,6 +35,10 @@ function getDb(): Promise<IDBPDatabase<LiftDB>> {
         }
         if (!db.objectStoreNames.contains('drafts')) {
           db.createObjectStore('drafts');
+        }
+        if (!db.objectStoreNames.contains('bodyweight')) {
+          const store = db.createObjectStore('bodyweight', { keyPath: 'week' });
+          for (const row of BODYWEIGHT_SEED) store.put(row);
         }
       },
     });
@@ -66,6 +75,25 @@ export function createIndexedDbRepository(): SessionRepository {
         limit,
       );
     },
+    async listAllComplete() {
+      const db = await getDb();
+      return sortSessionsNewestFirst((await db.getAll('sessions')).filter(isCompleteSession));
+    },
+    async listBodyweight() {
+      const db = await getDb();
+      return (await db.getAll('bodyweight')).sort((a, b) => a.week.localeCompare(b.week));
+    },
+    async saveBodyweight(entry) {
+      const db = await getDb();
+      await db.put('bodyweight', entry);
+    },
+    async replaceBodyweight(entries) {
+      const db = await getDb();
+      const tx = db.transaction('bodyweight', 'readwrite');
+      await tx.store.clear();
+      for (const entry of entries) await tx.store.put(entry);
+      await tx.done;
+    },
     async getDraft() {
       const db = await getDb();
       return db.get('drafts', DRAFT_KEY);
@@ -90,7 +118,11 @@ export function createIndexedDbRepository(): SessionRepository {
   };
 }
 
-/** Test helper — next openDB call creates a fresh connection after indexedDB reset. */
-export function resetDbConnection(): void {
+/** Test helper — close the cached connection so deleteDatabase can finish. */
+export async function resetDbConnection(): Promise<void> {
+  const pending = dbPromise;
   dbPromise = null;
+  if (!pending) return;
+  const db = await pending;
+  db.close();
 }

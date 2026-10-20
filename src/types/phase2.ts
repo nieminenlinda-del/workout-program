@@ -24,6 +24,16 @@ export const BLOCK_B_TRAINING_MAXES: TrainingMaxes = {
   deadlift_kg: 92.5,
 };
 
+/**
+ * Last tested competition 1RMs (kg). Not a training max — Block B/C TMs stay
+ * 75 / 52.5 / 92.5 and the Block A seed stays 72.5 / 52.5 / 90.
+ */
+export const TESTED_1RM: TrainingMaxes = {
+  squat_kg: 75,
+  bench_kg: 55,
+  deadlift_kg: 95,
+};
+
 export type MesocycleBlock = 'A' | 'B' | 'C';
 
 export type BlockPhase =

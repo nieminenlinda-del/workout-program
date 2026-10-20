@@ -1,4 +1,5 @@
-import type { SessionDraft } from '../types/session';
+import { PAIN_AREA_LABELS, type SessionDraft } from '../types/session';
+import { effectiveBarPosition, isBarbellSquat } from '../domain/dashboard';
 import { completedSetCount } from '../domain/sessionFactory';
 import { workSets } from '../domain/sets';
 import { formatLoggedLoad } from '../domain/setPrescription';
@@ -41,6 +42,12 @@ export function SaveScreen({
         </p>
         <LightBadge light={draft.readiness.light} large />
         {draft.pain_flag ? <p className="pain-note">Pain flag on</p> : null}
+        {draft.pain_area ? (
+          <p className="pain-note">
+            {PAIN_AREA_LABELS[draft.pain_area]}
+            {draft.pain_note ? ` · ${draft.pain_note}` : ''}
+          </p>
+        ) : null}
       </section>
 
       <ul className="summary-lifts">
@@ -55,6 +62,9 @@ export function SaveScreen({
               <span>
                 {doneWork.length}/{work.length || lift.sets.length}
                 {top ? ` · ${formatLoggedLoad(top, isTimedHold(lift.exercise_id), assisted)}` : ''}
+                {isBarbellSquat(lift.exercise_id)
+                  ? ` · ${effectiveBarPosition(lift) === 'high_bar' ? 'High-bar' : 'Low-bar'}`
+                  : ''}
               </span>
             </li>
           );

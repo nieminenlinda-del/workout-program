@@ -7,6 +7,26 @@ export type CanonicalTemplateDay = 'A' | 'B' | 'C' | 'D';
 
 export type ReadinessLight = 'GREEN' | 'YELLOW' | 'RED';
 
+/** Optional area on the session pain flag. */
+export type PainArea = 'right_shoulder' | 'right_trap_neck' | 'other';
+
+export const PAIN_AREA_LABELS: Record<PainArea, string> = {
+  right_shoulder: 'Right shoulder',
+  right_trap_neck: 'Right trap / neck',
+  other: 'Other',
+};
+
+/** Squat bar position. Missing on older logs means low-bar. */
+export type BarPosition = 'low_bar' | 'high_bar';
+
+export function isPainArea(value: unknown): value is PainArea {
+  return value === 'right_shoulder' || value === 'right_trap_neck' || value === 'other';
+}
+
+export function isBarPosition(value: unknown): value is BarPosition {
+  return value === 'low_bar' || value === 'high_bar';
+}
+
 export interface Readiness {
   sleep: number;
   soreness: number;
@@ -52,6 +72,8 @@ export interface LoggedLift {
   equipment?: Equipment;
   /** Barbell mass in kg (15 women’s / 20 standard). Omitted on DB / BW / bands / cable. */
   bar_kg?: number;
+  /** Low-bar or high-bar on a barbell squat. Omitted on other lifts. */
+  bar_position?: BarPosition;
   sets: LoggedSet[];
 }
 
@@ -66,6 +88,10 @@ export interface SessionLog {
   readiness: Readiness;
   lifts: LoggedLift[];
   pain_flag: boolean;
+  /** Set with the pain flag. Older logs omit it. */
+  pain_area?: PainArea;
+  /** Short note for `pain_area`. Older logs omit it. */
+  pain_note?: string;
   notes: string;
 }
 

@@ -4,7 +4,8 @@ import { isAssistedLoad, isTimedHold, type ExerciseId } from '../types/exercises
 import { exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
 import { dayTemplateForDate } from '../domain/programWeek';
-import { completedSetCount, swapLiftExercise } from '../domain/sessionFactory';
+import { completedSetCount, isBarbellSquatId, setSquatBarPosition, swapLiftExercise } from '../domain/sessionFactory';
+import { effectiveBarPosition } from '../domain/dashboard';
 import { lastMatchingPerformance } from '../domain/lastPerformance';
 import { laterSameKindUnlogged, setDisplayLabel, workSets } from '../domain/sets';
 import {
@@ -29,6 +30,7 @@ import { LightBadge } from '../components/LightBadge';
 import { NumberStepper } from '../components/NumberStepper';
 import { LastPerformanceHint } from '../components/LastPerformanceHint';
 import { EquipmentPicker } from '../components/EquipmentPicker';
+import { PainFields } from '../components/PainFields';
 import { unlockTimerAudio } from '../domain/timerCue';
 import { inSessionJumpHint } from '../domain/accessoryProgression';
 
@@ -118,6 +120,7 @@ export function WorkoutScreen({
       </div>
 
       <div className="workout-lifts">
+      <PainFields draft={draft} onChange={onChange} />
       {draft.lifts.map((lift, liftIndex) => {
         const slot = slotForLift(template, lift, liftIndex);
         const expanded = openLift === liftIndex;
@@ -161,6 +164,24 @@ export function WorkoutScreen({
                 ) : null}
               </span>
             </button>
+
+            {isBarbellSquatId(lift.exercise_id) ? (
+              <div className="bar-position" data-field="bar-position">
+                <p className="kicker">Bar position</p>
+                <div className="alt-row" role="group" aria-label="Squat bar position">
+                  {(['low_bar', 'high_bar'] as const).map((position) => (
+                    <button
+                      key={position}
+                      type="button"
+                      className={`chip ${effectiveBarPosition(lift) === position ? 'selected' : ''}`}
+                      onClick={() => onChange(setSquatBarPosition(draft, liftIndex, position))}
+                    >
+                      {position === 'low_bar' ? 'Low-bar' : 'High-bar'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {jumpHint ? <p className="muted">{jumpHint}</p> : null}
 

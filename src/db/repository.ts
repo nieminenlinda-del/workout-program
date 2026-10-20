@@ -1,3 +1,4 @@
+import type { BodyweightEntry } from '../domain/bodyweight';
 import type { SessionDraft, SessionLog } from '../types/session';
 
 export interface SessionRepository {
@@ -5,6 +6,11 @@ export interface SessionRepository {
   get(sessionId: string): Promise<SessionDraft | undefined>;
   listRecent(limit?: number): Promise<SessionDraft[]>;
   listComplete(limit?: number): Promise<SessionDraft[]>;
+  /** Every finished session. Dashboard and backup export use this, not the capped lists. */
+  listAllComplete(): Promise<SessionDraft[]>;
+  listBodyweight(): Promise<BodyweightEntry[]>;
+  saveBodyweight(entry: BodyweightEntry): Promise<void>;
+  replaceBodyweight(entries: readonly BodyweightEntry[]): Promise<void>;
   getDraft(): Promise<SessionDraft | undefined>;
   saveDraft(session: SessionDraft): Promise<void>;
   clearDraft(): Promise<void>;
@@ -19,6 +25,8 @@ export function asSessionLog(row: SessionDraft | SessionLog): SessionLog {
     readiness: row.readiness,
     lifts: row.lifts,
     pain_flag: row.pain_flag,
+    ...(row.pain_area ? { pain_area: row.pain_area } : {}),
+    ...(row.pain_note ? { pain_note: row.pain_note } : {}),
     notes: row.notes,
   };
 }

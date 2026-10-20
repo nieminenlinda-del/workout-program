@@ -75,6 +75,7 @@ describe('session factory', () => {
     expect(draft.date).toBe('2026-09-03');
     expect(draft.pain_flag).toBe(false);
     expect(draft.lifts[0]?.exercise_id).toBe('squat_low_bar');
+    expect(draft.lifts[0]?.bar_position).toBe('low_bar');
     const squatWork = draft.lifts[0].sets.filter((s) => !s.warmup);
     expect(squatWork.map((s) => s.target_weight_kg)).toEqual([55, 55, 55]);
     expect(squatWork.map((s) => s.target_reps)).toEqual([5, 5, 5]);
@@ -88,6 +89,7 @@ describe('session factory', () => {
     expect(squatWork.every((s) => !s.amrap)).toBe(true);
 
     const friday = createDraftSession('D', '2026-09-04');
+    expect(friday.lifts.find((l) => l.exercise_id === 'bench_regular_volume')?.bar_position).toBeUndefined();
     const tri = friday.lifts.find((l) => l.exercise_id === 'cable_rope_pushdown');
     expect(tri).toMatchObject({
       name: 'Cable rope pushdown',

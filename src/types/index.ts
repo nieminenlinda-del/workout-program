@@ -13,15 +13,17 @@ export {
 
 export type {
   CanonicalTemplateDay,
+  BarPosition,
   LoggedLift,
   LoggedSet,
+  PainArea,
   Readiness,
   ReadinessLight,
   SessionDraft,
   SessionLog,
   TemplateDay,
 } from './session';
-export { DEFAULT_READINESS } from './session';
+export { DEFAULT_READINESS, PAIN_AREA_LABELS, isBarPosition, isPainArea } from './session';
 
 export type {
   BlockPhase,
@@ -44,6 +46,7 @@ export {
   PEAKING_PHASES,
   Phase2NotImplementedError,
   SEED_TRAINING_MAXES,
+  TESTED_1RM,
   STRENGTH_PEAK_PROGRESSION_HOOK,
   TARGET_TEST_DATE,
   TEST_DAY,

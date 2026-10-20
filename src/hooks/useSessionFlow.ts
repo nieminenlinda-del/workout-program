@@ -15,6 +15,7 @@ import {
 
 export type AppView =
   | 'home'
+  | 'dashboard'
   | 'readiness'
   | 'workout'
   | 'save'

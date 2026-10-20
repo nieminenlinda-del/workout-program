@@ -8,6 +8,7 @@ import { DetailScreen, HistoryScreen } from './screens/HistoryScreen';
 import { IntervalTimerScreen } from './screens/IntervalTimerScreen';
 import { HealthScreen } from './screens/HealthScreen';
 import { BlockPreviewScreen } from './screens/BlockPreviewScreen';
+import { DashboardScreen } from './screens/DashboardScreen';
 import { TimerCueFlash } from './components/TimerCueFlash';
 import { useRepository, useSessionFlow, type AppView } from './hooks/useSessionFlow';
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
@@ -87,6 +88,7 @@ export default function App() {
             flow.resumeSession();
           }}
           onHistory={() => flow.setView('history')}
+          onDashboard={() => flow.setView('dashboard')}
           onBlockPreview={() => flow.setView('blockPreview')}
           onInterval={() => openInterval('home')}
           onHealth={() => flow.setView('health')}
@@ -126,14 +128,32 @@ export default function App() {
         />
       ) : null}
 
+      {view === 'dashboard' ? (
+        <DashboardScreen
+          repo={repo}
+          date={date}
+          onToday={() => flow.setView('home')}
+          onLog={() => flow.setView('history')}
+        />
+      ) : null}
+
       {flow.view === 'history' ? (
         <HistoryScreen
           sessions={flow.history}
           onBack={() => flow.setView('home')}
+          onDashboard={() => flow.setView('dashboard')}
           onOpen={flow.openDetail}
           onExport={() => {
-            const backup = buildSessionBackup(flow.history);
-            downloadJson(sessionBackupFilename(date), backup);
+            void (async () => {
+              const [sessions, bodyweight] = await Promise.all([
+                repo.listAllComplete(),
+                repo.listBodyweight(),
+              ]);
+              downloadJson(
+                sessionBackupFilename(date),
+                buildSessionBackup(sessions, new Date().toISOString(), bodyweight),
+              );
+            })();
           }}
           onImportSessions={(text, mode) => flow.importSessions(text, mode)}
           onSeedWeek1={() => flow.seedWeek1()}

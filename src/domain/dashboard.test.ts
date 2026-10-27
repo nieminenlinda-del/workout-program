@@ -243,7 +243,7 @@ describe('tested maxes, goals, and the dashboard calendar', () => {
     const weeks = dashboardTimeline('2026-10-20');
     expect(weeks.map((week) => week.id)).toEqual(['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'Test', 'Next']);
     expect(weeks.find((week) => week.id === 'B3')?.badge).toBe('This week');
-    expect(weeks.find((week) => week.id === 'B4')?.badge).toBe('Deload');
+    expect(weeks.find((week) => week.id === 'B4')?.badge).toBe('Recovery');
     const test = weeks.find((week) => week.id === 'Test');
     expect(test?.lines.some((line) => line.includes('21 Nov') && line.includes('backup'))).toBe(true);
     const next = weeks.find((week) => week.id === 'Next');

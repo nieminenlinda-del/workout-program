@@ -12,7 +12,8 @@ import {
 import { calendarYmd, isLoggedWorkSet } from './lastPerformance';
 import { getMesocycleContext } from './phase2Calendar';
 import { isPlannedDeload, templateOverrideForDate } from './cyclePlan';
-import { blockWeekContext, dayTemplateForDate } from './programWeek';
+import { blockWeekContext, dayTemplateForDate, isRecoveryWeek } from './programWeek';
+import { RECOVERY_SKIPPED_DATE, recoveryNoteLines } from './recoveryWeek';
 import { workSets } from './sets';
 import { calendarTemplateDay, canonicalTemplateDay } from './templateDay';
 import { formatLoad } from './formatLoad';
@@ -30,8 +31,8 @@ import { plannedLiftSummary, type PlannedLiftSummary } from './workoutPreview';
  * Home still shows PowerCombo `training_mode` strength_peak for this whole
  * cycle. That mode is not the week phase.
  *
- * Loads: `dayTemplateForDate` → the planned week table. Block A week 4 and
- * Block B week 4 are deloads. Block B/C use the coach tables. Preview does
+ * Loads: `dayTemplateForDate` → the planned week table. Block A week 4 is the
+ * deload. Block B week 4 is the recovery week. Block B/C use the coach tables. Preview does
  * not apply the Block B hold — Today does, from logged top-set RPE. Sessions
  * after `asOf` are marked projected. The test day lists planned attempts.
  */
@@ -52,12 +53,13 @@ const TEST_EXERCISE: Record<TestLift, ExerciseId> = {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
-const DAY_SORT: Record<CanonicalTemplateDay | 'test', number> = {
+const DAY_SORT: Record<CanonicalTemplateDay | 'test' | 'rest', number> = {
   A: 0,
   B: 1,
   C: 2,
   D: 3,
   test: 4,
+  rest: 5,
 };
 
 export function previewPhaseLabel(phase: BlockPhase): (typeof PREVIEW_PHASE_LABEL)[BlockPhase] {
@@ -83,10 +85,12 @@ export interface BlockPreviewLogLine {
 
 export interface BlockPreviewSession {
   date: string;
-  kind: 'train' | 'test';
-  templateDay: CanonicalTemplateDay | 'test';
+  kind: 'train' | 'test' | 'rest';
+  templateDay: CanonicalTemplateDay | 'test' | 'rest';
   heading: string;
   title: string;
+  /** Recovery rule, daily walk, or the Friday alternative. */
+  notes: string[];
   phaseLabel: (typeof PREVIEW_PHASE_LABEL)[BlockPhase];
   projected: boolean;
   /** Peak taper: progression is frozen. Load is still the weekly target. */
@@ -107,8 +111,10 @@ export interface BlockPreviewWeek {
   end: string;
   rangeLabel: string;
   phaseLabel: string;
-  /** Block A Week 4 only. Block B/C week 4 is not this deload. */
+  /** Block A Week 4 only. Block B week 4 is `recovery`, not this deload. */
   deload: boolean;
+  /** Block B week 4 back-strain week. */
+  recovery: boolean;
   current: boolean;
   /** Every session in the week has a saved log. */
   completed: boolean;
@@ -177,8 +183,9 @@ export function buildBlockPreview(
     const extras = extraLoggedSessions(week, logs, used, today);
     if (extras.length === 0) continue;
     week.sessions = [...week.sessions, ...extras].sort(compareSessions);
-    week.completed = week.sessions.length > 0 && week.sessions.every((session) => session.completed);
-    week.projected = week.sessions.length > 0 && week.sessions.every((session) => session.projected);
+    const training = trainingSessions(week.sessions);
+    week.completed = training.length > 0 && training.every((session) => session.completed);
+    week.projected = training.length > 0 && training.every((session) => session.projected);
     week.phaseLabel = phaseLabelFor(week.sessions);
   }
 
@@ -206,11 +213,16 @@ function finishWeek(draft: WeekDraft, today: string): BlockPreviewWeek {
     rangeLabel: formatWeekRange(draft.start, draft.end),
     phaseLabel: phaseLabelFor(sessions),
     deload: isPlannedDeload(draft.block, draft.weekIndex),
+    recovery: draft.block === 'B' && draft.weekIndex === 4,
     current: todayCtx?.block === draft.block && todayCtx.weekIndex === draft.weekIndex,
-    completed: sessions.length > 0 && sessions.every((session) => session.completed),
-    projected: sessions.length > 0 && sessions.every((session) => session.projected),
+    completed: trainingSessions(sessions).length > 0 && trainingSessions(sessions).every((session) => session.completed),
+    projected: trainingSessions(sessions).length > 0 && trainingSessions(sessions).every((session) => session.projected),
     sessions,
   };
+}
+
+function trainingSessions(sessions: readonly BlockPreviewSession[]): BlockPreviewSession[] {
+  return sessions.filter((session) => session.kind !== 'rest');
 }
 
 function phaseLabelFor(sessions: readonly BlockPreviewSession[]): string {
@@ -232,8 +244,29 @@ function sessionForDate(
   if (meso.isTestDay) return testSession(date, today, logs, used, testDate);
 
   const mapped = calendarTemplateDay(date, testDate);
-  if (mapped === 'rest') return null;
+  if (mapped === 'rest') {
+    if (!isRecoveryWeek(date)) return null;
+    return restSession(date, date === RECOVERY_SKIPPED_DATE);
+  }
   return trainSession(date, mapped, today, logs, used, testDate);
+}
+
+function restSession(date: string, skipped: boolean): BlockPreviewSession {
+  return {
+    date,
+    kind: 'rest',
+    templateDay: skipped ? 'A' : 'rest',
+    heading: `${weekdayShort(date)} ${formatDayMonth(date)} · ${skipped ? 'Skipped' : 'Rest'}`,
+    title: skipped ? 'Walk only' : 'Walk + mobility',
+    notes: recoveryNoteLines(skipped ? 'A' : 'rest'),
+    phaseLabel: previewPhaseLabel(getMesocycleContext(date).phase ?? 'intensify'),
+    projected: false,
+    frozen: false,
+    completed: false,
+    exercises: [],
+    testNote: null,
+    logged: [],
+  };
 }
 
 function trainSession(
@@ -258,6 +291,7 @@ function trainSession(
       ? `${weekdayShort(date)} ${formatDayMonth(date)} · ${template.title}`
       : `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
     title: template.title,
+    notes: isRecoveryWeek(date) ? recoveryNoteLines(day) : [],
     phaseLabel: previewPhaseLabel(meso.phase ?? 'accumulate'),
     projected,
     frozen: Boolean(meso.freezeProgression && !meso.isTestDay),
@@ -284,6 +318,7 @@ function testSession(
     templateDay: 'test',
     heading: `${weekdayShort(date)} ${formatDayMonth(date)} · 1RM test`,
     title: TEST_LIFT_ORDER.map((lift) => exerciseName(TEST_EXERCISE[lift])).join(' → '),
+    notes: [],
     phaseLabel: 'Test',
     projected: date > today,
     frozen: true,

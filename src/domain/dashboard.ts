@@ -17,15 +17,18 @@ import {
   TESTED_1RM,
   type TrainingMaxes,
 } from '../types/phase2';
-import type {
-  BarPosition,
-  CanonicalTemplateDay,
-  LoggedLift,
-  LoggedSet,
-  PainArea,
-  ReadinessLight,
-  SessionLog,
+import {
+  countsTowardTrainingMax,
+  type BarPosition,
+  type CanonicalTemplateDay,
+  type LoggedLift,
+  type LoggedSet,
+  type PainArea,
+  type ReadinessLight,
+  type SessionLog,
 } from '../types/session';
+import { RECOVERY_DAILY_NOTE, RECOVERY_RULE } from './recoveryWeek';
+import { isRecoveryWeek } from './programWeek';
 import { PAIN_AREA_LABELS } from '../types/session';
 
 export { TESTED_1RM };
@@ -161,6 +164,7 @@ export interface EstimatePoint {
 export function eligibleEstimates(logs: readonly SessionLog[], lift: CompetitionLift): EstimatePoint[] {
   const points: EstimatePoint[] = [];
   for (const session of logs) {
+    if (!countsTowardTrainingMax(session)) continue;
     const date = calendarYmd(session.date);
     if (!date) continue;
     for (const row of session.lifts) {
@@ -252,6 +256,7 @@ export interface HardSetCounts {
 export function hardSetsInWeek(logs: readonly SessionLog[], weekMonday: string): HardSetCounts {
   const counts: HardSetCounts = { squat: 0, bench: 0, deadlift: 0 };
   for (const session of sessionsInWeek(logs, weekMonday)) {
+    if (!countsTowardTrainingMax(session)) continue;
     for (const lift of session.lifts) {
       const bucket = hardSetLift(lift);
       if (!bucket) continue;
@@ -274,13 +279,22 @@ export function sessionsInWeek(logs: readonly SessionLog[], weekMonday: string):
 export function sessionCompletion(
   logs: readonly SessionLog[],
   weekMonday: string,
-): { done: number; total: 4; days: Record<CanonicalTemplateDay, boolean> } {
+): {
+  done: number;
+  total: number;
+  days: Record<CanonicalTemplateDay, boolean>;
+  /** Scheduled rest. Not a missed training day. */
+  rest: Record<CanonicalTemplateDay, boolean>;
+} {
   const days: Record<CanonicalTemplateDay, boolean> = { A: false, B: false, C: false, D: false };
+  const rest: Record<CanonicalTemplateDay, boolean> = { A: false, B: false, C: false, D: false };
+  if (isRecoveryWeek(weekMonday)) rest.A = true;
   for (const session of sessionsInWeek(logs, weekMonday)) {
     days[canonicalTemplateDay(session.template_day)] = true;
   }
-  const done = (['A', 'B', 'C', 'D'] as const).filter((day) => days[day]).length;
-  return { done, total: 4, days };
+  const scheduled = (['A', 'B', 'C', 'D'] as const).filter((day) => !rest[day]);
+  const done = scheduled.filter((day) => days[day]).length;
+  return { done, total: scheduled.length, days, rest };
 }
 
 export interface DayReadiness {
@@ -341,6 +355,7 @@ interface TopSetSample {
 function topSetsBySession(logs: readonly SessionLog[]): TopSetSample[] {
   const samples: TopSetSample[] = [];
   for (const session of logs) {
+    if (!countsTowardTrainingMax(session)) continue;
     const date = calendarYmd(session.date);
     if (!date) continue;
     const best = new Map<CompetitionLift, LoggedSet>();
@@ -443,6 +458,7 @@ export interface WeekTargetDay {
   date: string;
   heading: string;
   lines: TargetLine[];
+  note?: string;
 }
 
 export function thisWeekTargets(asOf: string): WeekTargetDay[] {
@@ -453,10 +469,21 @@ export function thisWeekTargets(asOf: string): WeekTargetDay[] {
     if (date === TEST_BACKUP_DATE) continue;
     const isTest = date === TEST_DAY || testWeekRole(date) === 'test';
     const mapped = calendarTemplateDay(date);
-    if (!isTest && mapped === 'rest') continue;
+    if (!isTest && mapped === 'rest') {
+      if (isRecoveryWeek(date)) {
+        days.push({
+          date,
+          heading: `${weekdayName(date)} ${dayMonth(date)}${date === '2026-10-26' ? ' · skipped' : ' · rest'}`,
+          lines: [],
+          note: RECOVERY_DAILY_NOTE,
+        });
+      }
+      continue;
+    }
     const template = dayTemplateForDate(isTest ? 'A' : mapped === 'rest' ? 'A' : mapped, date);
+    const recovery = isRecoveryWeek(date);
     const lines = template.slots
-      .filter((slot) => slot.role === 'T1')
+      .filter((slot) => recovery || slot.role === 'T1')
       .map((slot) => {
         const summary = plannedLiftSummary(slot);
         const work = slot.sets.filter((set) => !set.warmup);
@@ -470,12 +497,13 @@ export function thisWeekTargets(asOf: string): WeekTargetDay[] {
       date,
       heading: `${weekdayName(date)} ${dayMonth(date)}`,
       lines,
+      ...(recovery ? { note: RECOVERY_RULE } : {}),
     });
   }
   return days;
 }
 
-export type TimelineBadge = 'plan' | 'current' | 'deload' | 'gap';
+export type TimelineBadge = 'plan' | 'current' | 'deload' | 'gap' | 'recovery';
 
 export interface TimelineDay {
   label: string;
@@ -556,6 +584,7 @@ export function dashboardTimeline(asOf: string): TimelineWeek[] {
       const isTestWeek = cursor === mondayOnOrBefore(TEST_DAY);
       const current = today >= cursor && today <= (weekEnd < window.end ? weekEnd : window.end);
       const deload = isPlannedDeload(window.block, index);
+      const recovery = window.block === 'B' && index === 4;
       const phase = previewPhaseLabel(getMesocycleContext(cursor).phase ?? window.defaultPhase);
       let id = `${window.block}${index}`;
       let badge: string = phase;
@@ -566,6 +595,11 @@ export function dashboardTimeline(asOf: string): TimelineWeek[] {
         badge = 'Deload';
         badgeKind = 'deload';
         note = 'From this Monday. Top sets at RPE 5–6.';
+      }
+      if (recovery) {
+        badge = 'Recovery';
+        badgeKind = 'recovery';
+        note = `${RECOVERY_RULE} ${RECOVERY_DAILY_NOTE} Monday is skipped, walk only — not a missed session.`;
       }
       if (window.block === 'C' && index === 2) {
         note = 'Progression is frozen. Non-T1 slots drop off.';
@@ -588,7 +622,7 @@ export function dashboardTimeline(asOf: string): TimelineWeek[] {
         id,
         title: isTestWeek ? formatWeekRange(cursor, addCalendarDays(cursor, 6)) : formatWeekRange(cursor, weekEnd > window.end ? window.end : weekEnd),
         badge: current && !isTestWeek ? 'This week' : badge,
-        badgeKind: current ? (deload ? 'deload' : 'current') : badgeKind,
+        badgeKind: current ? (recovery ? 'recovery' : deload ? 'deload' : 'current') : badgeKind,
         note,
         days: current ? weekDays(cursor, today) : null,
         lines,
@@ -628,5 +662,6 @@ export function dashboardPhaseLabel(asOf: string): string {
   }
   const phase = previewPhaseLabel(meso.phase);
   const deload = isPlannedDeload(meso.block, meso.weekIndex) ? ' · deload' : '';
-  return `Block ${meso.block} · week ${meso.weekIndex} · ${phase}${deload}`;
+  const recovery = isRecoveryWeek(asOf) ? ' · recovery' : '';
+  return `Block ${meso.block} · week ${meso.weekIndex} · ${phase}${deload}${recovery}`;
 }

@@ -7,6 +7,7 @@ import {
 } from '../data/templates';
 import type { ExerciseId } from '../types/exercises';
 import type { CanonicalTemplateDay, SessionLog, TemplateDay } from '../types/session';
+import { countsTowardTrainingMax } from '../types/session';
 import {
   BLOCK_B_TRAINING_MAXES,
   SEED_TRAINING_MAXES,
@@ -63,10 +64,12 @@ export const HOLD_RPE_ABOVE = 8.5;
 const WORK_RPE = 8;
 const BACKOFF_RPE = 7;
 
-const DELOAD_NOTE = 'Deload. RPE 5–6.';
-
+/**
+ * Block A week 4 only. Block B week 4 is the back-strain recovery week
+ * (`recoveryWeek.ts`), not this deload. Week index 5 has no row.
+ */
 export function isPlannedDeload(block: MesocycleBlock, weekIndex: number): boolean {
-  return (block === 'A' || block === 'B') && weekIndex === 4;
+  return block === 'A' && weekIndex === 4;
 }
 
 /** C2 drops every non-T1 slot. C1 keeps accessories at two sets. No separate T2/T3 tag. */
@@ -167,6 +170,7 @@ export function topSetRpeInWeek(
         Boolean(date) &&
         date >= start &&
         date <= end &&
+        countsTowardTrainingMax(log) &&
         sameTemplateDay(log.template_day, day)
       );
     })
@@ -196,12 +200,6 @@ const BLOCK_B_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Presc
     B: uniform(47.5, 3, 2),
     C: uniform(82.5, 3, 2),
     D: uniform(42.5, 3, 3),
-  },
-  4: {
-    A: deload(47.5, 2, 4),
-    B: deload(32.5, 2, 5),
-    C: deload(57.5, 2, 3),
-    D: deload(32.5, 2, 5),
   },
 };
 
@@ -265,7 +263,9 @@ export function volumeSlotsFor(
 
 /**
  * B1–B3 accessories gain one set (seed 3 → 4, optionals 2 → 3) at RPE 7.
- * B4 and C1 keep the first two seed sets and their seed RPEs.
+ * C1 keeps the first two seed sets and their seed RPEs.
+ * A direct call for Block B week 4 still keeps two seed sets. The product
+ * week does not use that path: B4 is the recovery template.
  * Other weeks return the slot unchanged. Kilograms and reps stay on the seed.
  */
 export function accessorySlotForWeek(
@@ -430,7 +430,13 @@ function latestSlotLift(
   const rows = logs
     .filter((log) => {
       const date = calendarYmd(log.date);
-      return Boolean(date) && date >= start && date <= end && sameTemplateDay(log.template_day, day);
+      return (
+        Boolean(date) &&
+        date >= start &&
+        date <= end &&
+        countsTowardTrainingMax(log) &&
+        sameTemplateDay(log.template_day, day)
+      );
     })
     .sort((a, b) => (calendarYmd(b.date) ?? '').localeCompare(calendarYmd(a.date) ?? ''));
   return rows[0]?.lifts.find((row) => row.slot_id === slotId || row.exercise_id === exerciseId);
@@ -561,17 +567,6 @@ function uniform(weight_kg: number, set_count: number, reps: number): T1Prescrip
     set_count,
     reps,
     rpe: Array.from({ length: set_count }, () => WORK_RPE),
-  };
-}
-
-function deload(weight_kg: number, set_count: number, reps: number): T1Prescription {
-  return {
-    weight_kg,
-    set_count,
-    reps,
-    rpe: [5, 6],
-    rpe_label: '5–6',
-    note: DELOAD_NOTE,
   };
 }
 

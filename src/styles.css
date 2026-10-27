@@ -1247,9 +1247,27 @@ button {
   border-color: rgba(61, 204, 122, 0.45);
 }
 
-.block-badge.deload {
+.block-badge.deload,
+.block-badge.recovery {
   color: var(--yellow);
   border-color: rgba(230, 195, 74, 0.55);
+}
+
+.recovery-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(230, 195, 74, 0.55);
+  border-radius: 12px;
+  background: rgba(230, 195, 74, 0.08);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.recovery-callout p {
+  margin: 0;
 }
 
 .block-week-chevron {
@@ -1542,7 +1560,8 @@ button {
   border-color: var(--amber-dim);
 }
 
-.dash-tag.deload {
+.dash-tag.deload,
+.dash-tag.recovery {
   color: var(--yellow);
   border-color: rgba(230, 195, 74, 0.55);
 }
@@ -1704,6 +1723,11 @@ button {
 .dash-quad span.now {
   border-color: var(--amber);
   color: var(--text);
+}
+
+.dash-quad span.rest {
+  opacity: 0.45;
+  border-style: dashed;
 }
 
 .dash-light {

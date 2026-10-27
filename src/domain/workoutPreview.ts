@@ -22,6 +22,8 @@ export interface PlannedSetLine {
   rpe_label?: string;
   part_label?: string;
   weight_label?: string;
+  /** Programmed load is blank. Linda types the dumbbell. */
+  open_load?: boolean;
   amrap: boolean;
   rest_sec: number;
   warmup: boolean;
@@ -186,6 +188,7 @@ export function plannedLiftSummary(slot: TemplateSlot): PlannedLiftSummary {
       ...(set.rpe_label ? { rpe_label: set.rpe_label } : {}),
       ...(set.part_label ? { part_label: set.part_label } : {}),
       ...(set.weight_label ? { weight_label: set.weight_label } : {}),
+      ...(set.open_load ? { open_load: true } : {}),
       amrap: Boolean(set.amrap),
       rest_sec: set.rest_sec,
       warmup: isWarmupSet(set),
@@ -224,5 +227,6 @@ export function shouldOfferHomeWeek1Restore(
   preview: readonly Pick<PlannedLiftPreview, 'role' | 'last'>[],
 ): boolean {
   const t1 = preview.find((row) => row.role === 'T1');
-  return t1 == null || t1.last == null;
+  if (!t1) return false;
+  return t1.last == null;
 }

@@ -194,6 +194,7 @@ export function DashboardScreen({
                     <strong>{line.name}</strong> {line.load}
                   </p>
                 ))}
+                {day.note ? <p className="dash-note">{day.note}</p> : null}
               </li>
             ))}
           </ul>
@@ -235,7 +236,16 @@ export function DashboardScreen({
             {(['A', 'B', 'C', 'D'] as const).map((letter) => (
               <span
                 key={letter}
-                className={completion.days[letter] ? 'done' : todayLetter === letter ? 'now' : ''}
+                title={completion.rest[letter] ? 'Rest' : undefined}
+                className={
+                  completion.rest[letter]
+                    ? 'rest'
+                    : completion.days[letter]
+                      ? 'done'
+                      : todayLetter === letter
+                        ? 'now'
+                        : ''
+                }
               >
                 {letter}
               </span>

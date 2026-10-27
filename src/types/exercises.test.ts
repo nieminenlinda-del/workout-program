@@ -62,6 +62,9 @@ const REQUIRED_ACCESSORIES = [
   'cable_rope_pushdown',
   'bench_close_grip',
   'bench_db_single',
+  'press_db_seated_single',
+  'row_db_chest_single',
+  'bird_dog',
 ];
 
 describe('exercise catalog', () => {

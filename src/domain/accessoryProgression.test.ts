@@ -162,10 +162,7 @@ describe('accessory double progression', () => {
 
     const lunge = loggedAccessory('A', '2026-10-19', 'reverse_lunge', fill(4, 12, 7));
     const b4 = dayTemplateForDate('A', '2026-10-26', { logs: [lunge], hold: true });
-    expect(b4.slots.find((slot) => slot.slot_id === 'a-leg')?.sets.map((set) => [set.weight_kg, set.reps])).toEqual([
-      [37.5, 8],
-      [37.5, 8],
-    ]);
+    expect(b4.slots.some((slot) => slot.exercise_id === 'reverse_lunge')).toBe(false);
     const c1 = dayTemplateForDate('C', '2026-11-05', {
       logs: [loggedAccessory('C', '2026-10-22', 'rdl', fill(4, 12, 6))],
       hold: true,
@@ -177,28 +174,20 @@ describe('accessory double progression', () => {
     expect(c1.slots.find((slot) => slot.slot_id === 'c-hinge')?.note).toBeUndefined();
   });
 
-  it('clamps B1–B3 targets into the range and leaves the B4 seed reps alone', () => {
+  it('clamps B1–B3 targets into the range', () => {
     const press = dayTemplateForDate('B', '2026-10-06').slots.find((slot) => slot.slot_id === 'b-press');
     expect(press?.sets.map((set) => set.reps)).toEqual([8, 8, 8, 8]);
     expect(press?.sets[0]?.weight_kg).toBe(25);
-    expect(dayTemplateForDate('B', '2026-10-27').slots.find((slot) => slot.slot_id === 'b-press')?.sets.map((set) => set.reps)).toEqual([
-      6, 6,
-    ]);
 
     expect(
       dayTemplateForDate('B', '2026-10-06').slots.find((slot) => slot.slot_id === 'b-upper')?.sets[0]?.reps,
     ).toBe(12);
-    expect(
-      dayTemplateForDate('B', '2026-10-27').slots.find((slot) => slot.slot_id === 'b-upper')?.sets[0]?.reps,
-    ).toBe(15);
 
     const pull = dayTemplateForDate('D', '2026-10-09').slots.find((slot) => slot.slot_id === 'd-pull');
     expect(pull?.sets.map((set) => set.reps)).toEqual([8, 8, 8, 8]);
     expect(pull?.sets.every((set) => set.amrap)).toBe(true);
-    expect(dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-pull')?.sets[0]?.reps).toBe(6);
 
     expect(dayTemplateForDate('C', '2026-10-08').slots.find((slot) => slot.slot_id === 'c-core')?.sets[0]?.reps).toBe(30);
-    expect(dayTemplateForDate('C', '2026-10-29').slots.find((slot) => slot.slot_id === 'c-core')?.sets[0]?.reps).toBe(20);
   });
 
   it('steps a cable accessory by one plate and an assisted cable by taking a plate off', () => {

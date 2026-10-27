@@ -6,6 +6,7 @@ type WeightReps = {
   reps: number;
   target_weight_kg?: number;
   target_reps?: number;
+  open_load?: boolean;
 };
 
 /** Snapshot programmed kg/reps onto the set if they are not already stored. */
@@ -47,13 +48,10 @@ export function formatPlanLoad(
   timed = false,
   assisted = false,
 ): string {
-  return formatLoadReps(
-    prescriptionWeightKg(set),
-    prescriptionReps(set),
-    set.amrap,
-    timed,
-    assisted,
-  );
+  const reps = prescriptionReps(set);
+  const count = timed ? `${reps}s` : `${reps}${set.amrap ? '+' : ''}`;
+  if (set.open_load && !(prescriptionWeightKg(set) > 0)) return `enter kg × ${count}`;
+  return formatLoadReps(prescriptionWeightKg(set), reps, set.amrap, timed, assisted);
 }
 
 export function formatLoggedLoad(
@@ -66,5 +64,6 @@ export function formatLoggedLoad(
 
 export function loggedDiffersFromPlan(set: LoggedSet): boolean {
   if (!set.completed) return false;
+  if (set.open_load && !(prescriptionWeightKg(set) > 0)) return false;
   return prescriptionWeightKg(set) !== set.weight_kg || prescriptionReps(set) !== set.reps;
 }

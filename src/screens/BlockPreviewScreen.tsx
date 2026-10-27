@@ -61,6 +61,7 @@ function WeekCard({ week }: { week: BlockPreviewWeek }) {
             <span className="block-badges">
               {week.current ? <span className="block-badge current">This week</span> : null}
               {week.deload ? <span className="block-badge deload">Deload</span> : null}
+              {week.recovery ? <span className="block-badge recovery">Recovery</span> : null}
               {week.projected ? <span className="block-badge projected">Projected</span> : null}
               {week.completed ? <span className="block-badge logged">Logged</span> : null}
             </span>
@@ -94,6 +95,11 @@ function SessionCard({ session }: { session: BlockPreviewSession }) {
       {session.frozen && session.kind === 'train' ? (
         <p className="muted block-note">Frozen. Weight stays on the weekly target.</p>
       ) : null}
+      {session.notes.map((note) => (
+        <p key={note} className="block-note">
+          {note}
+        </p>
+      ))}
       {session.testNote ? <p className="block-note">{session.testNote}</p> : null}
       {session.exercises.length > 0 ? (
         <ul className="block-exercises">

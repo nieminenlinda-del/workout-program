@@ -49,6 +49,9 @@ export const ACCESSORY_EXERCISE_IDS = [
   'cable_rope_pushdown',
   'bench_close_grip',
   'bench_db_single',
+  'press_db_seated_single',
+  'row_db_chest_single',
+  'bird_dog',
 ] as const;
 
 export const EXERCISE_IDS = [
@@ -357,6 +360,27 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     role: 'accessory',
     pattern: 'bench',
     equipment: 'dumbbells',
+  },
+  press_db_seated_single: {
+    id: 'press_db_seated_single',
+    name: 'Seated single-arm DB press',
+    role: 'accessory',
+    pattern: 'press',
+    equipment: 'dumbbells',
+  },
+  row_db_chest_single: {
+    id: 'row_db_chest_single',
+    name: 'Chest-supported single-arm DB row',
+    role: 'accessory',
+    pattern: 'row',
+    equipment: 'dumbbells',
+  },
+  bird_dog: {
+    id: 'bird_dog',
+    name: 'Bird dog',
+    role: 'accessory',
+    pattern: 'core',
+    equipment: 'bodyweight',
   },
 };
 

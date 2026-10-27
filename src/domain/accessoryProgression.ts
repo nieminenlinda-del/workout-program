@@ -10,7 +10,8 @@ import {
  * Block B and Block C accessory starting loads.
  * Edit this table when Kraft sends the B1 numbers (before Mon 5 Oct).
  * Block A stays on the inline sets in `src/data/templates.ts`.
- * B4 and C1 copy this table and stop there (2 sets, no double progression).
+ * C1 copies this table and stops there (2 sets, no double progression).
+ * B4 is the recovery week and does not use this table.
  * B1–B3 Today walks logs on top of these seeds.
  */
 export const ACCESSORY_SEED_LOADS: Record<string, { weight_kg: number; reps: number }> = {

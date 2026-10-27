@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import type { LoggedLift, SessionDraft, SessionLog } from '../types/session';
+import { countsTowardTrainingMax, type LoggedLift, type SessionDraft, type SessionLog } from '../types/session';
 import { isAssistedLoad, isTimedHold, type ExerciseId } from '../types/exercises';
 import { exerciseName, type DayTemplate } from '../data/templates';
 import { canonicalTemplateDay } from '../domain/templateDay';
+import { RecoveryCallout } from '../components/RecoveryCallout';
 import { dayTemplateForDate } from '../domain/programWeek';
 import { completedSetCount, isBarbellSquatId, setSquatBarPosition, swapLiftExercise } from '../domain/sessionFactory';
 import { effectiveBarPosition } from '../domain/dashboard';
@@ -106,6 +107,7 @@ export function WorkoutScreen({
           <LightBadge light={draft.readiness.light} />
         </header>
 
+        <RecoveryCallout date={draft.date} day={day} />
         <div className="workout-chrome">
           <div className="progress-line" aria-label={`${progress.done} of ${progress.total} sets`}>
             <div className="progress-bar" style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }} />
@@ -135,13 +137,15 @@ export function WorkoutScreen({
         const workingKg = unloggedWork[0]
           ? prescriptionWeightKg(unloggedWork[0])
           : (work[work.length - 1]?.weight_kg ?? 0);
-        const jumpHint = inSessionJumpHint(
-          lift.exercise_id,
-          workingKg,
-          unloggedWork[0]?.reps ?? work[work.length - 1]?.reps ?? 0,
-          work.filter((set) => set.completed).map((set) => set.rpe),
-          unloggedWork.length,
-        );
+        const jumpHint = countsTowardTrainingMax(draft)
+          ? inSessionJumpHint(
+              lift.exercise_id,
+              workingKg,
+              unloggedWork[0]?.reps ?? work[work.length - 1]?.reps ?? 0,
+              work.filter((set) => set.completed).map((set) => set.rpe),
+              unloggedWork.length,
+            )
+          : null;
         return (
           <section key={`${lift.exercise_id}-${liftIndex}`} className={`card lift-card ${expanded ? 'open' : ''}`}>
             <button

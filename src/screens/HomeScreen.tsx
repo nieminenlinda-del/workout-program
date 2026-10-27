@@ -4,7 +4,9 @@ import { WorkoutPreview } from '../components/WorkoutPreview';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { DAY_TEMPLATES } from '../data/templates';
 import { trainingMaxesForBlock } from '../domain/cyclePlan';
-import { blockWeekContext, dayTemplateForDate, isDeloadWeek } from '../domain/programWeek';
+import { blockWeekContext, dayTemplateForDate, isDeloadWeek, isRecoveryWeek } from '../domain/programWeek';
+import { RECOVERY_PICKER_NAMES } from '../domain/recoveryWeek';
+import { RecoveryCallout } from '../components/RecoveryCallout';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
 import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
@@ -83,7 +85,8 @@ export function HomeScreen({
           >
             Block {meso.block} · {meso.phase.replaceAll('_', ' ')}
             {meso.weekIndex ? ` · week ${meso.weekIndex}` : ''}
-            {isDeloadWeek(date) ? ' · deload' : ''} ·{' '}
+            {isDeloadWeek(date) ? ' · deload' : ''}
+            {isRecoveryWeek(date) ? ' · recovery' : ''} ·{' '}
             {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>
@@ -110,23 +113,36 @@ export function HomeScreen({
             <button type="button" className="btn btn-primary" onClick={onResume}>
               Resume
             </button>
-            <button type="button" className="btn btn-ghost" onClick={onStart}>
-              New {template.weekday} session
-            </button>
+            {planned.slots.length > 0 ? (
+              <button type="button" className="btn btn-ghost" onClick={onStart}>
+                New {template.weekday} session
+              </button>
+            ) : null}
           </div>
         </section>
       ) : null}
 
       <section className="card">
         <p className="kicker">Template day</p>
-        <TemplatePicker value={templateDay} onChange={onTemplateDay} />
+        <TemplatePicker
+          value={templateDay}
+          onChange={onTemplateDay}
+          names={isRecoveryWeek(date) ? RECOVERY_PICKER_NAMES : undefined}
+        />
         <h2 className="template-heading">{planned.title}</h2>
         <p className="muted">{planned.focus}</p>
-        <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
+        <RecoveryCallout date={date} day={templateDay} />
+        {planned.slots.length > 0 ? (
+          <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
+        ) : (
+          <p className="muted">Nothing to log. Walk only.</p>
+        )}
         {recoveryCard}
-        <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
-          {draft ? 'Replace draft & start' : 'Start session'}
-        </button>
+        {planned.slots.length > 0 ? (
+          <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
+            {draft ? 'Replace draft & start' : 'Start session'}
+          </button>
+        ) : null}
       </section>
 
       <button type="button" className="btn btn-ghost btn-block" onClick={onBlockPreview}>

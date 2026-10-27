@@ -28,6 +28,7 @@ export function asSessionLog(row: SessionDraft | SessionLog): SessionLog {
     ...(row.pain_area ? { pain_area: row.pain_area } : {}),
     ...(row.pain_note ? { pain_note: row.pain_note } : {}),
     notes: row.notes,
+    ...(row.counts_toward_tm === false ? { counts_toward_tm: false as const } : {}),
   };
 }
 

@@ -60,6 +60,11 @@ export interface LoggedSet {
   part_label?: string;
   /** Planned range such as `77.5–80`. Logging still stores a number on `weight_kg`. */
   weight_label?: string;
+  /**
+   * No programmed load. `weight_kg` stays 0 until Linda types the dumbbell.
+   * Older logs omit it.
+   */
+  open_load?: boolean;
 }
 
 export interface LoggedLift {
@@ -93,6 +98,17 @@ export interface SessionLog {
   /** Short note for `pain_area`. Older logs omit it. */
   pain_note?: string;
   notes: string;
+  /**
+   * When `false`, the session is logged but does not feed training-max
+   * autoregulation (e1RM, hard sets, Block B hold, accessory progression).
+   * Missing on older logs — those still count.
+   */
+  counts_toward_tm?: boolean;
+}
+
+/** Recovery week sets this false. Older logs omit it and still count. */
+export function countsTowardTrainingMax(session: { counts_toward_tm?: boolean }): boolean {
+  return session.counts_toward_tm !== false;
 }
 
 export interface SessionDraft extends SessionLog {

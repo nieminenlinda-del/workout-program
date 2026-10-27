@@ -31,6 +31,7 @@ import {
   type T1Prescription,
   type VariationLog,
 } from './cyclePlan';
+import { recoveryTemplateFor } from './recoveryWeek';
 import { calendarYmd } from './lastPerformance';
 import { isProgressionFrozen } from './testWeek';
 
@@ -153,16 +154,22 @@ function blockATableWeek(weekIndex: number): BlockAT1Week {
   return 3;
 }
 
-/** Block A Week 4 (28 Sep–4 Oct 2026). Block B week 4 is a separate deload. */
+/** Block A Week 4 (28 Sep–4 Oct 2026). Block B week 4 is the recovery week. */
 export function isBlockADeloadWeek(asOf: string): boolean {
   const ctx = blockWeekContext(asOf);
   return ctx?.block === 'A' && ctx.weekIndex === 4;
 }
 
-/** Block A week 4 and Block B week 4. */
+/** Block A week 4. Block B week 4 is the recovery week, not a deload. */
 export function isDeloadWeek(asOf: string): boolean {
   const ctx = blockWeekContext(asOf);
   return Boolean(ctx && isPlannedDeload(ctx.block, ctx.weekIndex));
+}
+
+/** Block B week 4 only (Mon 26 Oct–Sun 1 Nov 2026). Not Block A week 4, not C1. */
+export function isRecoveryWeek(asOf: string): boolean {
+  const ctx = blockWeekContext(asOf);
+  return ctx?.block === 'B' && ctx.weekIndex === 4;
 }
 
 export interface ProgramWeekOptions {
@@ -194,6 +201,7 @@ export function t1PrescriptionFor(
  * B1–B3 also swap Day A's RDL for a paused deadlift, move that RDL to Day D,
  * and run accessory double progression on Today.
  * B2–B3 append a single-arm DB press on Day B and a single-arm DB row on Day D.
+ * Block B week 4 replaces the whole day with the recovery template.
  */
 export function applyProgramWeek(
   template: DayTemplate,
@@ -202,6 +210,7 @@ export function applyProgramWeek(
 ): DayTemplate {
   const override = templateOverrideForDate(asOf, options.testDate);
   if (override) return override;
+  if (isRecoveryWeek(asOf)) return recoveryTemplateFor(template.id);
 
   const rx = t1PrescriptionFor(template.id, asOf);
   if (!rx) return template;
@@ -360,7 +369,8 @@ function variationTargets(day: CanonicalTemplateDay): VariationTarget[] {
 
 /**
  * Today only, B1–B3. Each accessory's next session follows Kraft's double
- * progression from the seed table. B4 and Block C keep that seed (2 sets).
+ * progression from the seed table. Block C keeps that seed (2 sets).
+ * B4 is the recovery template and does not run this walk.
  * Block preview leaves `hold` off, so future weeks stay on the seed.
  */
 function applyAccessoryProgress(

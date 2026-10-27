@@ -121,6 +121,7 @@ function asSet(value: unknown, label: string): LoggedSet {
   if (typeof row.rpe_label === 'string' && row.rpe_label) set.rpe_label = row.rpe_label;
   if (typeof row.part_label === 'string' && row.part_label) set.part_label = row.part_label;
   if (typeof row.weight_label === 'string' && row.weight_label) set.weight_label = row.weight_label;
+  if (row.open_load === true) set.open_load = true;
   return set;
 }
 
@@ -193,6 +194,7 @@ function asSession(value: unknown, label: string): SessionDraft {
     ...(isPainArea(row.pain_area) ? { pain_area: row.pain_area } : {}),
     ...(typeof row.pain_note === 'string' ? { pain_note: row.pain_note } : {}),
     notes: typeof row.notes === 'string' ? row.notes : '',
+    ...(row.counts_toward_tm === false ? { counts_toward_tm: false as const } : {}),
     status: 'complete',
     updated_at:
       typeof row.updated_at === 'string' && row.updated_at

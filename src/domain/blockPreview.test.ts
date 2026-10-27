@@ -72,7 +72,8 @@ describe('block preview phases and weeks', () => {
       current: false,
       projected: true,
     });
-    expect(weeks.find((week) => week.id === 'B-4')?.deload).toBe(true);
+    expect(weeks.find((week) => week.id === 'B-4')?.deload).toBe(false);
+    expect(weeks.find((week) => week.id === 'B-4')?.recovery).toBe(true);
     expect(weeks.find((week) => week.id === 'B-1')?.deload).toBe(false);
     expect(weeks.find((week) => week.id === 'B-1')?.phaseLabel).toBe('Strength');
     expect(weeks.at(-1)).toMatchObject({

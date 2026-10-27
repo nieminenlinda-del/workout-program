@@ -56,7 +56,8 @@ describe('Block preview screen', () => {
     expect(weeks[1]?.textContent).toContain('RPE 5–6');
     expect(weeks[1]?.textContent).toContain('55 kg · 2 × 5');
     expect(weeks[0]?.textContent).not.toContain('Deload');
-    expect(weeks.filter((week) => week.textContent?.includes('Deload'))).toHaveLength(2);
+    expect(weeks.filter((week) => week.textContent?.includes('Deload'))).toHaveLength(1);
+    expect(container.textContent).toContain('Recovery');
     expect(weeks[1]?.textContent).toContain('Projected');
     expect(container.textContent).toContain('Fri 20 Nov');
     expect(container.textContent).toContain('Fri 20 Nov · 1RM test');

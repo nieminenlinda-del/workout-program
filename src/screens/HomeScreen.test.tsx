@@ -187,6 +187,32 @@ describe('HomeScreen Block A week chip and T1 preview', () => {
     expect(container.textContent).toContain('72.5 kg · 3 × 3');
   });
 
+  it('on Tue 27 Oct shows recovery Day B, and Day D is the empty-bar session', () => {
+    const today = mount(<HomeScreen {...homeProps({ date: '2026-10-27', templateDay: 'B' })} />);
+    nodes.push(today);
+    expect(today.container.textContent).toContain('Recovery · press and pull');
+    expect(today.container.textContent).toContain('Seated single-arm DB press');
+    expect(today.container.textContent).toContain('Chest-supported single-arm DB row');
+    expect(today.container.textContent).toContain('15–20 kg assist · 3 × 6–8');
+    expect(today.container.textContent).toContain('Bird dog');
+    expect(today.container.textContent).toContain(
+      'Recovery week: pain-free only, RPE ≤6. No squats, RDLs, hip thrusts, planks or barbell bench this week.',
+    );
+    expect(today.container.textContent).toContain('Walk + 5–10 min mobility.');
+    expect(today.container.textContent).toMatch(/week 4/);
+    expect(today.container.textContent).toMatch(/recovery/);
+    expect(today.container.textContent).not.toMatch(/deload/i);
+    expect(today.container.textContent).not.toContain('Low-bar squat');
+    expect(today.container.textContent).not.toContain(RESTORE_WEEK1_TITLE_EMPTY);
+
+    const friday = mount(<HomeScreen {...homeProps({ date: '2026-10-27', templateDay: 'D' })} />);
+    nodes.push(friday);
+    expect(friday.container.textContent).toContain('Empty-bar deadlift');
+    expect(friday.container.textContent).toContain('20 kg · 3 × 5');
+    expect(friday.container.textContent).toContain('slow 3 s up, soft lockout, 360° brace, no belt, film side-on, only if bending is near normal');
+    expect(friday.container.textContent).toContain("If bending isn't OK: repeat Tuesday's session instead.");
+  });
+
   it('on Mon 28 Sep shows the week 4 deload squat 45 × 2×5 @ RPE 5–6', () => {
     const { container, root } = mount(
       <HomeScreen {...homeProps({ date: '2026-09-28', templateDay: 'A' })} />,

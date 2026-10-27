@@ -79,19 +79,13 @@ describe('Block B and C planned T1s', () => {
     expect(t1PrescriptionFor('D', '2026-10-23')).toMatchObject({ weight_kg: 42.5, set_count: 3, reps: 3 });
   });
 
-  it('B4 week of 26 Oct is a deload at RPE 5–6', () => {
+  it('B4 week of 26 Oct has no T1 row — the recovery template replaces the deload', () => {
     expect(getMesocycleContext('2026-10-26').weekIndex).toBe(4);
-    expect(t1PrescriptionFor('A', '2026-10-26')).toMatchObject({
-      weight_kg: 47.5,
-      set_count: 2,
-      reps: 4,
-      rpe_label: '5–6',
-      note: 'Deload. RPE 5–6.',
-    });
-    expect(t1PrescriptionFor('B', '2026-10-27')).toMatchObject({ weight_kg: 32.5, set_count: 2, reps: 5 });
-    expect(t1PrescriptionFor('C', '2026-10-29')).toMatchObject({ weight_kg: 57.5, set_count: 2, reps: 3 });
-    expect(t1PrescriptionFor('D', '2026-10-30')).toMatchObject({ weight_kg: 32.5, set_count: 2, reps: 5 });
-    expect(labels('2026-10-26', 'A')[0]).toBe('47.5 kg · 2 × 4');
+    expect(t1PrescriptionFor('A', '2026-10-26')).toBeNull();
+    expect(t1PrescriptionFor('B', '2026-10-27')).toBeNull();
+    expect(t1PrescriptionFor('C', '2026-10-29')).toBeNull();
+    expect(t1PrescriptionFor('D', '2026-10-30')).toBeNull();
+    expect(labels('2026-10-27', 'B')[0]).toBe('enter kg · 3 × 10 / arm');
   });
 
   it('C1 week of 2 Nov keeps the capped top sets, adds one back-off, and brings accessories back at 2 sets', () => {
@@ -168,12 +162,12 @@ describe('Block B hold rule', () => {
     expect(week?.sessions[0]?.exercises[0]?.note ?? '').not.toMatch(/Held/);
   });
 
-  it('does not undo the B4 deload when the previous top set was heavy', () => {
-    const heavyB3 = loggedTop('A', '2026-10-19', 9);
-    expect(plannedDayPreview(DAY_TEMPLATES.A, [heavyB3], '2026-10-26')[0]?.workLabel).toBe(
-      '47.5 kg · 2 × 4',
-    );
-    expect(plannedDayPreview(DAY_TEMPLATES.A, [heavyB3], '2026-10-26')[0]?.note).toBe('Deload. RPE 5–6.');
+  it('does not let a heavy B3 top set rewrite the B4 recovery day', () => {
+    const heavyB3 = loggedTop('B', '2026-10-20', 9);
+    const today = plannedDayPreview(DAY_TEMPLATES.B, [heavyB3], '2026-10-27');
+    expect(today[0]?.workLabel).toBe('enter kg · 3 × 10 / arm');
+    expect(today[0]?.note).toBe('Per arm.');
+    expect(today.some((row) => row.name === 'Bench press')).toBe(false);
   });
 
   it('ignores the hold on frozen C2 and test week', () => {
@@ -196,11 +190,10 @@ describe('Block B hold rule', () => {
   it('treats a heavier or tighter plan as a step up and a lighter plan as not', () => {
     const b1 = t1PrescriptionFor('A', '2026-10-05');
     const b2 = t1PrescriptionFor('A', '2026-10-12');
-    const b4 = t1PrescriptionFor('A', '2026-10-26');
     const d1 = t1PrescriptionFor('D', '2026-10-09');
     const d2 = t1PrescriptionFor('D', '2026-10-16');
     expect(b1 && b2 && isStepUp(b2, b1)).toBe(true);
-    expect(b2 && b4 && isStepUp(b4, b2)).toBe(false);
+    expect(b1 && b2 && isStepUp({ ...b1, weight_kg: 57.5 }, b2)).toBe(false);
     expect(d1 && d2 && isStepUp(d2, d1)).toBe(true);
     expect(
       shouldApplyHold({ frozen: true, block: 'B', steppingUp: true, topRpe: 9 }),
@@ -268,19 +261,13 @@ describe('Block B volume rows', () => {
     expect(draft.lifts[0]?.sets.some((set) => set.warmup)).toBe(true);
   });
 
-  it('B4 drops back-offs and the Day C bench, and keeps two accessory sets', () => {
-    const squat = labels('2026-10-26', 'A');
-    expect(squat[0]).toBe('47.5 kg · 2 × 4');
-    expect(squat.some((row) => row.startsWith('55 kg'))).toBe(false);
-    expect(dayTemplateForDate('A', '2026-10-26').slots[1]?.sets).toHaveLength(2);
-    const deadlift = dayTemplateForDate('C', '2026-10-29');
-    expect(deadlift.slots.map((slot) => slot.displayName ?? slot.exercise_id)).not.toContain(
-      'Bench press · paused',
-    );
-    expect(deadlift.slots.some((slot) => slot.volumeKind === 'backoff')).toBe(false);
-    expect(deadlift.slots.filter((slot) => slot.role !== 'T1').every((slot) => slot.sets.length === 2)).toBe(
-      true,
-    );
+  it('B4 drops back-offs, squats, and the planned bench', () => {
+    const monday = dayTemplateForDate('A', '2026-10-26');
+    expect(monday.slots).toHaveLength(0);
+    const tuesday = dayTemplateForDate('B', '2026-10-27');
+    expect(tuesday.slots.some((slot) => slot.volumeKind === 'backoff')).toBe(false);
+    expect(tuesday.slots.some((slot) => slot.exercise_id === 'bench_regular')).toBe(false);
+    expect(tuesday.slots.some((slot) => slot.exercise_id === 'squat_low_bar')).toBe(false);
   });
 
   it('holds the top sets and leaves that week’s back-off on the listed load', () => {
@@ -453,14 +440,14 @@ describe('Block B main-lift variations', () => {
       loggedVariation('A', '2026-10-19', 'deadlift_paused', [6, 6, 6]),
     ] });
     expect(b4.slots.some((slot) => slot.exercise_id === 'deadlift_paused')).toBe(false);
-    expect(b4.slots.find((slot) => slot.slot_id === 'a-hinge')?.sets).toHaveLength(2);
+    expect(b4.slots).toHaveLength(0);
     expect(dayTemplateForDate('D', '2026-10-30').slots.some((slot) => slot.exercise_id === 'bench_close_grip')).toBe(
       false,
     );
-    expect(dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-tri')?.sets).toHaveLength(2);
-    expect(
-      dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-squat')?.alternatives,
-    ).not.toContain('squat_low_bar_paused');
+    expect(dayTemplateForDate('D', '2026-10-30').slots.some((slot) => slot.exercise_id === 'rdl')).toBe(false);
+    expect(dayTemplateForDate('D', '2026-10-30').slots.some((slot) => slot.exercise_id === 'squat_low_bar')).toBe(
+      false,
+    );
 
     const c1 = dayTemplateForDate('A', '2026-11-02');
     expect(c1.slots.find((slot) => slot.slot_id === 'a-hinge')?.sets.map((set) => [set.weight_kg, set.reps])).toEqual([
@@ -536,7 +523,7 @@ describe('B2–B3 unilateral dumbbell accessories', () => {
     }
   });
 
-  it('leaves B1, the B4 deload, other days, and later blocks unchanged', () => {
+  it('leaves B1, other days, and later blocks without the B2 single-arm slots', () => {
     for (const [day, date] of [
       ['B', '2026-10-06'],
       ['D', '2026-10-09'],
@@ -553,12 +540,10 @@ describe('B2–B3 unilateral dumbbell accessories', () => {
         false,
       );
     }
-    expect(dayTemplateForDate('B', '2026-10-27').slots.find((slot) => slot.slot_id === 'b-press')?.sets).toHaveLength(
-      2,
+    expect(dayTemplateForDate('B', '2026-10-27').slots.some((slot) => slot.exercise_id === 'bench_db_single')).toBe(
+      false,
     );
-    expect(dayTemplateForDate('D', '2026-10-30').slots.find((slot) => slot.slot_id === 'd-curl')?.sets).toHaveLength(
-      2,
-    );
+    expect(dayTemplateForDate('D', '2026-10-30').slots.some((slot) => slot.slot_id === 'd-curl')).toBe(false);
   });
 
   it('keeps B3 at 3×10 per arm after a logged B2', () => {

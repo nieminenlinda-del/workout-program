@@ -8,7 +8,7 @@ import type {
   TemplateDay,
 } from '../types/session';
 import { DEFAULT_READINESS } from '../types/session';
-import { dayTemplateForDate } from './programWeek';
+import { dayTemplateForDate, isRecoveryWeek } from './programWeek';
 import { canonicalTemplateDay, todayIsoDate } from './templateDay';
 import { withComputedLight } from './readiness';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
@@ -40,6 +40,7 @@ export function liftsFromTemplate(
       ...(s.rpe_label ? { rpe_label: s.rpe_label } : {}),
       ...(s.part_label ? { part_label: s.part_label } : {}),
       ...(s.weight_label ? { weight_label: s.weight_label } : {}),
+      ...(s.open_load ? { open_load: true } : {}),
     }));
     return {
       name: slot.displayName ?? meta.name,
@@ -68,6 +69,7 @@ export function createDraftSession(
     pain_flag: false,
     pain_note: '',
     notes: '',
+    ...(isRecoveryWeek(date) ? { counts_toward_tm: false as const } : {}),
     status: 'draft',
     updated_at: new Date().toISOString(),
   };

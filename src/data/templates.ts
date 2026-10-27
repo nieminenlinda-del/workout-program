@@ -11,6 +11,8 @@ export interface SeedSet {
   part_label?: string;
   /** Planned weight when it is a range (`77.5–80`). `weight_kg` is the low end for the logger. */
   weight_label?: string;
+  /** No programmed kg. The logger starts empty so Linda types the dumbbell. */
+  open_load?: boolean;
   amrap?: boolean;
   rest_sec: number;
   warmup?: boolean;

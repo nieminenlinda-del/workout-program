@@ -1,18 +1,17 @@
-import { exerciseName, type TemplateSlot } from '../data/templates';
-import { isAssistedLoad, isTimedHold, type ExerciseId } from '../types/exercises';
+import { type TemplateSlot } from '../data/templates';
+import { isAssistedLoad, isTimedHold } from '../types/exercises';
 import type { CanonicalTemplateDay, SessionLog } from '../types/session';
 import {
   MESOCYCLE_WINDOWS,
   TARGET_TEST_DATE,
-  TEST_LIFT_ORDER,
   type BlockPhase,
   type MesocycleBlock,
-  type TestLift,
 } from '../types/phase2';
 import { calendarYmd, isLoggedWorkSet } from './lastPerformance';
 import { getMesocycleContext } from './phase2Calendar';
-import { isPlannedDeload, templateOverrideForDate } from './cyclePlan';
-import { blockWeekContext, dayTemplateForDate, isRecoveryWeek } from './programWeek';
+import { isPlannedDeload, templateOverrideForDate, TEST_DAY_NOTES } from './cyclePlan';
+import { C1_RETURN_RULE } from './c1ReturnWeek';
+import { blockWeekContext, dayTemplateForDate, isC1ReturnWeek, isRecoveryWeek } from './programWeek';
 import { RECOVERY_SKIPPED_DATE, recoveryNoteLines } from './recoveryWeek';
 import { workSets } from './sets';
 import { calendarTemplateDay, canonicalTemplateDay } from './templateDay';
@@ -42,12 +41,6 @@ export const PREVIEW_PHASE_LABEL: Record<BlockPhase, 'Hypertrophy' | 'Strength' 
   peak_overreach: 'Peak',
   peak_taper: 'Peak',
   test: 'Test',
-};
-
-const TEST_EXERCISE: Record<TestLift, ExerciseId> = {
-  squat: 'squat_low_bar',
-  bench: 'bench_regular',
-  deadlift: 'deadlift_conventional',
 };
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -115,6 +108,8 @@ export interface BlockPreviewWeek {
   deload: boolean;
   /** Block B week 4 back-strain week. */
   recovery: boolean;
+  /** Block C week 1 return-to-load week. */
+  returnWeek: boolean;
   current: boolean;
   /** Every session in the week has a saved log. */
   completed: boolean;
@@ -214,6 +209,7 @@ function finishWeek(draft: WeekDraft, today: string): BlockPreviewWeek {
     phaseLabel: phaseLabelFor(sessions),
     deload: isPlannedDeload(draft.block, draft.weekIndex),
     recovery: draft.block === 'B' && draft.weekIndex === 4,
+    returnWeek: draft.block === 'C' && draft.weekIndex === 1,
     current: todayCtx?.block === draft.block && todayCtx.weekIndex === draft.weekIndex,
     completed: trainingSessions(sessions).length > 0 && trainingSessions(sessions).every((session) => session.completed),
     projected: trainingSessions(sessions).length > 0 && trainingSessions(sessions).every((session) => session.projected),
@@ -291,7 +287,7 @@ function trainSession(
       ? `${weekdayShort(date)} ${formatDayMonth(date)} · ${template.title}`
       : `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
     title: template.title,
-    notes: isRecoveryWeek(date) ? recoveryNoteLines(day) : [],
+    notes: isRecoveryWeek(date) ? recoveryNoteLines(day) : isC1ReturnWeek(date) ? [C1_RETURN_RULE] : [],
     phaseLabel: previewPhaseLabel(meso.phase ?? 'accumulate'),
     projected,
     frozen: Boolean(meso.freezeProgression && !meso.isTestDay),
@@ -316,16 +312,16 @@ function testSession(
     date,
     kind: 'test',
     templateDay: 'test',
-    heading: `${weekdayShort(date)} ${formatDayMonth(date)} · 1RM test`,
-    title: TEST_LIFT_ORDER.map((lift) => exerciseName(TEST_EXERCISE[lift])).join(' → '),
-    notes: [],
+    heading: `${weekdayShort(date)} ${formatDayMonth(date)} · Bench 1RM`,
+    title: template?.title ?? 'Bench 1RM',
+    notes: [...TEST_DAY_NOTES],
     phaseLabel: 'Test',
     projected: date > today,
     frozen: true,
     completed: log != null,
     exercises: summaries.map((summary) => exerciseFromSummary(summary, date > today)),
     testNote:
-      'Planned attempts. Squat, then bench, then deadlift. No accessories. A range is the coach’s window for that attempt, not a single prescribed kilo.',
+      'Bench is the only 1RM. Squat and deadlift are technique singles up to about 65–67.5 kg and 75–80 kg, only if warm-ups are pain-free. They are not recorded as maxes. A bench range is the coach’s window for that attempt, not a single prescribed kilo.',
     logged: log ? loggedLines(log) : [],
   };
 }

@@ -79,6 +79,12 @@ export interface LoggedLift {
   bar_kg?: number;
   /** Low-bar or high-bar on a barbell squat. Omitted on other lifts. */
   bar_position?: BarPosition;
+  /**
+   * When `false`, this lift is logged but does not feed e1RM or hard-set
+   * counts. Missing on older logs — the lift still counts. The session flag
+   * can exclude the whole day.
+   */
+  counts_toward_tm?: boolean;
   sets: LoggedSet[];
 }
 
@@ -106,9 +112,14 @@ export interface SessionLog {
   counts_toward_tm?: boolean;
 }
 
-/** Recovery week sets this false. Older logs omit it and still count. */
+/** Recovery week and C1 set this false. Older logs omit it and still count. */
 export function countsTowardTrainingMax(session: { counts_toward_tm?: boolean }): boolean {
   return session.counts_toward_tm !== false;
+}
+
+/** Technique singles on the bench test set this false. Missing means the lift counts. */
+export function liftCountsTowardTrainingMax(lift: { counts_toward_tm?: boolean }): boolean {
+  return lift.counts_toward_tm !== false;
 }
 
 export interface SessionDraft extends SessionLog {

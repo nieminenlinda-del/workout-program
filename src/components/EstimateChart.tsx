@@ -4,10 +4,10 @@ export interface ChartPoint {
 }
 
 export interface ChartReferences {
-  goalLow: number;
-  goalHigh: number;
+  goalLow?: number;
+  goalHigh?: number;
   tested: number;
-  opener: number;
+  opener?: number;
 }
 
 const W = 354;
@@ -68,7 +68,7 @@ export function EstimateChart({
           </g>
         );
       })}
-      {references ? (
+      {references && references.goalLow != null && references.goalHigh != null ? (
         <rect
           x={LEFT}
           y={yOf(Math.max(references.goalLow, references.goalHigh))}
@@ -87,7 +87,7 @@ export function EstimateChart({
           strokeWidth="1.25"
         />
       ) : null}
-      {references ? (
+      {references && references.opener != null ? (
         <line
           x1={LEFT}
           x2={W - RIGHT}

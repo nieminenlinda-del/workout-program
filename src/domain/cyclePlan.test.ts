@@ -88,27 +88,15 @@ describe('Block B and C planned T1s', () => {
     expect(labels('2026-10-27', 'B')[0]).toBe('enter kg · 3 × 10 / arm');
   });
 
-  it('C1 week of 2 Nov keeps the capped top sets, adds one back-off, and brings accessories back at 2 sets', () => {
-    expect(labels('2026-11-02', 'A').slice(0, 2)).toEqual([
-      '67.5 kg × 1 then 60 kg × 2 × 2',
-      '55 kg · 1 × 5',
-    ]);
-    expect(labels('2026-11-03', 'B').slice(0, 2)).toEqual([
-      '47.5 kg × 1 then 42.5 kg × 2 × 2',
-      '37.5 kg · 1 × 5',
-    ]);
-    expect(labels('2026-11-05', 'C').slice(0, 3)).toEqual([
-      '87.5 kg × 1 then 77.5 kg × 2 × 2',
-      '67.5 kg · 1 × 5',
-      '35 kg · 2 × 5',
-    ]);
-    expect(labels('2026-11-06', 'D')[0]).toBe('40 kg · 2 × 3');
+  it('C1 week of 2 Nov is the return template, with no peak T1 row', () => {
+    expect(t1PrescriptionFor('A', '2026-11-02')).toBeNull();
+    expect(labels('2026-11-02', 'A').slice(0, 2)).toEqual(['45 kg · 3 × 5', '40 kg · 3 × 5']);
+    expect(labels('2026-11-03', 'B')[0]).toBe('47.5 kg × 1 then 42.5 kg × 3 × 4');
+    expect(labels('2026-11-05', 'C').slice(0, 2)).toEqual(['40 kg · 3 × 5', '50 kg · 2 × 5']);
+    expect(labels('2026-11-06', 'D').slice(0, 2)).toEqual(['50 kg · 3 × 5', '40 kg · 3 × 5']);
     const monday = dayTemplateForDate('A', '2026-11-02');
-    expect(monday.slots[0]?.sets.map((set) => set.part_label)).toEqual(['Top', 'B1', 'B2']);
-    expect(monday.slots[1]?.displayName).toBe('Low-bar squat · back-off');
-    expect(monday.slots.filter((slot) => slot.role !== 'T1').every((slot) => slot.sets.length === 2)).toBe(
-      true,
-    );
+    expect(monday.slots[0]?.note).toBe('Slow, controlled.');
+    expect(monday.title).toBe('Return · squat and bench');
     expect(getMesocycleContext('2026-11-02').freezeProgression).toBe(false);
   });
 
@@ -305,22 +293,25 @@ describe('Fri 20 Nov test week', () => {
     expect(labels('2026-11-16', 'B')).toEqual(['52.5 kg · 2 × 2', '37.5 kg · 2 × 2']);
     expect(labels('2026-11-17', 'A')).toEqual(['65 kg · 2 × 2', '40 kg · 2 × 1']);
     expect(dayTemplateForDate('A', '2026-11-20').slots.map((slot) => slot.plan_label)).toEqual([
-      'Planned · 70 / 75 / 77.5–80 kg',
+      'up to 65–67.5 kg · 1',
       'Planned · 50 / 52.5 / 55–57.5 kg',
-      'Planned · 87.5 / 92.5–95 / 97.5–100 kg',
+      'up to 75–80 kg · 1',
     ]);
+    expect(dayTemplateForDate('A', '2026-11-20').slots[0]?.counts_toward_tm).toBe(false);
+    expect(dayTemplateForDate('A', '2026-11-20').slots[1]?.counts_toward_tm).toBeUndefined();
+    expect(dayTemplateForDate('A', '2026-11-20').slots[2]?.counts_toward_tm).toBe(false);
     expect(getMesocycleContext('2026-11-20').isTestDay).toBe(true);
     const week = buildBlockPreview('2026-11-16', [])[0];
     expect(week?.sessions.map((session) => `${session.date} ${session.heading}`)).toEqual([
       '2026-11-16 Mon 16 Nov · Squat + bench',
       '2026-11-17 Tue 17 Nov · Deadlift + bench',
-      '2026-11-20 Fri 20 Nov · 1RM test',
+      '2026-11-20 Fri 20 Nov · Bench 1RM',
     ]);
     expect(week?.sessions[1]?.exercises.map((row) => row.workLabel)).toEqual([
       '65 kg · 2 × 2',
       '40 kg · 2 × 1',
     ]);
-    expect(week?.sessions[2]?.exercises[0]?.workLabel).toBe('Planned · 70 / 75 / 77.5–80 kg');
+    expect(week?.sessions[2]?.exercises[1]?.workLabel).toBe('Planned · 50 / 52.5 / 55–57.5 kg');
   });
 });
 
@@ -450,14 +441,11 @@ describe('Block B main-lift variations', () => {
     );
 
     const c1 = dayTemplateForDate('A', '2026-11-02');
-    expect(c1.slots.find((slot) => slot.slot_id === 'a-hinge')?.sets.map((set) => [set.weight_kg, set.reps])).toEqual([
-      [50, 8],
-      [50, 8],
-    ]);
+    expect(c1.slots.some((slot) => slot.slot_id === 'a-hinge')).toBe(false);
     expect(c1.slots.some((slot) => slot.exercise_id === 'deadlift_paused')).toBe(false);
     const c1Deadlift = dayTemplateForDate('C', '2026-11-05');
-    expect(c1Deadlift.slots.find((slot) => slot.slot_id === 'c-hinge')?.sets).toHaveLength(2);
-    expect(c1Deadlift.slots.find((slot) => slot.slot_id === 'c-paused-bench')?.sets).toHaveLength(2);
+    expect(c1Deadlift.slots.find((slot) => slot.slot_id === 'c1c-dl')?.sets).toHaveLength(3);
+    expect(c1Deadlift.slots.find((slot) => slot.slot_id === 'c1c-paused')?.sets).toHaveLength(3);
     expect(dayTemplateForDate('D', '2026-11-06').slots.some((slot) => slot.exercise_id === 'rdl')).toBe(false);
     expect(dayTemplateForDate('D', '2026-11-06').slots.some((slot) => slot.exercise_id === 'bench_close_grip')).toBe(
       false,

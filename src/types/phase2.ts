@@ -197,7 +197,7 @@ export interface MesocycleContext {
  * Phase 2 engine contract. Implementations must:
  * - consume persisted SessionLog rows
  * - freeze prescription changes when freezeProgression is true
- * - on TEST_DAY prescribe squat → bench → deadlift, nothing else
+ * - on TEST_DAY prescribe a bench 1RM, plus squat and deadlift technique singles that are not maxes
  * - pick rules via progressionRulesFor(training_mode) — do not invent a third mode
  * - freeze TM/load bumps when freezeProgression is true (taper + test)
  *

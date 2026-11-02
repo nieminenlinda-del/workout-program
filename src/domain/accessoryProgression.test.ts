@@ -167,11 +167,12 @@ describe('accessory double progression', () => {
       logs: [loggedAccessory('C', '2026-10-22', 'rdl', fill(4, 12, 6))],
       hold: true,
     });
-    expect(c1.slots.find((slot) => slot.slot_id === 'c-hinge')?.sets.map((set) => [set.weight_kg, set.reps])).toEqual([
-      [40, 8],
-      [40, 8],
+    expect(c1.slots.find((slot) => slot.slot_id === 'c1c-dl')?.sets.map((set) => [set.weight_kg, set.reps])).toEqual([
+      [40, 5],
+      [40, 5],
+      [40, 5],
     ]);
-    expect(c1.slots.find((slot) => slot.slot_id === 'c-hinge')?.note).toBeUndefined();
+    expect(c1.slots.some((slot) => slot.exercise_id === 'rdl')).toBe(false);
   });
 
   it('clamps B1–B3 targets into the range', () => {

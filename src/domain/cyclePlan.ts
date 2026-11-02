@@ -72,7 +72,7 @@ export function isPlannedDeload(block: MesocycleBlock, weekIndex: number): boole
   return block === 'A' && weekIndex === 4;
 }
 
-/** C2 drops every non-T1 slot. C1 keeps accessories at two sets. No separate T2/T3 tag. */
+/** C2 drops every non-T1 slot. C1 is the return template, not this table. No separate T2/T3 tag. */
 export function dropAccessorySlots(block: MesocycleBlock, weekIndex: number): boolean {
   return block === 'C' && weekIndex === 2;
 }
@@ -204,12 +204,6 @@ const BLOCK_B_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Presc
 };
 
 const BLOCK_C_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Prescription>>> = {
-  1: {
-    A: topBackoff(67.5, 1, 60, 2, 2, 'Capped.'),
-    B: topBackoff(47.5, 1, 42.5, 2, 2, 'Capped.'),
-    C: topBackoff(87.5, 1, 77.5, 2, 2, 'Capped.'),
-    D: { ...uniform(40, 2, 3), note: 'Capped.' },
-  },
   2: {
     A: topBackoff(70, 1, 60, 2, 2, 'Frozen.'),
     B: topBackoff(50, 1, 42.5, 2, 2, 'Frozen.'),
@@ -230,15 +224,11 @@ const VOLUME_BACKOFF: Partial<
     2: { A: [55, 3, 5], B: [37.5, 3, 6], C: [67.5, 2, 5] },
     3: { A: [55, 2, 5], B: [37.5, 2, 6], C: [67.5, 2, 5] },
   },
-  C: {
-    1: { A: [55, 1, 5], B: [37.5, 1, 5], C: [67.5, 1, 5] },
-  },
 };
 
-/** Day C paused bench [sets, reps]. B1–B3 are 3×6; C1 is 2×5. */
+/** Day C paused bench [sets, reps]. B1–B3 are 3×6. C1 paused bench lives on the return template. */
 const PAUSED_BENCH: Partial<Record<MesocycleBlock, Partial<Record<BlockWeek, [number, number]>>>> = {
   B: { 1: [3, 6], 2: [3, 6], 3: [3, 6] },
-  C: { 1: [2, 5] },
 };
 
 /**
@@ -263,9 +253,8 @@ export function volumeSlotsFor(
 
 /**
  * B1–B3 accessories gain one set (seed 3 → 4, optionals 2 → 3) at RPE 7.
- * C1 keeps the first two seed sets and their seed RPEs.
- * A direct call for Block B week 4 still keeps two seed sets. The product
- * week does not use that path: B4 is the recovery template.
+ * A direct call for Block B week 4 still keeps two seed sets. The product week
+ * does not use that path: B4 is recovery and C1 is the return template.
  * Other weeks return the slot unchanged. Kilograms and reps stay on the seed.
  */
 export function accessorySlotForWeek(
@@ -277,7 +266,7 @@ export function accessorySlotForWeek(
   if (block === 'B' && weekIndex >= 1 && weekIndex <= 3) {
     return resizeAccessory(slot, Math.min(4, slot.sets.length + 1), BACKOFF_RPE_VALUE);
   }
-  if ((block === 'B' && weekIndex === 4) || (block === 'C' && weekIndex === 1)) {
+  if (block === 'B' && weekIndex === 4) {
     return resizeAccessory(slot, Math.min(2, slot.sets.length), null);
   }
   return slot;
@@ -619,30 +608,73 @@ function pullTemplate(): DayTemplate {
   ]);
 }
 
+/** Bench is the only 1RM on Fri 20 Nov. Squat and deadlift are not attempt lists. */
 export const PLANNED_ATTEMPT_LABELS = {
-  squat: '70 / 75 / 77.5–80',
   bench: '50 / 52.5 / 55–57.5',
-  deadlift: '87.5 / 92.5–95 / 97.5–100',
 } as const;
 
+/** Shown on the test day. The second sentence is the postponed three-lift meet. */
+export const TEST_DAY_NOTES = [
+  'Bench 1RM only. Squat and deadlift are technique singles, only if warm-ups are pain-free, and are not 1RM tests.',
+  'The full three-lift test moves to a later date, to be set when C2 is planned.',
+] as const;
+
 function testAttemptTemplate(): DayTemplate {
-  return pairedTemplate('A', 'Mon', '1RM test', 'Planned attempts. Squat, then bench, then deadlift.', [
-    attemptLift('test-squat', 'squat_low_bar', PLANNED_ATTEMPT_LABELS.squat, [
-      { weight_kg: 70 },
-      { weight_kg: 75 },
-      { weight_kg: 77.5, weight_label: '77.5–80' },
-    ]),
+  return pairedTemplate('A', 'Mon', 'Bench 1RM', TEST_DAY_NOTES.join(' '), [
+    techniqueSingle(
+      'test-squat',
+      'squat_low_bar',
+      'Squat technique single',
+      'Only if warm-ups are pain-free. Not a 1RM.',
+      'up to 65–67.5 kg · 1',
+      65,
+      '65–67.5',
+    ),
     attemptLift('test-bench', 'bench_regular', PLANNED_ATTEMPT_LABELS.bench, [
       { weight_kg: 50 },
       { weight_kg: 52.5 },
       { weight_kg: 55, weight_label: '55–57.5' },
     ]),
-    attemptLift('test-dl', 'deadlift_conventional', PLANNED_ATTEMPT_LABELS.deadlift, [
-      { weight_kg: 87.5 },
-      { weight_kg: 92.5, weight_label: '92.5–95' },
-      { weight_kg: 97.5, weight_label: '97.5–100' },
-    ]),
+    techniqueSingle(
+      'test-dl',
+      'deadlift_conventional',
+      'Deadlift technique single',
+      'Only if warm-ups are pain-free. Not a 1RM.',
+      'up to 75–80 kg · 1',
+      75,
+      '75–80',
+    ),
   ]);
+}
+
+function techniqueSingle(
+  slotId: string,
+  exerciseId: ExerciseId,
+  displayName: string,
+  note: string,
+  plan_label: string,
+  weight_kg: number,
+  weight_label: string,
+): TemplateSlot {
+  return {
+    slot_id: slotId,
+    role: 'T1',
+    exercise_id: exerciseId,
+    alternatives: [],
+    displayName,
+    note,
+    plan_label,
+    counts_toward_tm: false,
+    sets: [
+      {
+        weight_kg,
+        reps: 1,
+        rpe: WORK_RPE,
+        rest_sec: 180,
+        weight_label,
+      },
+    ],
+  };
 }
 
 function pairedTemplate(

@@ -163,12 +163,13 @@ describe('block preview loads', () => {
     expectSameTargets('2026-10-05', 'A', monday?.exercises ?? []);
 
     const blockC = weeks.find((week) => week.id === 'C-1');
+    expect(blockC?.returnWeek).toBe(true);
     expect(blockC?.sessions[0]?.phaseLabel).toBe('Peak');
     expect(blockC?.sessions[0]?.exercises.slice(0, 2).map((row) => row.workLabel)).toEqual([
-      '67.5 kg × 1 then 60 kg × 2 × 2',
-      '55 kg · 1 × 5',
+      '45 kg · 3 × 5',
+      '40 kg · 3 × 5',
     ]);
-    expect(blockC?.sessions[0]?.exercises.some((row) => row.workLabel === '50 kg · 2 × 8')).toBe(true);
+    expect(blockC?.sessions[0]?.notes[0]).toMatch(/pain goes above 2\/10/);
     expect(blockC?.sessions[0]?.frozen).toBe(false);
     expectSameTargets('2026-11-02', 'A', blockC?.sessions[0]?.exercises ?? []);
   });
@@ -187,7 +188,7 @@ describe('block preview loads', () => {
     expect(last?.sessions.map((session) => `${session.date} ${session.heading}`)).toEqual([
       '2026-11-16 Mon 16 Nov · Squat + bench',
       '2026-11-17 Tue 17 Nov · Deadlift + bench',
-      '2026-11-20 Fri 20 Nov · 1RM test',
+      '2026-11-20 Fri 20 Nov · Bench 1RM',
     ]);
     const opener = last?.sessions[0];
     expect(opener?.frozen).toBe(true);
@@ -199,17 +200,18 @@ describe('block preview loads', () => {
     const test = last?.sessions.find((session) => session.kind === 'test');
     expect(test).toMatchObject({
       date: '2026-11-20',
-      heading: 'Fri 20 Nov · 1RM test',
+      heading: 'Fri 20 Nov · Bench 1RM',
       phaseLabel: 'Test',
       projected: true,
     });
     expect(test?.exercises.map((row) => row.workLabel)).toEqual([
-      'Planned · 70 / 75 / 77.5–80 kg',
+      'up to 65–67.5 kg · 1',
       'Planned · 50 / 52.5 / 55–57.5 kg',
-      'Planned · 87.5 / 92.5–95 / 97.5–100 kg',
+      'up to 75–80 kg · 1',
     ]);
-    expect(test?.testNote).toMatch(/Planned attempts/);
-    expect(test?.title).toBe('Low-bar squat → Bench press → Conventional deadlift');
+    expect(test?.testNote).toMatch(/Bench is the only 1RM/);
+    expect(test?.notes.join(' ')).toMatch(/later date/);
+    expect(test?.title).toBe('Bench 1RM');
   });
 });
 

@@ -31,6 +31,7 @@ import {
   type T1Prescription,
   type VariationLog,
 } from './cyclePlan';
+import { c1ReturnTemplateFor } from './c1ReturnWeek';
 import { recoveryTemplateFor } from './recoveryWeek';
 import { calendarYmd } from './lastPerformance';
 import { isProgressionFrozen } from './testWeek';
@@ -172,6 +173,12 @@ export function isRecoveryWeek(asOf: string): boolean {
   return ctx?.block === 'B' && ctx.weekIndex === 4;
 }
 
+/** Block C week 1 only (Mon 2–Sun 8 Nov 2026). C2 stays on the peak table. */
+export function isC1ReturnWeek(asOf: string): boolean {
+  const ctx = blockWeekContext(asOf);
+  return ctx?.block === 'C' && ctx.weekIndex === 1;
+}
+
 export interface ProgramWeekOptions {
   logs?: readonly SessionLog[];
   /**
@@ -197,11 +204,12 @@ export function t1PrescriptionFor(
 /**
  * Overlay the week's T1 onto the seed template.
  * Test-week dates replace the whole day. C2 drops non-T1 slots.
- * B1–B3 and C1 add back-off rows (and a Day C paused bench) after the top sets.
+ * B1–B3 add back-off rows (and a Day C paused bench) after the top sets.
  * B1–B3 also swap Day A's RDL for a paused deadlift, move that RDL to Day D,
  * and run accessory double progression on Today.
  * B2–B3 append a single-arm DB press on Day B and a single-arm DB row on Day D.
  * Block B week 4 replaces the whole day with the recovery template.
+ * Block C week 1 replaces the whole day with the return template.
  */
 export function applyProgramWeek(
   template: DayTemplate,
@@ -211,6 +219,7 @@ export function applyProgramWeek(
   const override = templateOverrideForDate(asOf, options.testDate);
   if (override) return override;
   if (isRecoveryWeek(asOf)) return recoveryTemplateFor(template.id);
+  if (isC1ReturnWeek(asOf)) return c1ReturnTemplateFor(template.id);
 
   const rx = t1PrescriptionFor(template.id, asOf);
   if (!rx) return template;

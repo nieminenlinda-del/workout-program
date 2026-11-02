@@ -45,10 +45,10 @@ describe('Block B week 4 recovery', () => {
     expect(blockPrescription('B', 4, 'A')).toBeNull();
     expect(blockPrescription('B', 5, 'A')).toBeNull();
     expect(blockPrescription('B', 3, 'A')?.weight_kg).toBe(65);
-    expect(t1PrescriptionFor('A', '2026-11-02')).toMatchObject({ weight_kg: 67.5, set_count: 3 });
+    expect(t1PrescriptionFor('A', '2026-11-02')).toBeNull();
     expect(plannedDayPreview(DAY_TEMPLATES.A, [], '2026-11-02').slice(0, 2).map((row) => row.workLabel)).toEqual([
-      '67.5 kg × 1 then 60 kg × 2 × 2',
-      '55 kg · 1 × 5',
+      '45 kg · 3 × 5',
+      '40 kg · 3 × 5',
     ]);
   });
 
@@ -77,7 +77,7 @@ describe('Block B week 4 recovery', () => {
     expect(targets.find((day) => day.date === '2026-10-27')?.lines.map((line) => line.name)).toContain(
       'Seated single-arm DB press',
     );
-    expect(thisWeekTargets('2026-11-02').some((day) => day.lines.some((line) => line.load.includes('67.5')))).toBe(
+    expect(thisWeekTargets('2026-11-02').some((day) => day.lines.some((line) => line.load.includes('45 kg')))).toBe(
       true,
     );
     const timeline = dashboardTimeline('2026-10-27').find((week) => week.id === 'B4');
@@ -180,8 +180,8 @@ describe('Block B week 4 recovery', () => {
     const counted = { ...recovery, counts_toward_tm: undefined };
     expect(eligibleEstimates([counted], 'deadlift')).toHaveLength(3);
 
-    const next = dayTemplateForDate('C', '2026-11-05', { logs: [recovery], hold: true });
-    expect(next.slots[0]?.sets.map((set) => set.weight_kg)).toEqual([87.5, 77.5, 77.5]);
+    const next = dayTemplateForDate('C', '2026-11-11', { logs: [recovery], hold: true });
+    expect(next.slots[0]?.sets.map((set) => set.weight_kg)).toEqual([90, 77.5]);
     expect(createDraftSession('B', '2026-10-06').counts_toward_tm).toBeUndefined();
 
     const draft = createDraftSession('D', '2026-10-30');

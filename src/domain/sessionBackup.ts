@@ -170,6 +170,7 @@ function asLift(value: unknown, label: string): LoggedLift {
   }
   if (typeof row.bar_kg === 'number') lift.bar_kg = row.bar_kg;
   if (isBarPosition(row.bar_position)) lift.bar_position = row.bar_position;
+  if (row.counts_toward_tm === false) lift.counts_toward_tm = false;
   return lift;
 }
 

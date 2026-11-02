@@ -1,7 +1,8 @@
 import type { DayTemplate } from '../data/templates';
 import { EXERCISE_CATALOG, type ExerciseId } from '../types/exercises';
-import { isPlannedDeload, PLANNED_ATTEMPT_LABELS } from './cyclePlan';
-import { dayTemplateForDate } from './programWeek';
+import { isPlannedDeload, PLANNED_ATTEMPT_LABELS, TEST_DAY_NOTES } from './cyclePlan';
+import { C1_RETURN_RULE } from './c1ReturnWeek';
+import { dayTemplateForDate, isC1ReturnWeek, isRecoveryWeek } from './programWeek';
 import { plannedLiftSummary } from './workoutPreview';
 import { calendarYmd, isLoggedWorkSet } from './lastPerformance';
 import { isWarmupSet } from './sets';
@@ -19,6 +20,7 @@ import {
 } from '../types/phase2';
 import {
   countsTowardTrainingMax,
+  liftCountsTowardTrainingMax,
   type BarPosition,
   type CanonicalTemplateDay,
   type LoggedLift,
@@ -28,7 +30,6 @@ import {
   type SessionLog,
 } from '../types/session';
 import { RECOVERY_DAILY_NOTE, RECOVERY_RULE } from './recoveryWeek';
-import { isRecoveryWeek } from './programWeek';
 import { PAIN_AREA_LABELS } from '../types/session';
 
 export { TESTED_1RM };
@@ -168,6 +169,7 @@ export function eligibleEstimates(logs: readonly SessionLog[], lift: Competition
     const date = calendarYmd(session.date);
     if (!date) continue;
     for (const row of session.lifts) {
+      if (!liftCountsTowardTrainingMax(row)) continue;
       if (estimateLift(row) !== lift) continue;
       for (const set of row.sets) {
         if (!isEligibleEstimateSet(row, set)) continue;
@@ -229,8 +231,10 @@ export function marksFromAttemptLabel(label: string): AttemptMarks {
   };
 }
 
-export function attemptMarksFor(lift: CompetitionLift): AttemptMarks {
-  return marksFromAttemptLabel(PLANNED_ATTEMPT_LABELS[lift]);
+/** Bench still has a 20 Nov attempt list. Squat and deadlift are not 1RM tests. */
+export function attemptMarksFor(lift: CompetitionLift): AttemptMarks | null {
+  if (lift !== 'bench') return null;
+  return marksFromAttemptLabel(PLANNED_ATTEMPT_LABELS.bench);
 }
 
 export function testedKg(lift: CompetitionLift): number {
@@ -258,6 +262,7 @@ export function hardSetsInWeek(logs: readonly SessionLog[], weekMonday: string):
   for (const session of sessionsInWeek(logs, weekMonday)) {
     if (!countsTowardTrainingMax(session)) continue;
     for (const lift of session.lifts) {
+      if (!liftCountsTowardTrainingMax(lift)) continue;
       const bucket = hardSetLift(lift);
       if (!bucket) continue;
       for (const set of lift.sets) {
@@ -360,6 +365,7 @@ function topSetsBySession(logs: readonly SessionLog[]): TopSetSample[] {
     if (!date) continue;
     const best = new Map<CompetitionLift, LoggedSet>();
     for (const lift of session.lifts) {
+      if (!liftCountsTowardTrainingMax(lift)) continue;
       const bucket = estimateLift(lift);
       if (!bucket) continue;
       for (const set of lift.sets) {
@@ -482,8 +488,9 @@ export function thisWeekTargets(asOf: string): WeekTargetDay[] {
     }
     const template = dayTemplateForDate(isTest ? 'A' : mapped === 'rest' ? 'A' : mapped, date);
     const recovery = isRecoveryWeek(date);
+    const returning = isC1ReturnWeek(date);
     const lines = template.slots
-      .filter((slot) => recovery || slot.role === 'T1')
+      .filter((slot) => recovery || returning || slot.role === 'T1')
       .map((slot) => {
         const summary = plannedLiftSummary(slot);
         const work = slot.sets.filter((set) => !set.warmup);
@@ -497,7 +504,13 @@ export function thisWeekTargets(asOf: string): WeekTargetDay[] {
       date,
       heading: `${weekdayName(date)} ${dayMonth(date)}`,
       lines,
-      ...(recovery ? { note: RECOVERY_RULE } : {}),
+      ...(recovery
+        ? { note: RECOVERY_RULE }
+        : returning
+          ? { note: C1_RETURN_RULE }
+          : isTest
+            ? { note: TEST_DAY_NOTES[1] }
+            : {}),
     });
   }
   return days;
@@ -601,6 +614,9 @@ export function dashboardTimeline(asOf: string): TimelineWeek[] {
         badgeKind = 'recovery';
         note = `${RECOVERY_RULE} ${RECOVERY_DAILY_NOTE} Monday is skipped, walk only — not a missed session.`;
       }
+      if (window.block === 'C' && index === 1) {
+        note = C1_RETURN_RULE;
+      }
       if (window.block === 'C' && index === 2) {
         note = 'Progression is frozen. Non-T1 slots drop off.';
       }
@@ -614,8 +630,10 @@ export function dashboardTimeline(asOf: string): TimelineWeek[] {
         lines.push(`${weekdayName(cursor)} ${dayMonth(cursor)} light · ${t1Brief(opener)}`);
         lines.push(`${weekdayName(pullDate)} ${dayMonth(pullDate)} light · ${t1Brief(pull)}`);
         lines.push(`${weekdayName(addCalendarDays(cursor, 2))}–${weekdayName(addCalendarDays(cursor, 3))} rest`);
-        lines.push(`${weekdayName(TEST_DAY)} ${dayMonth(TEST_DAY)} 1RM test · squat, then bench, then deadlift`);
-        lines.push(`${weekdayName(TEST_BACKUP_DATE)} ${dayMonth(TEST_BACKUP_DATE)} backup`);
+        lines.push(
+          `${weekdayName(TEST_DAY)} ${dayMonth(TEST_DAY)} bench 1RM. Squat and deadlift are technique singles, not maxes. ${TEST_DAY_NOTES[1]}`,
+        );
+        lines.push(`${weekdayName(TEST_BACKUP_DATE)} ${dayMonth(TEST_BACKUP_DATE)} backup for the bench test`);
         note = null;
       }
       weeks.push({
@@ -663,5 +681,6 @@ export function dashboardPhaseLabel(asOf: string): string {
   const phase = previewPhaseLabel(meso.phase);
   const deload = isPlannedDeload(meso.block, meso.weekIndex) ? ' · deload' : '';
   const recovery = isRecoveryWeek(asOf) ? ' · recovery' : '';
-  return `Block ${meso.block} · week ${meso.weekIndex} · ${phase}${deload}${recovery}`;
+  const returning = isC1ReturnWeek(asOf) ? ' · return' : '';
+  return `Block ${meso.block} · week ${meso.weekIndex} · ${phase}${deload}${recovery}${returning}`;
 }

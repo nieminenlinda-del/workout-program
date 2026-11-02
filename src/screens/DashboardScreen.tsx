@@ -428,10 +428,14 @@ function EstimateCard({ lift, sessions }: { lift: CompetitionLift; sessions: rea
   const series = rollingTwoWeekBest(sessions, lift);
   const latest = series.at(-1);
   const span = chartSpan(
-    [marks.opener, marks.goalLow, marks.goalHigh, tested, ...series.map((point) => point.estimate)],
+    [
+      ...(marks ? [marks.opener, marks.goalLow, marks.goalHigh] : []),
+      tested,
+      ...series.map((point) => point.estimate),
+    ],
     2,
   );
-  const ticks = [marks.opener, tested, marks.goalHigh].filter(
+  const ticks = (marks ? [marks.opener, tested, marks.goalHigh] : [tested]).filter(
     (tick, index, all) => all.indexOf(tick) === index,
   );
   const points: ChartPoint[] = series.map((point) => ({
@@ -456,15 +460,21 @@ function EstimateCard({ lift, sessions }: { lift: CompetitionLift; sessions: rea
         yMin={span.yMin}
         yMax={span.yMax}
         ticks={ticks}
-        references={{
-          goalLow: marks.goalLow,
-          goalHigh: marks.goalHigh,
-          tested,
-          opener: marks.opener,
-        }}
+        references={
+          marks
+            ? {
+                goalLow: marks.goalLow,
+                goalHigh: marks.goalHigh,
+                tested,
+                opener: marks.opener,
+              }
+            : { tested }
+        }
       />
       <p className="dash-note">
-        Tested {kg1(tested)} · opener {kg1(marks.opener)} · goal {kg1(marks.goalLow)}–{kg1(marks.goalHigh)}
+        {marks
+          ? `Tested ${kg1(tested)} · opener ${kg1(marks.opener)} · goal ${kg1(marks.goalLow)}–${kg1(marks.goalHigh)}`
+          : `Tested ${kg1(tested)}. The full three-lift test moves to a later date, to be set when C2 is planned.`}
       </p>
     </article>
   );

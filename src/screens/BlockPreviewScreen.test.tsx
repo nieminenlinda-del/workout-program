@@ -60,7 +60,7 @@ describe('Block preview screen', () => {
     expect(container.textContent).toContain('Recovery');
     expect(weeks[1]?.textContent).toContain('Projected');
     expect(container.textContent).toContain('Fri 20 Nov');
-    expect(container.textContent).toContain('Fri 20 Nov · 1RM test');
+    expect(container.textContent).toContain('Fri 20 Nov · Bench 1RM');
 
     const summary = weeks[1]?.querySelector('summary');
     expect(summary).toBeTruthy();

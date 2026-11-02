@@ -227,14 +227,15 @@ describe('tested maxes, goals, and the dashboard calendar', () => {
     expect(testedKg('bench')).toBe(55);
   });
 
-  it('reads openers and goal bands from the planned attempts', () => {
-    expect(marksFromAttemptLabel(PLANNED_ATTEMPT_LABELS.squat)).toEqual({
-      opener: 70,
-      goalLow: 77.5,
-      goalHigh: 80,
+  it('reads the bench attempt band and leaves squat and deadlift off the 1RM goals', () => {
+    expect(marksFromAttemptLabel(PLANNED_ATTEMPT_LABELS.bench)).toEqual({
+      opener: 50,
+      goalLow: 55,
+      goalHigh: 57.5,
     });
     expect(attemptMarksFor('bench')).toEqual({ opener: 50, goalLow: 55, goalHigh: 57.5 });
-    expect(attemptMarksFor('deadlift')).toEqual({ opener: 87.5, goalLow: 97.5, goalHigh: 100 });
+    expect(attemptMarksFor('squat')).toBeNull();
+    expect(attemptMarksFor('deadlift')).toBeNull();
   });
 
   it('lists the backup Saturday and the December meets without changing test week', () => {

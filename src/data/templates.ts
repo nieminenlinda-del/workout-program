@@ -37,6 +37,11 @@ export interface TemplateSlot {
   volumeKind?: 'backoff' | 'paused';
   /** The top sets already warmed this lift up. */
   skipWarmup?: boolean;
+  /**
+   * When false, a logged copy of this lift does not feed e1RM or hard-set
+   * counts. Missing means the lift counts. The session flag still applies.
+   */
+  counts_toward_tm?: boolean;
   sets: SeedSet[];
 }
 

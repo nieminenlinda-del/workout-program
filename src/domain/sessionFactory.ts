@@ -8,7 +8,7 @@ import type {
   TemplateDay,
 } from '../types/session';
 import { DEFAULT_READINESS } from '../types/session';
-import { dayTemplateForDate, isRecoveryWeek } from './programWeek';
+import { dayTemplateForDate, isC1ReturnWeek, isRecoveryWeek } from './programWeek';
 import { canonicalTemplateDay, todayIsoDate } from './templateDay';
 import { withComputedLight } from './readiness';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
@@ -48,6 +48,7 @@ export function liftsFromTemplate(
       exercise_id: slot.exercise_id,
       slot_id: slot.slot_id,
       equipment: exerciseEquipment(slot.exercise_id),
+      ...(slot.counts_toward_tm === false ? { counts_toward_tm: false as const } : {}),
       ...(isBarbellSquat(slot.exercise_id) ? { bar_position: 'low_bar' as const } : {}),
       sets: slot.skipWarmup ? sets : attachWarmups(sets, warmupKindFor(slot.exercise_id)),
     };
@@ -69,7 +70,7 @@ export function createDraftSession(
     pain_flag: false,
     pain_note: '',
     notes: '',
-    ...(isRecoveryWeek(date) ? { counts_toward_tm: false as const } : {}),
+    ...(isRecoveryWeek(date) || isC1ReturnWeek(date) ? { counts_toward_tm: false as const } : {}),
     status: 'draft',
     updated_at: new Date().toISOString(),
   };

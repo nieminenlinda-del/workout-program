@@ -62,6 +62,7 @@ function WeekCard({ week }: { week: BlockPreviewWeek }) {
               {week.current ? <span className="block-badge current">This week</span> : null}
               {week.deload ? <span className="block-badge deload">Deload</span> : null}
               {week.recovery ? <span className="block-badge recovery">Recovery</span> : null}
+              {week.returnWeek ? <span className="block-badge return">Return</span> : null}
               {week.projected ? <span className="block-badge projected">Projected</span> : null}
               {week.completed ? <span className="block-badge logged">Logged</span> : null}
             </span>

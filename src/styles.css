@@ -1248,7 +1248,8 @@ button {
 }
 
 .block-badge.deload,
-.block-badge.recovery {
+.block-badge.recovery,
+.block-badge.return {
   color: var(--yellow);
   border-color: rgba(230, 195, 74, 0.55);
 }

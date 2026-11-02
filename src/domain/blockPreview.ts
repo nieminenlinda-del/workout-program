@@ -1,4 +1,4 @@
-import { exerciseName, type TemplateSlot } from '../data/templates';
+import { type TemplateSlot } from '../data/templates';
 import { isAssistedLoad, isTimedHold } from '../types/exercises';
 import type { CanonicalTemplateDay, SessionLog } from '../types/session';
 import {

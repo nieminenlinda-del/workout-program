@@ -303,9 +303,10 @@ export function VbtTracker({
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : null}
+          {side && summary.reps.length === 0 ? (
             <p className="muted">No full rep yet. The bar has to travel far enough to count.</p>
-          )}
+          ) : null}
           {side && estimate?.status === 'ready' ? (
             <p className="vbt-estimate">
               Estimated 1RM {estimate.load_kg.toFixed(1)} kg from bar speed. Estimate only. Not a training max.

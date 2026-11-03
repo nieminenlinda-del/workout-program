@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { barHeightM } from '../domain/vbt/calibration';
 import { demoDurationMs, demoHeightAt, demoTrace } from '../domain/vbt/demo';
-import { gateReps, markerRadiusPx, type GateSample } from '../domain/vbt/gate';
+import {
+  CAMERA_MOVE_SHIFT,
+  PLATE_STEADY_MS,
+  gateReps,
+  markerRadiusPx,
+  overlayStatus,
+  type GateSample,
+} from '../domain/vbt/gate';
 import {
   changeRepCount,
   correctedSummary,
@@ -63,6 +70,10 @@ export function VbtTracker({
   const pathRef = useRef<{ x: number; y: number }[]>([]);
   const lockRef = useRef<{ cx: number; cy: number; r: number } | null>(null);
   const originRef = useRef<number | null>(null);
+  const steadyRef = useRef(0);
+  const lastNowRef = useRef(0);
+  const everRef = useRef(false);
+  const reacquireRef = useRef(false);
   const spokenRef = useRef(0);
   const mutedRef = useRef(muted);
   const thresholdRef = useRef(threshold);
@@ -115,6 +126,10 @@ export function VbtTracker({
     pathRef.current = [];
     lockRef.current = null;
     originRef.current = null;
+    steadyRef.current = 0;
+    lastNowRef.current = 0;
+    everRef.current = false;
+    reacquireRef.current = false;
     spokenRef.current = 0;
     const trace = source === 'demo' ? demoTrace(kind) : [];
     const rackY = trace[0]?.y_m ?? 0;
@@ -132,26 +147,39 @@ export function VbtTracker({
       }
       ctx.fillStyle = '#101218';
       ctx.fillRect(0, 0, width, height);
+      const dt = lastNowRef.current ? Math.min(80, now - lastNowRef.current) : 0;
+      lastNowRef.current = now;
       let point: { x: number; y: number } | null = null;
       if (source === 'demo') {
         const elapsed = now - started;
-        const yM = demoHeightAt(trace, Math.min(elapsed, demoDurationMs(trace)));
-        const pixelsPerMeter = platePx / 0.45;
-        const x = width * 0.62;
-        const y = height * 0.72 - yM * pixelsPerMeter;
+        const playing = Math.max(0, elapsed - PLATE_STEADY_MS);
+        const yM =
+          elapsed < PLATE_STEADY_MS ? rackY : demoHeightAt(trace, Math.min(playing, demoDurationMs(trace)));
+        const marker = markerRadiusPx(Math.min(width, height) * 0.5, width, height);
+        const pixelsPerMeter = (marker * 2) / 0.45;
+        const x = width * 0.58;
+        const y = height * 0.46 - (yM - rackY) * pixelsPerMeter;
         point = { x, y };
         drawGym(ctx, width, height);
-        const marker = markerRadiusPx(Math.min(width, height) * 0.16, width, height);
+        drawPlateBody(ctx, x, y, marker);
         drawMarker(ctx, x, y, marker);
-        samplesRef.current.push({
-          t_ms: elapsed,
-          y_m: yM,
-          radius_px: marker,
-          confidence: 0.95,
-          scene_shift: 0,
-          occluded: false,
+        const barMoving = Math.abs(yM - rackY) >= 0.05;
+        statusRef.current = overlayStatus({
+          guidance: 'locked',
+          steadyMs: elapsed,
+          cameraMoved: false,
+          barMoving,
         });
-        statusRef.current = elapsed < 1000 ? 'Plate found' : 'tracking';
+        if (elapsed >= PLATE_STEADY_MS) {
+          samplesRef.current.push({
+            t_ms: playing,
+            y_m: yM,
+            radius_px: marker,
+            confidence: 0.95,
+            scene_shift: 0,
+            occluded: false,
+          });
+        }
       } else {
         const video = videoRef.current;
         if (video && video.readyState >= 2) {
@@ -171,38 +199,75 @@ export function VbtTracker({
                 }
               : undefined,
           );
-          if (acquired.guidance === 'move_back') {
+          const cameraMoved = shift >= CAMERA_MOVE_SHIFT;
+          const rawR = acquired.circle ? acquired.circle.r * small.scale : 0;
+          const marker = acquired.circle ? markerRadiusPx(rawR, width, height) : 0;
+          const circle = acquired.circle
+            ? {
+                cx: acquired.circle.cx * small.scale,
+                cy: acquired.circle.cy * small.scale,
+                r: marker,
+              }
+            : null;
+          const jumped =
+            hint != null &&
+            circle != null &&
+            Math.hypot(circle.cx - hint.cx, circle.cy - hint.cy) > Math.min(width, height) * 0.28;
+          const slipped = hint != null && marker > 0 && Math.abs(marker - hint.r) / hint.r > 0.3;
+          const good = acquired.guidance === 'locked' && circle != null && !cameraMoved && !jumped && !slipped;
+          if (!good) {
+            if (everRef.current) {
+              samplesRef.current.push({
+                t_ms: now - started,
+                y_m: null,
+                radius_px: slipped ? marker : null,
+                confidence: jumped || slipped ? 0.1 : 0,
+                scene_shift: shift,
+                occluded: jumped,
+              });
+              reacquireRef.current = true;
+              everRef.current = false;
+            }
+            steadyRef.current = 0;
             lockRef.current = null;
             originRef.current = null;
-            statusRef.current = 'Move the phone back';
-          } else if (!acquired.circle) {
-            lockRef.current = null;
-            originRef.current = null;
-            statusRef.current = shift >= 0.18 ? 'camera moved' : 'waiting for plate';
-          } else {
-            const rawR = acquired.circle.r * small.scale;
-            const marker = markerRadiusPx(rawR, width, height);
-            const circle = {
-              cx: acquired.circle.cx * small.scale,
-              cy: acquired.circle.cy * small.scale,
-              r: marker,
-            };
-            const jumped =
-              hint != null && Math.hypot(circle.cx - hint.cx, circle.cy - hint.cy) > Math.min(width, height) * 0.28;
+          } else if (circle) {
+            steadyRef.current += dt;
             lockRef.current = circle;
             if (originRef.current == null) originRef.current = circle.cy;
-            const metres = barHeightM(circle.cy, originRef.current, marker * 2);
-            samplesRef.current.push({
-              t_ms: now - started,
-              y_m: metres,
-              radius_px: marker,
-              confidence: Math.min(1, acquired.circle.score / 40),
-              scene_shift: shift,
-              occluded: jumped,
-            });
+            const origin = originRef.current ?? circle.cy;
+            const metres = barHeightM(circle.cy, origin, marker * 2) ?? 0;
+            const ready = steadyRef.current >= PLATE_STEADY_MS;
+            if (reacquireRef.current || ready) {
+              samplesRef.current.push({
+                t_ms: now - started,
+                y_m: metres,
+                radius_px: marker,
+                confidence: Math.min(1, (acquired.circle?.score ?? 0) / 40),
+                scene_shift: shift,
+                occluded: false,
+              });
+            }
+            if (ready) {
+              everRef.current = true;
+              reacquireRef.current = false;
+            }
             point = { x: circle.cx, y: circle.cy };
             drawMarker(ctx, circle.cx, circle.cy, marker);
-            statusRef.current = shift >= 0.18 ? 'camera moved' : jumped ? 'waiting for plate' : 'tracking';
+            statusRef.current = overlayStatus({
+              guidance: 'locked',
+              steadyMs: steadyRef.current,
+              cameraMoved: false,
+              barMoving: Math.abs(metres) >= 0.05,
+            });
+          }
+          if (!good) {
+            statusRef.current = overlayStatus({
+              guidance: acquired.guidance === 'move_back' ? 'move_back' : 'searching',
+              steadyMs: 0,
+              cameraMoved,
+              barMoving: false,
+            });
           }
         }
       }
@@ -211,7 +276,7 @@ export function VbtTracker({
         if (pathRef.current.length > 240) pathRef.current.shift();
       }
       if (isSideView(viewRef.current)) drawPath(ctx, pathRef.current);
-      drawBurnIn(ctx, statusRef.current, samplesRef.current, kind, rackY);
+      drawBurnIn(ctx, statusRef.current, samplesRef.current, kind, source === 'demo' ? rackY : undefined);
       if (recordRef.current) startRecorder(canvas);
       if (now - lastHud > 120) {
         lastHud = now;
@@ -563,19 +628,33 @@ function PathTrace({ samples }: { samples: readonly VbtSample[] }) {
 }
 
 function drawGym(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  ctx.fillStyle = '#1a1d25';
+  ctx.fillStyle = '#d7d3cb';
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = '#323744';
-  ctx.lineWidth = 2;
+  ctx.fillStyle = '#1c1e24';
+  ctx.fillRect(width * 0.08, height * 0.12, 18, height * 0.76);
+  ctx.strokeStyle = '#8a909c';
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(width * 0.62, height * 0.15);
-  ctx.lineTo(width * 0.62, height * 0.88);
+  ctx.moveTo(width * 0.1, height * 0.46);
+  ctx.lineTo(width * 0.7, height * 0.46);
   ctx.stroke();
+}
+
+/** The iron plate itself. The tracker stroke is drawn on top, never as a fill. */
+function drawPlateBody(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = '#3c414c';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.22, 0, Math.PI * 2);
+  ctx.fillStyle = '#d7d3cb';
+  ctx.fill();
 }
 
 function drawMarker(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
   ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.arc(x, y, Math.max(4, radius - 1.5), 0, Math.PI * 2);
   ctx.lineWidth = 3;
   ctx.strokeStyle = 'rgba(232, 160, 74, 0.85)';
   ctx.stroke();
@@ -586,16 +665,18 @@ function drawBurnIn(
   status: string,
   samples: readonly GateSample[],
   kind: VbtLiftKind,
-  rackY: number,
+  rackY: number | undefined,
 ) {
   const count = gateReps(samples, kind, rackY).reps.length;
+  const box = Math.min(ctx.canvas.width - 24, 360);
+  const top = Math.max(12, ctx.canvas.height - 86);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-  ctx.fillRect(16, 16, 240, 78);
+  ctx.fillRect(12, top, box, 70);
   ctx.fillStyle = '#f4f0e6';
-  ctx.font = '56px sans-serif';
-  ctx.fillText(String(count), 28, 72);
+  ctx.font = '48px sans-serif';
+  ctx.fillText(String(count), 24, top + 50);
   ctx.font = '18px sans-serif';
-  ctx.fillText(status, 96, 68);
+  ctx.fillText(status, 84, top + 46);
 }
 
 function sceneShift(previous: Uint8ClampedArray | null, next: Uint8ClampedArray): number {

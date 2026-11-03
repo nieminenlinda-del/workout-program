@@ -46,9 +46,33 @@ const UNRACK_HOLD_MS = 400;
 const RERACK_BAND_M = 0.04;
 const RERACK_STILL_MS = 800;
 const REACQUIRE_MS = 1000;
-const SHAKE_SHIFT = 0.35;
+/** Whole-frame shift at or above this pauses counting. */
+export const CAMERA_MOVE_SHIFT = 0.35;
 const MIN_CONFIDENCE = 0.45;
 const RADIUS_JUMP = 0.3;
+
+/** A full plate must sit still about this long before it counts as found. */
+export const PLATE_STEADY_MS = 1000;
+
+export type OverlayStatus =
+  | 'waiting for plate'
+  | 'Plate found'
+  | 'tracking'
+  | 'camera moved'
+  | 'Move the phone back';
+
+/** Status burned into the preview and the saved clip. */
+export function overlayStatus(input: {
+  guidance: 'searching' | 'locked' | 'move_back';
+  steadyMs: number;
+  cameraMoved: boolean;
+  barMoving: boolean;
+}): OverlayStatus {
+  if (input.cameraMoved) return 'camera moved';
+  if (input.guidance === 'move_back') return 'Move the phone back';
+  if (input.guidance !== 'locked' || input.steadyMs < PLATE_STEADY_MS) return 'waiting for plate';
+  return input.barMoving ? 'tracking' : 'Plate found';
+}
 
 /**
  * Count reps only after the bar leaves the rack on a steady lock, and stop
@@ -79,12 +103,12 @@ export function gateReps(
   for (const sample of samples) {
     const bad =
       sample.occluded ||
-      sample.scene_shift >= SHAKE_SHIFT ||
+      sample.scene_shift >= CAMERA_MOVE_SHIFT ||
       sample.y_m == null ||
       sample.confidence < MIN_CONFIDENCE ||
       radiusSlipped(lockRadius, sample.radius_px);
     if (sample.occluded) sawOcclusion = true;
-    if (sample.scene_shift >= SHAKE_SHIFT) cameraMoved = true;
+    if (sample.scene_shift >= CAMERA_MOVE_SHIFT) cameraMoved = true;
     if (bad) {
       if (phase === 'lifting') flush();
       phase = 'paused';

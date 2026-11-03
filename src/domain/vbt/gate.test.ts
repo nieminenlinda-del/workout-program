@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoHeightAt, demoTrace } from './demo';
-import { gateReps, markerRadiusPx, type GateSample } from './gate';
+import { gateReps, markerRadiusPx, overlayStatus, type GateSample } from './gate';
 import { acquirePlate, stampDisc, type LumaFrame } from './tracker';
 
 function still(start: number, ms: number, y: number, extra: Partial<GateSample> = {}): GateSample[] {
@@ -155,5 +155,31 @@ describe('marker size', () => {
     const radius = markerRadiusPx(400, 390, 520);
     expect(radius).toBeLessThanOrEqual(390 * 0.2);
     expect(radius).toBeGreaterThan(6);
+  });
+});
+
+describe('setup check', () => {
+  it('waits a second of steady lock before saying the plate is found', () => {
+    expect(
+      overlayStatus({ guidance: 'locked', steadyMs: 400, cameraMoved: false, barMoving: false }),
+    ).toBe('waiting for plate');
+    expect(
+      overlayStatus({ guidance: 'searching', steadyMs: 2000, cameraMoved: false, barMoving: false }),
+    ).toBe('waiting for plate');
+    expect(
+      overlayStatus({ guidance: 'locked', steadyMs: 1000, cameraMoved: false, barMoving: false }),
+    ).toBe('Plate found');
+    expect(
+      overlayStatus({ guidance: 'locked', steadyMs: 1400, cameraMoved: false, barMoving: true }),
+    ).toBe('tracking');
+  });
+
+  it('names a camera move and a plate that fills the frame', () => {
+    expect(
+      overlayStatus({ guidance: 'locked', steadyMs: 2000, cameraMoved: true, barMoving: true }),
+    ).toBe('camera moved');
+    expect(
+      overlayStatus({ guidance: 'move_back', steadyMs: 0, cameraMoved: false, barMoving: false }),
+    ).toBe('Move the phone back');
   });
 });

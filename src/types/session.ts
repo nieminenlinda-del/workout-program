@@ -85,7 +85,47 @@ export interface LoggedLift {
    * can exclude the whole day.
    */
   counts_toward_tm?: boolean;
+  /**
+   * Camera bar-speed for this lift. Missing on older logs.
+   * Stored beside the sets. It does not change training-max rules.
+   */
+  vbt?: VbtLiftLog;
   sets: LoggedSet[];
+}
+
+export type VbtCameraView = 'side' | 'front' | 'back';
+
+export interface VbtRepLog {
+  rep: number;
+  /** Omitted for front and back views. Those views count reps only. */
+  mean_velocity_m_s?: number;
+  peak_velocity_m_s?: number;
+  rom_cm?: number;
+  concentric_ms?: number;
+}
+
+export interface VbtSetLog {
+  set_index: number;
+  /** Side keeps speed. Front and back store the rep count only. Missing means side. */
+  view?: VbtCameraView;
+  /** Load on the bar for this set, when it was saved. */
+  load_kg?: number;
+  reps: VbtRepLog[];
+  /** Final count after − / + and dropped reps. This is what the set stores. */
+  rep_count: number;
+  /** Reps the camera detected before she edited the card. Missing on older logs. */
+  camera_rep_count?: number;
+  /** 1-based indexes from the camera list that she excluded. */
+  excluded_reps?: number[];
+  best_velocity_m_s?: number;
+  velocity_loss_pct?: number;
+  threshold_pct: number;
+  stopped_for_loss: boolean;
+}
+
+export interface VbtLiftLog {
+  threshold_pct: number;
+  sets: VbtSetLog[];
 }
 
 /**

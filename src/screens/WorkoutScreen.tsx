@@ -26,6 +26,11 @@ import {
   slotAllowsEquipmentPicker,
 } from '../domain/equipment';
 import { SetLogger } from '../components/SetLogger';
+import { VbtTracker } from '../components/VbtTracker';
+import { loadVelocityPoints } from '../domain/vbt/history';
+import { attachVbtSet } from '../domain/vbt/log';
+import type { VbtLiftKind } from '../domain/vbt/reps';
+import { readVbtSettings } from '../domain/vbt/settings';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
 import { NumberStepper } from '../components/NumberStepper';
@@ -56,6 +61,8 @@ export function WorkoutScreen({
   onFinish: () => void;
 }) {
   const [active, setActive] = useState<ActiveSet | null>(null);
+  const [vbt, setVbt] = useState<ActiveSet | null>(null);
+  const [videoToast, setVideoToast] = useState<string | null>(null);
   const [rest, setRest] = useState<{ seconds: number; name: string } | null>(null);
   const [openLift, setOpenLift] = useState(0);
 
@@ -224,6 +231,19 @@ export function WorkoutScreen({
               </button>
             ) : null}
 
+            {expanded && vbtKindFor(lift.exercise_id) && unloggedWork.length > 0 ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={() => {
+                  const setIndex = lift.sets.findIndex((set) => !set.warmup && !set.completed);
+                  if (setIndex >= 0) setVbt({ liftIndex, setIndex });
+                }}
+              >
+                Track with camera
+              </button>
+            ) : null}
+
             {expanded && unloggedWork.length > 0 ? (
               <NumberStepper
                 label={
@@ -299,6 +319,36 @@ export function WorkoutScreen({
         </button>
       </div>
 
+      {vbt && draft.lifts[vbt.liftIndex] ? (
+        <VbtTracker
+          kind={vbtKindFor(draft.lifts[vbt.liftIndex]?.exercise_id ?? 'squat_low_bar') ?? 'squat'}
+          liftName={draft.lifts[vbt.liftIndex]?.name ?? 'Lift'}
+          targetReps={draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.reps ?? 0}
+          loadKg={draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0}
+          date={draft.date}
+          setNumber={vbt.setIndex + 1}
+          minVelocity={
+            readVbtSettings().min_velocity_m_s[
+              vbtKindFor(draft.lifts[vbt.liftIndex]?.exercise_id ?? 'squat_low_bar') ?? 'squat'
+            ]
+          }
+          priorPoints={loadVelocityPoints(
+            [...history, draft],
+            vbtKindFor(draft.lifts[vbt.liftIndex]?.exercise_id ?? 'squat_low_bar') ?? 'squat',
+          )}
+          onCancel={() => setVbt(null)}
+          onSave={(summary, view, correction) => {
+            const load = draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0;
+            onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view, correction));
+            setVbt(null);
+          }}
+          onVideoSkipped={() => {
+            setVideoToast('Set saved, video not saved');
+            window.setTimeout(() => setVideoToast(null), 2800);
+          }}
+        />
+      ) : null}
+
       {active && activeLift ? (
         <SetLogger
           exerciseName={activeLift.name}
@@ -331,11 +381,24 @@ export function WorkoutScreen({
         />
       ) : null}
 
+      {videoToast ? (
+        <p className="vbt-toast" role="status">
+          {videoToast}
+        </p>
+      ) : null}
+
       {rest ? (
         <RestTimer seconds={rest.seconds} exerciseName={rest.name} onDone={() => setRest(null)} />
       ) : null}
     </main>
   );
+}
+
+function vbtKindFor(exerciseId: string): VbtLiftKind | null {
+  if (exerciseId === 'squat_low_bar') return 'squat';
+  if (exerciseId === 'bench_regular') return 'bench';
+  if (exerciseId === 'deadlift_conventional') return 'deadlift';
+  return null;
 }
 
 function slotForLift(template: DayTemplate, lift: LoggedLift, index: number) {

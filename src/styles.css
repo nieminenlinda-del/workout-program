@@ -1050,6 +1050,12 @@ button {
   gap: 8px;
 }
 
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .summary-lifts li,
 .history-row {
   display: flex;

@@ -11,8 +11,15 @@ import { liftEquipment } from '../domain/equipment';
 import { isReconstructedReferenceSession, type ImportMode } from '../domain/sessionBackup';
 import { formatLoad } from '../domain/formatLoad';
 import { VbtSpeedCard } from '../components/VbtSpeedCard';
-import { sessionVbtCsv, vbtCsvFilename } from '../domain/vbt/csv';
+import {
+  allSessionsVbtCsv,
+  allVbtCsvFilename,
+  sessionHasVbtReps,
+  sessionVbtCsv,
+  vbtCsvFilename,
+} from '../domain/vbt/csv';
 import { shareOrDownloadFile } from '../domain/vbt/shareFile';
+import { todayIsoDate } from '../domain/templateDay';
 import { useState } from 'react';
 
 export function HistoryScreen({
@@ -34,6 +41,8 @@ export function HistoryScreen({
   onSeedWeek1: () => Promise<number>;
   onSeedMon14: () => Promise<number>;
 }) {
+  const [allNote, setAllNote] = useState<string | null>(null);
+  const anyBarSpeed = sessions.some(sessionHasVbtReps);
   return (
     <main className="screen">
       <header className="topbar">
@@ -44,6 +53,32 @@ export function HistoryScreen({
         <span />
       </header>
       <AppTabs current="log" onToday={onBack} onDashboard={onDashboard} onLog={() => undefined} />
+      <section className="card">
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          data-testid="vbt-export-all"
+          onClick={() =>
+            shareBarSpeedCsv(
+              allSessionsVbtCsv(sessions),
+              allVbtCsvFilename(todayIsoDate()),
+              'No bar-speed reps saved yet.',
+              setAllNote,
+            )
+          }
+        >
+          Export all bar-speed data
+        </button>
+        {allNote ? (
+          <p className="muted" data-testid="vbt-export-all-note">
+            {allNote}
+          </p>
+        ) : !anyBarSpeed ? (
+          <p className="muted" data-testid="vbt-export-all-note">
+            No bar-speed reps saved yet.
+          </p>
+        ) : null}
+      </section>
       <VbtSpeedCard sessions={sessions} />
 
       {sessions.length === 0 ? (
@@ -61,7 +96,7 @@ export function HistoryScreen({
             const day = canonicalTemplateDay(s.template_day);
             const progress = completedSetCount(s);
             return (
-              <li key={s.session_id}>
+              <li key={s.session_id} className="history-item">
                 <button type="button" className="history-row" onClick={() => onOpen(s)}>
                   <div>
                     <p className="kicker">
@@ -77,6 +112,9 @@ export function HistoryScreen({
                   </div>
                   <LightBadge light={s.readiness.light} />
                 </button>
+                {sessionHasVbtReps(s) ? (
+                  <SessionBarSpeedExport session={s} />
+                ) : null}
               </li>
             );
           })}
@@ -105,7 +143,6 @@ export function DetailScreen({
   onBack: () => void;
 }) {
   const day = canonicalTemplateDay(session.template_day);
-  const [exportNote, setExportNote] = useState<string | null>(null);
   return (
     <main className="screen">
       <header className="topbar">
@@ -116,30 +153,7 @@ export function DetailScreen({
         <span />
       </header>
       <p className="muted">{formatDisplayDate(session.date)}</p>
-      <button
-        type="button"
-        className="btn btn-primary btn-block"
-        data-testid="vbt-export"
-        onClick={() => {
-          const csv = sessionVbtCsv(session);
-          if (!csv) {
-            setExportNote('No bar-speed reps in this session.');
-            return;
-          }
-          const name = vbtCsvFilename(session.date);
-          const file = new File([csv], name, { type: 'text/csv' });
-          void shareOrDownloadFile(file).then((how) => {
-            if (how === 'cancelled') {
-              setExportNote('Export cancelled.');
-              return;
-            }
-            setExportNote(how === 'shared' ? 'Shared the bar-speed CSV.' : `Downloaded ${name}.`);
-          });
-        }}
-      >
-        Export bar-speed CSV
-      </button>
-      {exportNote ? <p className="muted" data-testid="vbt-export-note">{exportNote}</p> : null}
+      <SessionBarSpeedExport session={session} testId="vbt-export" primary />
       <LightBadge light={session.readiness.light} large />
       {session.pain_flag ? <p className="pain-note">Pain flag on</p> : null}
       {session.pain_area ? (
@@ -185,4 +199,60 @@ export function DetailScreen({
       ) : null}
     </main>
   );
+}
+
+function SessionBarSpeedExport({
+  session,
+  testId = 'vbt-export-session',
+  primary = false,
+}: {
+  session: SessionDraft;
+  testId?: string;
+  primary?: boolean;
+}) {
+  const [exportNote, setExportNote] = useState<string | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className={`btn ${primary ? 'btn-primary' : 'btn-ghost'} btn-block`}
+        data-testid={testId}
+        onClick={() =>
+          shareBarSpeedCsv(
+            sessionVbtCsv(session),
+            vbtCsvFilename(session.date),
+            'No bar-speed reps in this session.',
+            setExportNote,
+          )
+        }
+      >
+        Export bar-speed CSV
+      </button>
+      {exportNote ? (
+        <p className="muted" data-testid="vbt-export-note">
+          {exportNote}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function shareBarSpeedCsv(
+  csv: string | null,
+  filename: string,
+  empty: string,
+  setNote: (note: string) => void,
+) {
+  if (!csv) {
+    setNote(empty);
+    return;
+  }
+  const file = new File([csv], filename, { type: 'text/csv' });
+  void shareOrDownloadFile(file).then((how) => {
+    if (how === 'cancelled') {
+      setNote('Export cancelled.');
+      return;
+    }
+    setNote(how === 'shared' ? 'Shared the bar-speed CSV.' : `Downloaded ${filename}.`);
+  });
 }

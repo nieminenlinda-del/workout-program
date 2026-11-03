@@ -41,6 +41,38 @@ export function vbtCsvFilename(date: string): string {
   return `linda-lift-vbt-${date.slice(0, 10)}.csv`;
 }
 
+/** True when the session has at least one kept bar-speed rep. */
+export function sessionHasVbtReps(session: SessionLog): boolean {
+  return sessionVbtCsv(session) != null;
+}
+
+/**
+ * Every kept rep from every session, oldest date first.
+ * Null when nothing was tracked.
+ */
+export function allSessionsVbtCsv(sessions: readonly SessionLog[]): string | null {
+  const lines: string[] = [];
+  const ordered = [...sessions].sort((a, b) => {
+    const byDate = a.date.localeCompare(b.date);
+    if (byDate !== 0) return byDate;
+    return a.session_id.localeCompare(b.session_id);
+  });
+  for (const session of ordered) {
+    const csv = sessionVbtCsv(session);
+    if (!csv) continue;
+    for (const line of csv.split('\n')) {
+      if (!line || line === VBT_CSV_HEADER) continue;
+      lines.push(line);
+    }
+  }
+  if (lines.length === 0) return null;
+  return `${VBT_CSV_HEADER}\n${lines.join('\n')}\n`;
+}
+
+export function allVbtCsvFilename(date: string): string {
+  return `linda-lift_bar-speed_all_${date.slice(0, 10)}.csv`;
+}
+
 function cell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
   return value;

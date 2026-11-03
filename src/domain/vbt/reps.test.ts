@@ -84,7 +84,7 @@ describe('velocity loss', () => {
     expect(loss?.best_m_s).toBeCloseTo(0.8);
     expect(loss?.last_m_s).toBeCloseTo(0.62);
     expect(loss?.loss_pct).toBeCloseTo(22.5);
-    expect(firstRepPastThreshold([0.8, 0.74, 0.62], DEFAULT_VELOCITY_LOSS_PCT)).toBe(3);
+    expect(firstRepPastThreshold([0.8, 0.74, 0.62], DEFAULT_VELOCITY_LOSS_PCT.squat)).toBe(3);
     expect(firstRepPastThreshold([0.8, 0.74, 0.62], 30)).toBeNull();
   });
 
@@ -97,7 +97,7 @@ describe('velocity loss', () => {
       samples.push(...piece);
       cursor = (piece[piece.length - 1]?.t_ms ?? cursor) + 33;
     }
-    const summary = summarizeSet(detectReps(samples, { kind: 'squat' }), DEFAULT_VELOCITY_LOSS_PCT);
+    const summary = summarizeSet(detectReps(samples, { kind: 'squat' }), DEFAULT_VELOCITY_LOSS_PCT.squat);
     expect(summary.rep_count).toBe(3);
     expect(summary.best_velocity_m_s).toBeGreaterThan(summary.last_velocity_m_s);
     expect(summary.velocity_loss_pct).toBeGreaterThan(20);

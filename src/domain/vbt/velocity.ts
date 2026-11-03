@@ -1,17 +1,31 @@
 import type { DetectedRep, VbtLiftKind } from './reps';
 
-/** Default strength cutoff. Configurable per lift in the camera screen. */
-export const DEFAULT_VELOCITY_LOSS_PCT = 20;
+/** Default speed-loss cutoff before the set. Still adjustable on the camera screen. */
+export const DEFAULT_VELOCITY_LOSS_PCT: Record<VbtLiftKind, number> = {
+  squat: 20,
+  bench: 20,
+  deadlift: 15,
+};
+
+export function defaultVelocityLossPct(kind: VbtLiftKind): number {
+  return DEFAULT_VELOCITY_LOSS_PCT[kind];
+}
 
 /**
- * Minimum velocity used only for the optional load-velocity estimate.
- * Not a tested max and not a training max.
+ * Minimum velocity for the optional load-velocity estimate.
+ * Not a tested max and not a training max. Settings can override these.
  */
 export const MIN_VELOCITY_M_S: Record<VbtLiftKind, number> = {
   squat: 0.3,
   bench: 0.17,
-  deadlift: 0.15,
+  deadlift: 0.25,
 };
+
+/** Distinct loads required before an estimate is shown. */
+export const VELOCITY_ESTIMATE_MIN_LOADS = 3;
+
+/** Heaviest logged load must reach this fraction of the estimated max. */
+export const VELOCITY_ESTIMATE_MIN_FRACTION = 0.7;
 
 export interface VelocityLoss {
   /** Fastest mean concentric velocity in the set, metres per second. */
@@ -119,4 +133,44 @@ export function estimateLoadAtVelocity(
   const load = (minVelocityMps - intercept) / slope;
   if (!(load > 0) || load > 500) return null;
   return load;
+}
+
+export type VelocityEstimateResult =
+  | { status: 'ready'; load_kg: number; heaviest_kg: number; distinct_loads: number }
+  | { status: 'need_more_loads'; distinct_loads: number };
+
+/** One point per load. The fastest mean at that load stands in for the set. */
+export function distinctLoadPoints(points: readonly LoadVelocityPoint[]): LoadVelocityPoint[] {
+  const byLoad = new Map<number, number>();
+  for (const point of points) {
+    if (!(point.load_kg > 0) || !(point.mean_velocity_m_s > 0)) continue;
+    const key = Math.round(point.load_kg * 10) / 10;
+    const current = byLoad.get(key);
+    if (current == null || point.mean_velocity_m_s > current) byLoad.set(key, point.mean_velocity_m_s);
+  }
+  return [...byLoad.entries()]
+    .map(([load_kg, mean_velocity_m_s]) => ({ load_kg, mean_velocity_m_s }))
+    .sort((a, b) => a.load_kg - b.load_kg);
+}
+
+/**
+ * Show an estimated max only with 3 or more distinct loads, and only when the
+ * heaviest of those loads is at least about 70% of that estimate.
+ * Otherwise the caller shows a short “need more loads” hint, or nothing.
+ * The number is an estimate. It does not update training maxes.
+ */
+export function velocityEstimate(
+  points: readonly LoadVelocityPoint[],
+  minVelocityMps: number,
+): VelocityEstimateResult {
+  const rows = distinctLoadPoints(points);
+  if (rows.length < VELOCITY_ESTIMATE_MIN_LOADS) {
+    return { status: 'need_more_loads', distinct_loads: rows.length };
+  }
+  const estimate = estimateLoadAtVelocity(rows, minVelocityMps);
+  const heaviest = rows[rows.length - 1]?.load_kg ?? 0;
+  if (estimate == null || heaviest < estimate * VELOCITY_ESTIMATE_MIN_FRACTION) {
+    return { status: 'need_more_loads', distinct_loads: rows.length };
+  }
+  return { status: 'ready', load_kg: estimate, heaviest_kg: heaviest, distinct_loads: rows.length };
 }

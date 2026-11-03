@@ -27,8 +27,10 @@ import {
 } from '../domain/equipment';
 import { SetLogger } from '../components/SetLogger';
 import { VbtTracker } from '../components/VbtTracker';
+import { loadVelocityPoints } from '../domain/vbt/history';
 import { attachVbtSet } from '../domain/vbt/log';
 import type { VbtLiftKind } from '../domain/vbt/reps';
+import { readVbtSettings } from '../domain/vbt/settings';
 import { RestTimer } from '../components/RestTimer';
 import { LightBadge } from '../components/LightBadge';
 import { NumberStepper } from '../components/NumberStepper';
@@ -322,13 +324,21 @@ export function WorkoutScreen({
           liftName={draft.lifts[vbt.liftIndex]?.name ?? 'Lift'}
           targetReps={draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.reps ?? 0}
           loadKg={draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0}
-          priorPoints={(draft.lifts[vbt.liftIndex]?.vbt?.sets ?? [])
-            .filter((set) => (set.load_kg ?? 0) > 0 && set.best_velocity_m_s > 0)
-            .map((set) => ({ load_kg: set.load_kg ?? 0, mean_velocity_m_s: set.best_velocity_m_s }))}
+          date={draft.date}
+          setNumber={vbt.setIndex + 1}
+          minVelocity={
+            readVbtSettings().min_velocity_m_s[
+              vbtKindFor(draft.lifts[vbt.liftIndex]?.exercise_id ?? 'squat_low_bar') ?? 'squat'
+            ]
+          }
+          priorPoints={loadVelocityPoints(
+            [...history, draft],
+            vbtKindFor(draft.lifts[vbt.liftIndex]?.exercise_id ?? 'squat_low_bar') ?? 'squat',
+          )}
           onCancel={() => setVbt(null)}
-          onSave={(summary) => {
+          onSave={(summary, view) => {
             const load = draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0;
-            onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load));
+            onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view));
             setVbt(null);
           }}
         />

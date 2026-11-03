@@ -34,8 +34,8 @@ export function loadVelocityPoints(sessions: readonly SessionLog[], kind: VbtLif
       if (lift.exercise_id !== id) continue;
       for (const set of lift.vbt?.sets ?? []) {
         const load = set.load_kg ?? lift.sets[set.set_index]?.weight_kg ?? 0;
-        if (!(load > 0) || !(set.best_velocity_m_s > 0)) continue;
-        points.push({ load_kg: load, mean_velocity_m_s: set.best_velocity_m_s });
+        if (!(load > 0) || !((set.best_velocity_m_s ?? 0) > 0)) continue;
+        points.push({ load_kg: load, mean_velocity_m_s: set.best_velocity_m_s ?? 0 });
       }
     }
   }
@@ -65,12 +65,13 @@ export function sameLoadSpeeds(
       for (const set of lift.vbt?.sets ?? []) {
         const load = set.load_kg ?? lift.sets[set.set_index]?.weight_kg ?? 0;
         if (Math.abs(load - loadKg) > LOAD_MATCH_KG) continue;
-        const first = set.reps[0]?.mean_velocity_m_s ?? set.best_velocity_m_s;
-        if (!(set.best_velocity_m_s > 0)) continue;
+        const best = set.best_velocity_m_s ?? 0;
+        const first = set.reps[0]?.mean_velocity_m_s ?? best;
+        if (!(best > 0)) continue;
         rows.push({
           date,
           session_id: session.session_id,
-          best_mean_m_s: set.best_velocity_m_s,
+          best_mean_m_s: best,
           first_mean_m_s: first,
         });
       }

@@ -1,16 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { barHeightM } from '../domain/vbt/calibration';
 import { demoDurationMs, demoHeightAt, demoTrace } from '../domain/vbt/demo';
-import { detectReps, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
+import { detectReps, isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
+import { shareOrDownloadFile } from '../domain/vbt/shareFile';
 import { findPlateCircle, type LumaFrame } from '../domain/vbt/tracker';
-import {
-  DEFAULT_VELOCITY_LOSS_PCT,
-  MIN_VELOCITY_M_S,
-  estimateLoadAtVelocity,
-  summarizeSet,
-  type LoadVelocityPoint,
-  type VbtSetSummary,
-} from '../domain/vbt/velocity';
+import { defaultVelocityLossPct, summarizeSet, velocityEstimate, type LoadVelocityPoint, type VbtSetSummary } from '../domain/vbt/velocity';
+import { videoExtForMime, vbtVideoFilename } from '../domain/vbt/videoFile';
 import { repPhrase } from '../domain/vbt/voice';
 
 type Source = 'pick' | 'camera' | 'demo';
@@ -21,6 +16,9 @@ export function VbtTracker({
   targetReps,
   loadKg,
   priorPoints,
+  minVelocity,
+  date,
+  setNumber,
   onCancel,
   onSave,
 }: {
@@ -29,14 +27,21 @@ export function VbtTracker({
   targetReps: number;
   loadKg: number;
   priorPoints: readonly LoadVelocityPoint[];
+  minVelocity: number;
+  date: string;
+  setNumber: number;
   onCancel: () => void;
-  onSave: (summary: VbtSetSummary) => void;
+  onSave: (summary: VbtSetSummary, view: CameraView) => void;
 }) {
   const [source, setSource] = useState<Source>('pick');
   const [denied, setDenied] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [threshold, setThreshold] = useState(DEFAULT_VELOCITY_LOSS_PCT);
+  const [view, setView] = useState<CameraView>('side');
+  const [recordVideo, setRecordVideo] = useState(true);
+  const [threshold, setThreshold] = useState(() => defaultVelocityLossPct(kind));
   const [summary, setSummary] = useState<VbtSetSummary | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [recordNote, setRecordNote] = useState<string | null>(null);
   const [hud, setHud] = useState({ reps: 0, velocity: 0, loss: 0, warn: false });
   const [platePx, setPlatePx] = useState(72);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -48,8 +53,15 @@ export function VbtTracker({
   const spokenRef = useRef(0);
   const mutedRef = useRef(muted);
   const thresholdRef = useRef(threshold);
+  const viewRef = useRef(view);
+  const recordRef = useRef(recordVideo);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const finishingRef = useRef(false);
   mutedRef.current = muted;
   thresholdRef.current = threshold;
+  viewRef.current = view;
+  recordRef.current = recordVideo;
 
   useEffect(() => {
     if (source !== 'camera') return;
@@ -153,43 +165,92 @@ export function VbtTracker({
         pathRef.current.push(point);
         if (pathRef.current.length > 240) pathRef.current.shift();
       }
-      drawPath(ctx, pathRef.current);
+      if (isSideView(viewRef.current)) drawPath(ctx, pathRef.current);
+      if (recordRef.current) startRecorder(canvas);
       if (now - lastHud > 120) {
         lastHud = now;
         const reps = detectReps(samplesRef.current, { kind });
         const next = summarizeSet(reps, thresholdRef.current);
+        const side = isSideView(viewRef.current);
         const velocity = next.last_velocity_m_s;
-        const warn = next.stopped_for_loss;
+        const warn = side && next.stopped_for_loss;
         setHud({ reps: next.rep_count, velocity, loss: next.velocity_loss_pct, warn });
         if (next.rep_count > spokenRef.current) {
           const newest = next.rep_count;
-          const justDropped = firstDropped(reps.map((rep) => rep.mean_velocity_m_s), thresholdRef.current, newest);
+          const justDropped = side && firstDropped(reps.map((rep) => rep.mean_velocity_m_s), thresholdRef.current, newest);
           speak(repPhrase(newest, targetReps > 0 ? targetReps : null, justDropped), mutedRef.current);
           spokenRef.current = newest;
         }
       }
       raf = window.requestAnimationFrame(tick);
     };
+    const startRecorder = (target: HTMLCanvasElement) => {
+      if (recorderRef.current || typeof MediaRecorder === 'undefined') return;
+      try {
+        const stream = target.captureStream(30);
+        const mime = preferredMime();
+        const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+        chunksRef.current = [];
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) chunksRef.current.push(event.data);
+        };
+        recorder.start(200);
+        recorderRef.current = recorder;
+      } catch {
+        recorderRef.current = null;
+      }
+    };
     raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      const recorder = recorderRef.current;
+      if (!finishingRef.current && recorder && recorder.state !== 'inactive') {
+        recorder.onstop = null;
+        recorder.stop();
+        recorderRef.current = null;
+        chunksRef.current = [];
+      }
+    };
   }, [source, summary, kind, platePx, targetReps]);
 
   const finish = () => {
     const reps = detectReps(samplesRef.current, { kind });
-    setSummary(summarizeSet(reps, threshold));
+    const next = summarizeSet(reps, threshold);
+    const recorder = recorderRef.current;
+    finishingRef.current = true;
+    const publish = (file: File | null) => {
+      setVideoFile(file);
+      setSummary(next);
+    };
+    if (recordVideo && recorder && recorder.state !== 'inactive') {
+      recorder.onstop = () => {
+        const mime = recorder.mimeType || 'video/webm';
+        const blob = new Blob(chunksRef.current, { type: mime });
+        const file = new File(
+          [blob],
+          vbtVideoFilename(date, liftName, loadKg, setNumber, videoExtForMime(mime)),
+          { type: mime },
+        );
+        publish(blob.size > 0 ? file : null);
+      };
+      recorder.stop();
+      return;
+    }
+    publish(null);
   };
 
+  const side = isSideView(view);
   const estimate =
-    summary == null
+    summary == null || !side
       ? null
-      : estimateLoadAtVelocity(
+      : velocityEstimate(
           [
             ...priorPoints,
             ...(summary.best_velocity_m_s > 0 && loadKg > 0
               ? [{ load_kg: loadKg, mean_velocity_m_s: summary.best_velocity_m_s }]
               : []),
           ],
-          MIN_VELOCITY_M_S[kind],
+          minVelocity,
         );
 
   return (
@@ -202,32 +263,38 @@ export function VbtTracker({
           <p className="vbt-reps" data-testid="vbt-result-reps">
             {summary.rep_count}
           </p>
-          <p className="muted">reps counted</p>
-          <dl className="vbt-stats">
-            <div>
-              <dt>Best</dt>
-              <dd>{summary.best_velocity_m_s.toFixed(2)} m/s</dd>
-            </div>
-            <div>
-              <dt>Last</dt>
-              <dd>{summary.last_velocity_m_s.toFixed(2)} m/s</dd>
-            </div>
-            <div>
-              <dt>Loss</dt>
-              <dd>{summary.velocity_loss_pct.toFixed(0)}%</dd>
-            </div>
-            <div>
-              <dt>Cutoff</dt>
-              <dd>{summary.threshold_pct}%</dd>
-            </div>
-          </dl>
-          {summary.stopped_for_loss ? (
-            <p className="vbt-warn">Speed drop. Rack it.</p>
+          <p className="muted">{side ? 'reps counted' : 'reps counted · speed needs the side view'}</p>
+          {side ? (
+            <>
+              <dl className="vbt-stats">
+                <div>
+                  <dt>Best</dt>
+                  <dd>{summary.best_velocity_m_s.toFixed(2)} m/s</dd>
+                </div>
+                <div>
+                  <dt>Last</dt>
+                  <dd>{summary.last_velocity_m_s.toFixed(2)} m/s</dd>
+                </div>
+                <div>
+                  <dt>Loss</dt>
+                  <dd>{summary.velocity_loss_pct.toFixed(0)}%</dd>
+                </div>
+                <div>
+                  <dt>Cutoff</dt>
+                  <dd>{summary.threshold_pct}%</dd>
+                </div>
+              </dl>
+              {summary.stopped_for_loss ? (
+                <p className="vbt-warn">Speed drop. Rack it.</p>
+              ) : (
+                <p className="muted">Under the {summary.threshold_pct}% loss cutoff.</p>
+              )}
+            </>
           ) : (
-            <p className="muted">Under the {summary.threshold_pct}% loss cutoff.</p>
+            <p className="vbt-warn">Speed needs the side view. This {view} view counted reps only.</p>
           )}
-          <PathTrace samples={samplesRef.current} />
-          {summary.reps.length > 0 ? (
+          {side ? <PathTrace samples={samplesRef.current} /> : null}
+          {side && summary.reps.length > 0 ? (
             <ul className="vbt-rep-list">
               {summary.reps.map((rep) => (
                 <li key={rep.rep}>
@@ -239,12 +306,34 @@ export function VbtTracker({
           ) : (
             <p className="muted">No full rep yet. The bar has to travel far enough to count.</p>
           )}
-          {estimate != null ? (
+          {side && estimate?.status === 'ready' ? (
             <p className="vbt-estimate">
-              Estimated 1RM {estimate.toFixed(1)} kg from bar speed. Estimate only. Not a training max.
+              Estimated 1RM {estimate.load_kg.toFixed(1)} kg from bar speed. Estimate only. Not a training max.
             </p>
           ) : null}
-          <button type="button" className="btn btn-primary btn-block" data-testid="vbt-save" onClick={() => onSave(summary)}>
+          {side && estimate?.status === 'need_more_loads' ? (
+            <p className="muted">Need more loads for an estimated max.</p>
+          ) : null}
+          {recordVideo ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              data-testid="vbt-save-video"
+              onClick={() => {
+                if (!videoFile) {
+                  setRecordNote('No video file for this set.');
+                  return;
+                }
+                void shareOrDownloadFile(videoFile).then((how) => {
+                  setRecordNote(how === 'shared' ? 'Shared the video.' : `Downloaded ${videoFile.name}.`);
+                });
+              }}
+            >
+              Save video
+            </button>
+          ) : null}
+          {recordNote ? <p className="muted">{recordNote}</p> : null}
+          <button type="button" className="btn btn-primary btn-block" data-testid="vbt-save" onClick={() => onSave(summary, view)}>
             Save to set
           </button>
           <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>
@@ -269,14 +358,18 @@ export function VbtTracker({
             }}
           />
           <div className="vbt-hud">
-            <p className="kicker">{liftName} · side view</p>
+            <p className="kicker">{liftName} · {view} view</p>
             <p className="vbt-reps" data-testid="vbt-reps">
               {hud.reps}
             </p>
-            <p className="vbt-speed">
-              {hud.velocity.toFixed(2)} m/s
-              <span> · loss {hud.loss.toFixed(0)}%</span>
-            </p>
+            {side ? (
+              <p className="vbt-speed">
+                {hud.velocity.toFixed(2)} m/s
+                <span> · loss {hud.loss.toFixed(0)}%</span>
+              </p>
+            ) : (
+              <p className="vbt-warn">Speed needs the side view.</p>
+            )}
             {hud.warn ? <p className="vbt-warn">Speed drop, rack it</p> : null}
             {source === 'pick' ? (
               <p className="muted">Phone on a stand or the floor, filming the plates from the side.</p>
@@ -303,16 +396,41 @@ export function VbtTracker({
                 Done
               </button>
             )}
+            <div className="vbt-row" role="group" aria-label="Camera view">
+              {(['side', 'front', 'back'] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  data-testid={`vbt-view-${item}`}
+                  className={`btn ${view === item ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setView(item)}
+                >
+                  {item === 'side' ? 'Side' : item === 'front' ? 'Front' : 'Back'}
+                </button>
+              ))}
+            </div>
             <div className="vbt-row">
               <button type="button" className="btn btn-ghost" onClick={() => setMuted((value) => !value)}>
                 {muted ? 'Unmute' : 'Mute'}
               </button>
-              <button type="button" className="btn btn-ghost" onClick={() => setThreshold((value) => Math.max(10, value - 5))}>
-                Loss {threshold}% −
+              <button
+                type="button"
+                className={`btn ${recordVideo ? 'btn-primary' : 'btn-ghost'}`}
+                data-testid="vbt-record"
+                onClick={() => setRecordVideo((value) => !value)}
+              >
+                {recordVideo ? 'Record video' : 'Video off'}
               </button>
-              <button type="button" className="btn btn-ghost" onClick={() => setThreshold((value) => Math.min(40, value + 5))}>
-                +
-              </button>
+              {side ? (
+                <button type="button" className="btn btn-ghost" onClick={() => setThreshold((value) => Math.max(10, value - 5))}>
+                  Loss {threshold}% −
+                </button>
+              ) : null}
+              {side ? (
+                <button type="button" className="btn btn-ghost" onClick={() => setThreshold((value) => Math.min(40, value + 5))}>
+                  +
+                </button>
+              ) : null}
               {source === 'camera' ? (
                 <button type="button" className="btn btn-ghost" onClick={() => setPlatePx((value) => Math.min(160, value + 8))}>
                   Plate +
@@ -419,6 +537,12 @@ function firstDropped(means: number[], threshold: number, rep: number): boolean 
     return ((best - mean) / best) * 100 >= threshold;
   }
   return false;
+}
+
+function preferredMime(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const options = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  return options.find((mime) => MediaRecorder.isTypeSupported(mime)) ?? '';
 }
 
 function speak(text: string, muted: boolean) {

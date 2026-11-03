@@ -22,7 +22,7 @@ export function sessionVbtCsv(session: SessionLog): string | null {
             round(rep.mean_velocity_m_s, 3),
             round(rep.peak_velocity_m_s, 3),
             round(rep.rom_cm, 1),
-            round(rep.concentric_ms / 1000, 3),
+            round(rep.concentric_ms == null ? undefined : rep.concentric_ms / 1000, 3),
             round(set.velocity_loss_pct, 1),
           ].join(','),
         );
@@ -42,7 +42,7 @@ function cell(value: string): string {
   return value;
 }
 
-function round(value: number, digits: number): string {
-  if (!Number.isFinite(value)) return '';
+function round(value: number | undefined, digits: number): string {
+  if (value == null || !Number.isFinite(value)) return '';
   return value.toFixed(digits);
 }

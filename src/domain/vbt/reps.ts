@@ -1,5 +1,17 @@
 export type VbtLiftKind = 'squat' | 'bench' | 'deadlift';
 
+/** Side keeps speed. Front and back only count the rise and fall. */
+export type CameraView = 'side' | 'front' | 'back';
+
+export function isSideView(view: CameraView): boolean {
+  return view === 'side';
+}
+
+/** Reps seen from the front or back. Uses the vertical trace and ignores speed. */
+export function countVerticalReps(samples: readonly VbtSample[], kind: VbtLiftKind): number {
+  return detectReps(samples, { kind }).length;
+}
+
 /** One camera sample. `y_m` increases as the bar moves up. */
 export interface VbtSample {
   t_ms: number;

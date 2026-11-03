@@ -1,10 +1,27 @@
-import type { SessionDraft, VbtSetLog } from '../../types/session';
-import type { DetectedRep } from './reps';
+import type { SessionDraft, VbtCameraView, VbtSetLog } from '../../types/session';
+import type { CameraView, DetectedRep } from './reps';
 import type { VbtSetSummary } from './velocity';
 
-export function toVbtSetLog(setIndex: number, summary: VbtSetSummary, loadKg?: number): VbtSetLog {
+export function toVbtSetLog(
+  setIndex: number,
+  summary: VbtSetSummary,
+  loadKg?: number,
+  view: CameraView = 'side',
+): VbtSetLog {
+  if (view !== 'side') {
+    return {
+      set_index: setIndex,
+      view,
+      ...(loadKg && loadKg > 0 ? { load_kg: loadKg } : {}),
+      reps: summary.reps.map((rep) => ({ rep: rep.rep })),
+      rep_count: summary.rep_count,
+      threshold_pct: summary.threshold_pct,
+      stopped_for_loss: false,
+    };
+  }
   return {
     set_index: setIndex,
+    view: 'side',
     ...(loadKg && loadKg > 0 ? { load_kg: loadKg } : {}),
     reps: summary.reps.map(toRepLog),
     rep_count: summary.rep_count,
@@ -35,8 +52,9 @@ export function attachVbtSet(
   setIndex: number,
   summary: VbtSetSummary,
   loadKg = 0,
+  view: VbtCameraView = 'side',
 ): SessionDraft {
-  const logged = toVbtSetLog(setIndex, summary, loadKg);
+  const logged = toVbtSetLog(setIndex, summary, loadKg, view);
   const lifts = draft.lifts.map((lift, index) => {
     if (index !== liftIndex) return lift;
     const sets = lift.sets.map((set, cursor) => {

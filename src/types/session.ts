@@ -93,22 +93,27 @@ export interface LoggedLift {
   sets: LoggedSet[];
 }
 
+export type VbtCameraView = 'side' | 'front' | 'back';
+
 export interface VbtRepLog {
   rep: number;
-  mean_velocity_m_s: number;
-  peak_velocity_m_s: number;
-  rom_cm: number;
-  concentric_ms: number;
+  /** Omitted for front and back views. Those views count reps only. */
+  mean_velocity_m_s?: number;
+  peak_velocity_m_s?: number;
+  rom_cm?: number;
+  concentric_ms?: number;
 }
 
 export interface VbtSetLog {
   set_index: number;
+  /** Side keeps speed. Front and back store the rep count only. Missing means side. */
+  view?: VbtCameraView;
   /** Load on the bar for this set, when it was saved. */
   load_kg?: number;
   reps: VbtRepLog[];
   rep_count: number;
-  best_velocity_m_s: number;
-  velocity_loss_pct: number;
+  best_velocity_m_s?: number;
+  velocity_loss_pct?: number;
   threshold_pct: number;
   stopped_for_loss: boolean;
 }

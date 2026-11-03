@@ -10,6 +10,10 @@ import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isAssistedLoad, isTimedHold } from 
 import { liftEquipment } from '../domain/equipment';
 import { isReconstructedReferenceSession, type ImportMode } from '../domain/sessionBackup';
 import { formatLoad } from '../domain/formatLoad';
+import { VbtSpeedCard } from '../components/VbtSpeedCard';
+import { sessionVbtCsv, vbtCsvFilename } from '../domain/vbt/csv';
+import { shareOrDownloadFile } from '../domain/vbt/shareFile';
+import { useState } from 'react';
 
 export function HistoryScreen({
   sessions,
@@ -40,6 +44,7 @@ export function HistoryScreen({
         <span />
       </header>
       <AppTabs current="log" onToday={onBack} onDashboard={onDashboard} onLog={() => undefined} />
+      <VbtSpeedCard sessions={sessions} />
 
       {sessions.length === 0 ? (
         <SessionBackupCard
@@ -100,6 +105,7 @@ export function DetailScreen({
   onBack: () => void;
 }) {
   const day = canonicalTemplateDay(session.template_day);
+  const [exportNote, setExportNote] = useState<string | null>(null);
   return (
     <main className="screen">
       <header className="topbar">
@@ -110,6 +116,26 @@ export function DetailScreen({
         <span />
       </header>
       <p className="muted">{formatDisplayDate(session.date)}</p>
+      <button
+        type="button"
+        className="btn btn-primary btn-block"
+        data-testid="vbt-export"
+        onClick={() => {
+          const csv = sessionVbtCsv(session);
+          if (!csv) {
+            setExportNote('No bar-speed reps in this session.');
+            return;
+          }
+          const name = vbtCsvFilename(session.date);
+          const file = new File([csv], name, { type: 'text/csv' });
+          void shareOrDownloadFile(file).then((how) => {
+            setExportNote(how === 'shared' ? 'Shared the bar-speed CSV.' : `Downloaded ${name}.`);
+          });
+        }}
+      >
+        Export bar-speed CSV
+      </button>
+      {exportNote ? <p className="muted" data-testid="vbt-export-note">{exportNote}</p> : null}
       <LightBadge light={session.readiness.light} large />
       {session.pain_flag ? <p className="pain-note">Pain flag on</p> : null}
       {session.pain_area ? (

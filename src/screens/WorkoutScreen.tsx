@@ -62,6 +62,7 @@ export function WorkoutScreen({
 }) {
   const [active, setActive] = useState<ActiveSet | null>(null);
   const [vbt, setVbt] = useState<ActiveSet | null>(null);
+  const [videoToast, setVideoToast] = useState<string | null>(null);
   const [rest, setRest] = useState<{ seconds: number; name: string } | null>(null);
   const [openLift, setOpenLift] = useState(0);
 
@@ -341,6 +342,10 @@ export function WorkoutScreen({
             onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view, correction));
             setVbt(null);
           }}
+          onVideoSkipped={() => {
+            setVideoToast('Set saved, video not saved');
+            window.setTimeout(() => setVideoToast(null), 2800);
+          }}
         />
       ) : null}
 
@@ -374,6 +379,12 @@ export function WorkoutScreen({
             completeSet(active.liftIndex, active.setIndex, logged, applyRemaining)
           }
         />
+      ) : null}
+
+      {videoToast ? (
+        <p className="vbt-toast" role="status">
+          {videoToast}
+        </p>
       ) : null}
 
       {rest ? (

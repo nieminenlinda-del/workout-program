@@ -129,6 +129,10 @@ export function DetailScreen({
           const name = vbtCsvFilename(session.date);
           const file = new File([csv], name, { type: 'text/csv' });
           void shareOrDownloadFile(file).then((how) => {
+            if (how === 'cancelled') {
+              setExportNote('Export cancelled.');
+              return;
+            }
             setExportNote(how === 'shared' ? 'Shared the bar-speed CSV.' : `Downloaded ${name}.`);
           });
         }}

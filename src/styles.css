@@ -1254,6 +1254,22 @@ button {
   border-color: rgba(230, 195, 74, 0.55);
 }
 
+.vbt-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 70;
+  margin: 0 auto;
+  max-width: 400px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--text);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
 .vbt-screen {
   position: fixed;
   inset: 0;

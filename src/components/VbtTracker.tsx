@@ -10,7 +10,7 @@ import {
   type RepCorrection,
 } from '../domain/vbt/correction';
 import { detectReps, isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
-import { shareOrDownloadFile } from '../domain/vbt/shareFile';
+import { downloadFile, saveSetThenVideo } from '../domain/vbt/shareFile';
 import { findPlateCircle, type LumaFrame } from '../domain/vbt/tracker';
 import { defaultVelocityLossPct, summarizeSet, velocityEstimate, type LoadVelocityPoint, type VbtSetSummary } from '../domain/vbt/velocity';
 import { videoExtForMime, vbtVideoFilename } from '../domain/vbt/videoFile';
@@ -29,6 +29,7 @@ export function VbtTracker({
   setNumber,
   onCancel,
   onSave,
+  onVideoSkipped,
 }: {
   kind: VbtLiftKind;
   liftName: string;
@@ -40,6 +41,7 @@ export function VbtTracker({
   setNumber: number;
   onCancel: () => void;
   onSave: (summary: VbtSetSummary, view: CameraView, correction: RepCorrection) => void;
+  onVideoSkipped?: () => void;
 }) {
   const [source, setSource] = useState<Source>('pick');
   const [denied, setDenied] = useState(false);
@@ -50,7 +52,6 @@ export function VbtTracker({
   const [summary, setSummary] = useState<VbtSetSummary | null>(null);
   const [correction, setCorrection] = useState<RepCorrection | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [recordNote, setRecordNote] = useState<string | null>(null);
   const [hud, setHud] = useState({ reps: 0, velocity: 0, loss: 0, warn: false });
   const [platePx, setPlatePx] = useState(72);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -363,32 +364,29 @@ export function VbtTracker({
           {side && estimate?.status === 'need_more_loads' ? (
             <p className="muted">Need more loads for an estimated max.</p>
           ) : null}
-          {recordVideo ? (
-            <button
-              type="button"
-              className="btn btn-ghost btn-block"
-              data-testid="vbt-save-video"
-              onClick={() => {
-                if (!videoFile) {
-                  setRecordNote('No video file for this set.');
-                  return;
-                }
-                void shareOrDownloadFile(videoFile).then((how) => {
-                  setRecordNote(how === 'shared' ? 'Shared the video.' : `Downloaded ${videoFile.name}.`);
-                });
-              }}
-            >
-              Save video
-            </button>
-          ) : null}
-          {recordNote ? <p className="muted">{recordNote}</p> : null}
           <button
             type="button"
             className="btn btn-primary btn-block"
             data-testid="vbt-save"
-            onClick={() => correction && onSave(correctedSummary(correction, threshold), view, correction)}
+            onClick={() => {
+              if (!correction) return;
+              const summary = correctedSummary(correction, threshold);
+              const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
+              void saveSetThenVideo({
+                saveSet: () => onSave(summary, view, correction),
+                file: videoFile,
+                canShare: (clip) => typeof nav.share === 'function' && Boolean(nav.canShare?.({ files: [clip] })),
+                share: (clip) => {
+                  if (!nav.share) return Promise.reject(new Error('share unavailable'));
+                  return nav.share({ files: [clip], title: clip.name });
+                },
+                download: downloadFile,
+              }).then((result) => {
+                if (result.video === 'cancelled') onVideoSkipped?.();
+              });
+            }}
           >
-            Save to set
+            {videoFile ? 'Save set + video' : 'Save to set'}
           </button>
           <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>
             Discard

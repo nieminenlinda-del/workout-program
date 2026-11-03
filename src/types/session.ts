@@ -85,7 +85,37 @@ export interface LoggedLift {
    * can exclude the whole day.
    */
   counts_toward_tm?: boolean;
+  /**
+   * Camera bar-speed for this lift. Missing on older logs.
+   * Stored beside the sets. It does not change training-max rules.
+   */
+  vbt?: VbtLiftLog;
   sets: LoggedSet[];
+}
+
+export interface VbtRepLog {
+  rep: number;
+  mean_velocity_m_s: number;
+  peak_velocity_m_s: number;
+  rom_cm: number;
+  concentric_ms: number;
+}
+
+export interface VbtSetLog {
+  set_index: number;
+  /** Load on the bar for this set, when it was saved. */
+  load_kg?: number;
+  reps: VbtRepLog[];
+  rep_count: number;
+  best_velocity_m_s: number;
+  velocity_loss_pct: number;
+  threshold_pct: number;
+  stopped_for_loss: boolean;
+}
+
+export interface VbtLiftLog {
+  threshold_pct: number;
+  sets: VbtSetLog[];
 }
 
 /**

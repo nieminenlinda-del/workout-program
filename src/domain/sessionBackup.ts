@@ -13,6 +13,9 @@ import {
   type SessionDraft,
   type SessionLog,
   type TemplateDay,
+  type VbtLiftLog,
+  type VbtRepLog,
+  type VbtSetLog,
 } from '../types/session';
 import type { SessionRepository } from '../db/repository';
 import { createDraftSession } from './sessionFactory';
@@ -171,7 +174,49 @@ function asLift(value: unknown, label: string): LoggedLift {
   if (typeof row.bar_kg === 'number') lift.bar_kg = row.bar_kg;
   if (isBarPosition(row.bar_position)) lift.bar_position = row.bar_position;
   if (row.counts_toward_tm === false) lift.counts_toward_tm = false;
+  const vbt = asVbt(row.vbt);
+  if (vbt) lift.vbt = vbt;
   return lift;
+}
+
+function asVbt(value: unknown): VbtLiftLog | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const row = value as Record<string, unknown>;
+  if (!Array.isArray(row.sets)) return undefined;
+  const sets = row.sets.map(asVbtSet).filter((set): set is VbtSetLog => set != null);
+  if (sets.length === 0) return undefined;
+  const threshold = typeof row.threshold_pct === 'number' ? row.threshold_pct : sets[0]?.threshold_pct ?? 20;
+  return { threshold_pct: threshold, sets };
+}
+
+function asVbtSet(value: unknown): VbtSetLog | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.set_index !== 'number' || !Array.isArray(row.reps)) return null;
+  const reps = row.reps.map(asVbtRep).filter((rep): rep is VbtRepLog => rep != null);
+  return {
+    set_index: row.set_index,
+    ...(typeof row.load_kg === 'number' ? { load_kg: row.load_kg } : {}),
+    reps,
+    rep_count: typeof row.rep_count === 'number' ? row.rep_count : reps.length,
+    best_velocity_m_s: typeof row.best_velocity_m_s === 'number' ? row.best_velocity_m_s : 0,
+    velocity_loss_pct: typeof row.velocity_loss_pct === 'number' ? row.velocity_loss_pct : 0,
+    threshold_pct: typeof row.threshold_pct === 'number' ? row.threshold_pct : 20,
+    stopped_for_loss: row.stopped_for_loss === true,
+  };
+}
+
+function asVbtRep(value: unknown): VbtRepLog | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.rep !== 'number' || typeof row.mean_velocity_m_s !== 'number') return null;
+  return {
+    rep: row.rep,
+    mean_velocity_m_s: row.mean_velocity_m_s,
+    peak_velocity_m_s: typeof row.peak_velocity_m_s === 'number' ? row.peak_velocity_m_s : row.mean_velocity_m_s,
+    rom_cm: typeof row.rom_cm === 'number' ? row.rom_cm : 0,
+    concentric_ms: typeof row.concentric_ms === 'number' ? row.concentric_ms : 0,
+  };
 }
 
 function asSession(value: unknown, label: string): SessionDraft {

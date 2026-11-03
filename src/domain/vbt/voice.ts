@@ -20,7 +20,7 @@ export const LAST_REP_CALLOUT = 'last rep';
 /** English phrase for one completed rep. Empty when there is nothing new to say. */
 export function repPhrase(rep: number, targetReps: number | null, speedDrop: boolean): string {
   const count = COUNT_WORDS[rep] ?? String(rep);
-  const parts = [count];
+  const parts: string[] = [count];
   if (targetReps != null && rep === targetReps) parts.push(LAST_REP_CALLOUT);
   if (speedDrop) parts.push(SPEED_DROP_CALLOUT);
   return parts.join('. ');

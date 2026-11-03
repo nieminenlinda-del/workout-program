@@ -1,7 +1,7 @@
 import type { SessionLog } from '../../types/session';
 
 export const VBT_CSV_HEADER =
-  'date,session_id,lift,load_kg,set,rep,mean_velocity_m_s,peak_velocity_m_s,rom_cm,concentric_s,set_velocity_loss_pct';
+  'date,session_id,lift,load_kg,set,rep,mean_velocity_m_s,peak_velocity_m_s,rom_cm,concentric_s,set_velocity_loss_pct,camera_rep_count';
 
 /** One row per camera rep. Null when this session has no bar-speed reps. */
 export function sessionVbtCsv(session: SessionLog): string | null {
@@ -10,7 +10,10 @@ export function sessionVbtCsv(session: SessionLog): string | null {
   for (const lift of session.lifts) {
     for (const set of lift.vbt?.sets ?? []) {
       const load = set.load_kg ?? lift.sets[set.set_index]?.weight_kg ?? '';
+      const dropped = new Set(set.excluded_reps ?? []);
+      const cameraCount = set.camera_rep_count ?? set.rep_count;
       for (const rep of set.reps) {
+        if (dropped.has(rep.rep)) continue;
         lines.push(
           [
             date,
@@ -24,6 +27,7 @@ export function sessionVbtCsv(session: SessionLog): string | null {
             round(rep.rom_cm, 1),
             round(rep.concentric_ms == null ? undefined : rep.concentric_ms / 1000, 3),
             round(set.velocity_loss_pct, 1),
+            cameraCount,
           ].join(','),
         );
       }

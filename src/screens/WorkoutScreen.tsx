@@ -336,9 +336,9 @@ export function WorkoutScreen({
             vbtKindFor(draft.lifts[vbt.liftIndex]?.exercise_id ?? 'squat_low_bar') ?? 'squat',
           )}
           onCancel={() => setVbt(null)}
-          onSave={(summary, view) => {
+          onSave={(summary, view, correction) => {
             const load = draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0;
-            onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view));
+            onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view, correction));
             setVbt(null);
           }}
         />

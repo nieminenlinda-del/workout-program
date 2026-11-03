@@ -1309,6 +1309,34 @@ button {
   min-height: var(--tap);
 }
 
+.vbt-count-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vbt-count-btn {
+  min-width: 72px;
+  min-height: 72px;
+  font-size: 40px;
+  line-height: 1;
+}
+
+.vbt-drop {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  padding: 6px 0;
+  font: inherit;
+}
+
+.vbt-drop.excluded {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
 .vbt-reps {
   margin: 0;
   font-family: var(--display);

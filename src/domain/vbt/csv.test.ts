@@ -28,7 +28,7 @@ describe('bar-speed CSV', () => {
     expect(rows[1]).toContain('Bench press');
     expect(rows[1]).toContain(',40,');
     expect(rows[1]).toContain(`,${setIndex + 1},1,`);
-    expect(rows[1]?.split(',').at(-1)).toBe(summary.velocity_loss_pct.toFixed(1));
+    expect(rows[1]).toContain(`,${summary.velocity_loss_pct.toFixed(1)},${summary.rep_count}`);
   });
 
   it('quotes a lift name that contains a comma', () => {

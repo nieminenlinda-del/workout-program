@@ -201,6 +201,12 @@ function asVbtSet(value: unknown): VbtSetLog | null {
     ...(typeof row.load_kg === 'number' ? { load_kg: row.load_kg } : {}),
     reps,
     rep_count: typeof row.rep_count === 'number' ? row.rep_count : reps.length,
+    ...(typeof row.camera_rep_count === 'number' ? { camera_rep_count: row.camera_rep_count } : {}),
+    ...(Array.isArray(row.excluded_reps)
+      ? {
+          excluded_reps: row.excluded_reps.filter((rep): rep is number => typeof rep === 'number'),
+        }
+      : {}),
     ...(typeof row.best_velocity_m_s === 'number' ? { best_velocity_m_s: row.best_velocity_m_s } : {}),
     ...(typeof row.velocity_loss_pct === 'number' ? { velocity_loss_pct: row.velocity_loss_pct } : {}),
     threshold_pct: typeof row.threshold_pct === 'number' ? row.threshold_pct : 20,

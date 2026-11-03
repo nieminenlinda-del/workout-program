@@ -111,7 +111,12 @@ export interface VbtSetLog {
   /** Load on the bar for this set, when it was saved. */
   load_kg?: number;
   reps: VbtRepLog[];
+  /** Final count after − / + and dropped reps. This is what the set stores. */
   rep_count: number;
+  /** Reps the camera detected before she edited the card. Missing on older logs. */
+  camera_rep_count?: number;
+  /** 1-based indexes from the camera list that she excluded. */
+  excluded_reps?: number[];
   best_velocity_m_s?: number;
   velocity_loss_pct?: number;
   threshold_pct: number;

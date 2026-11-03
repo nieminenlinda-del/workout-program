@@ -1,4 +1,5 @@
 import type { SessionDraft, VbtCameraView, VbtSetLog } from '../../types/session';
+import type { RepCorrection } from './correction';
 import type { CameraView, DetectedRep } from './reps';
 import type { VbtSetSummary } from './velocity';
 
@@ -7,14 +8,21 @@ export function toVbtSetLog(
   summary: VbtSetSummary,
   loadKg?: number,
   view: CameraView = 'side',
+  correction?: RepCorrection,
 ): VbtSetLog {
+  const cameraCount = correction?.detected.length ?? summary.reps.length;
+  const finalCount = correction?.repCount ?? summary.rep_count;
+  const excluded = correction?.excluded ?? [];
+  const kept = correction ? summary.reps : summary.reps;
   if (view !== 'side') {
     return {
       set_index: setIndex,
       view,
       ...(loadKg && loadKg > 0 ? { load_kg: loadKg } : {}),
-      reps: summary.reps.map((rep) => ({ rep: rep.rep })),
-      rep_count: summary.rep_count,
+      reps: Array.from({ length: finalCount }, (_, index) => ({ rep: index + 1 })),
+      rep_count: finalCount,
+      camera_rep_count: cameraCount,
+      ...(excluded.length > 0 ? { excluded_reps: excluded } : {}),
       threshold_pct: summary.threshold_pct,
       stopped_for_loss: false,
     };
@@ -23,8 +31,10 @@ export function toVbtSetLog(
     set_index: setIndex,
     view: 'side',
     ...(loadKg && loadKg > 0 ? { load_kg: loadKg } : {}),
-    reps: summary.reps.map(toRepLog),
-    rep_count: summary.rep_count,
+    reps: kept.map(toRepLog),
+    rep_count: finalCount,
+    camera_rep_count: cameraCount,
+    ...(excluded.length > 0 ? { excluded_reps: excluded } : {}),
     best_velocity_m_s: round3(summary.best_velocity_m_s),
     velocity_loss_pct: round1(summary.velocity_loss_pct),
     threshold_pct: summary.threshold_pct,
@@ -53,13 +63,15 @@ export function attachVbtSet(
   summary: VbtSetSummary,
   loadKg = 0,
   view: VbtCameraView = 'side',
+  correction?: RepCorrection,
 ): SessionDraft {
-  const logged = toVbtSetLog(setIndex, summary, loadKg, view);
+  const logged = toVbtSetLog(setIndex, summary, loadKg, view, correction);
+  const finalCount = correction?.repCount ?? summary.rep_count;
   const lifts = draft.lifts.map((lift, index) => {
     if (index !== liftIndex) return lift;
     const sets = lift.sets.map((set, cursor) => {
       if (cursor !== setIndex) return set;
-      return { ...set, reps: summary.rep_count, completed: true };
+      return { ...set, reps: finalCount, completed: true };
     });
     const previous = (lift.vbt?.sets ?? []).filter((set) => set.set_index !== setIndex);
     return {

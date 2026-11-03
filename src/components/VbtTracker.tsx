@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { barHeightM } from '../domain/vbt/calibration';
 import { demoDurationMs, demoHeightAt, demoTrace } from '../domain/vbt/demo';
+import {
+  changeRepCount,
+  correctedSummary,
+  extraRepCount,
+  initialCorrection,
+  toggleExcluded,
+  type RepCorrection,
+} from '../domain/vbt/correction';
 import { detectReps, isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
 import { shareOrDownloadFile } from '../domain/vbt/shareFile';
 import { findPlateCircle, type LumaFrame } from '../domain/vbt/tracker';
@@ -31,7 +39,7 @@ export function VbtTracker({
   date: string;
   setNumber: number;
   onCancel: () => void;
-  onSave: (summary: VbtSetSummary, view: CameraView) => void;
+  onSave: (summary: VbtSetSummary, view: CameraView, correction: RepCorrection) => void;
 }) {
   const [source, setSource] = useState<Source>('pick');
   const [denied, setDenied] = useState(false);
@@ -40,6 +48,7 @@ export function VbtTracker({
   const [recordVideo, setRecordVideo] = useState(true);
   const [threshold, setThreshold] = useState(() => defaultVelocityLossPct(kind));
   const [summary, setSummary] = useState<VbtSetSummary | null>(null);
+  const [correction, setCorrection] = useState<RepCorrection | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [recordNote, setRecordNote] = useState<string | null>(null);
   const [hud, setHud] = useState({ reps: 0, velocity: 0, loss: 0, warn: false });
@@ -220,6 +229,7 @@ export function VbtTracker({
     finishingRef.current = true;
     const publish = (file: File | null) => {
       setVideoFile(file);
+      setCorrection(initialCorrection(reps));
       setSummary(next);
     };
     if (recordVideo && recorder && recorder.state !== 'inactive') {
@@ -240,14 +250,15 @@ export function VbtTracker({
   };
 
   const side = isSideView(view);
+  const shown = correction ? correctedSummary(correction, threshold) : summary;
   const estimate =
-    summary == null || !side
+    shown == null || !side
       ? null
       : velocityEstimate(
           [
             ...priorPoints,
-            ...(summary.best_velocity_m_s > 0 && loadKg > 0
-              ? [{ load_kg: loadKg, mean_velocity_m_s: summary.best_velocity_m_s }]
+            ...(shown.best_velocity_m_s > 0 && loadKg > 0
+              ? [{ load_kg: loadKg, mean_velocity_m_s: shown.best_velocity_m_s }]
               : []),
           ],
           minVelocity,
@@ -260,31 +271,52 @@ export function VbtTracker({
         <section className="vbt-result">
           <p className="kicker">Bar speed</p>
           <h1>{liftName}</h1>
-          <p className="vbt-reps" data-testid="vbt-result-reps">
-            {summary.rep_count}
+          <div className="vbt-count-row">
+            <button
+              type="button"
+              className="btn btn-ghost vbt-count-btn"
+              data-testid="vbt-rep-minus"
+              onClick={() => correction && setCorrection(changeRepCount(correction, -1))}
+            >
+              −
+            </button>
+            <p className="vbt-reps" data-testid="vbt-result-reps">
+              {shown?.rep_count ?? summary.rep_count}
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost vbt-count-btn"
+              data-testid="vbt-rep-plus"
+              onClick={() => correction && setCorrection(changeRepCount(correction, 1))}
+            >
+              +
+            </button>
+          </div>
+          <p className="muted">
+            {side ? 'reps saved' : 'reps saved · speed needs the side view'}
+            {correction ? ` · camera counted ${correction.detected.length}` : ''}
           </p>
-          <p className="muted">{side ? 'reps counted' : 'reps counted · speed needs the side view'}</p>
           {side ? (
             <>
               <dl className="vbt-stats">
                 <div>
                   <dt>Best</dt>
-                  <dd>{summary.best_velocity_m_s.toFixed(2)} m/s</dd>
+                  <dd>{(shown ?? summary).best_velocity_m_s.toFixed(2)} m/s</dd>
                 </div>
                 <div>
                   <dt>Last</dt>
-                  <dd>{summary.last_velocity_m_s.toFixed(2)} m/s</dd>
+                  <dd>{(shown ?? summary).last_velocity_m_s.toFixed(2)} m/s</dd>
                 </div>
                 <div>
                   <dt>Loss</dt>
-                  <dd>{summary.velocity_loss_pct.toFixed(0)}%</dd>
+                  <dd>{(shown ?? summary).velocity_loss_pct.toFixed(0)}%</dd>
                 </div>
                 <div>
                   <dt>Cutoff</dt>
                   <dd>{summary.threshold_pct}%</dd>
                 </div>
               </dl>
-              {summary.stopped_for_loss ? (
+              {(shown ?? summary).stopped_for_loss ? (
                 <p className="vbt-warn">Speed drop. Rack it.</p>
               ) : (
                 <p className="muted">Under the {summary.threshold_pct}% loss cutoff.</p>
@@ -294,17 +326,33 @@ export function VbtTracker({
             <p className="vbt-warn">Speed needs the side view. This {view} view counted reps only.</p>
           )}
           {side ? <PathTrace samples={samplesRef.current} /> : null}
-          {side && summary.reps.length > 0 ? (
+          {side && correction && correction.detected.length > 0 ? (
             <ul className="vbt-rep-list">
-              {summary.reps.map((rep) => (
-                <li key={rep.rep}>
-                  Rep {rep.rep} · {rep.mean_velocity_m_s.toFixed(2)} m/s mean · {rep.peak_velocity_m_s.toFixed(2)} peak ·{' '}
-                  {(rep.rom_m * 100).toFixed(0)} cm · {(rep.concentric_ms / 1000).toFixed(2)} s
-                </li>
-              ))}
+              {correction.detected.map((rep) => {
+                const excluded = correction.excluded.includes(rep.rep);
+                return (
+                  <li key={rep.rep}>
+                    <button
+                      type="button"
+                      className={`vbt-drop${excluded ? ' excluded' : ''}`}
+                      data-testid={`vbt-drop-${rep.rep}`}
+                      onClick={() => setCorrection(toggleExcluded(correction, rep.rep))}
+                    >
+                      Rep {rep.rep} · {rep.mean_velocity_m_s.toFixed(2)} m/s mean · {rep.peak_velocity_m_s.toFixed(2)} peak ·{' '}
+                      {(rep.rom_m * 100).toFixed(0)} cm · {(rep.concentric_ms / 1000).toFixed(2)} s
+                      {excluded ? ' · excluded' : ''}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
-          {side && summary.reps.length === 0 ? (
+          {side && correction && extraRepCount(correction) > 0 ? (
+            <p className="muted">
+              {extraRepCount(correction)} added rep{extraRepCount(correction) === 1 ? '' : 's'} with no bar speed.
+            </p>
+          ) : null}
+          {side && correction && correction.detected.length === 0 ? (
             <p className="muted">No full rep yet. The bar has to travel far enough to count.</p>
           ) : null}
           {side && estimate?.status === 'ready' ? (
@@ -334,7 +382,12 @@ export function VbtTracker({
             </button>
           ) : null}
           {recordNote ? <p className="muted">{recordNote}</p> : null}
-          <button type="button" className="btn btn-primary btn-block" data-testid="vbt-save" onClick={() => onSave(summary, view)}>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            data-testid="vbt-save"
+            onClick={() => correction && onSave(correctedSummary(correction, threshold), view, correction)}
+          >
             Save to set
           </button>
           <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>

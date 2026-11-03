@@ -340,6 +340,9 @@ export function WorkoutScreen({
           onSave={(summary, view, correction) => {
             const load = draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0;
             onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view, correction));
+            const restSec = slotForLift(template, draft.lifts[vbt.liftIndex], vbt.liftIndex)?.sets[vbt.setIndex]?.rest_sec ?? 90;
+            unlockTimerAudio();
+            setRest({ seconds: restSec, name: draft.lifts[vbt.liftIndex]?.name ?? 'Lift' });
             setVbt(null);
           }}
           onVideoSkipped={() => {

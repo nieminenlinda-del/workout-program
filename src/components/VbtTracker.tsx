@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { barHeightM } from '../domain/vbt/calibration';
 import { demoDurationMs, demoHeightAt, demoTrace } from '../domain/vbt/demo';
 import {
+  CAMERA_MOVE_SHIFT,
+  PLATE_STEADY_MS,
+  gateReps,
+  markerRadiusPx,
+  overlayStatus,
+  type GateSample,
+} from '../domain/vbt/gate';
+import {
   changeRepCount,
   correctedSummary,
   extraRepCount,
@@ -9,9 +17,9 @@ import {
   toggleExcluded,
   type RepCorrection,
 } from '../domain/vbt/correction';
-import { detectReps, isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
+import { isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
 import { downloadFile, saveSetThenVideo } from '../domain/vbt/shareFile';
-import { findPlateCircle, type LumaFrame } from '../domain/vbt/tracker';
+import { acquirePlate, type LumaFrame } from '../domain/vbt/tracker';
 import { defaultVelocityLossPct, summarizeSet, velocityEstimate, type LoadVelocityPoint, type VbtSetSummary } from '../domain/vbt/velocity';
 import { videoExtForMime, vbtVideoFilename } from '../domain/vbt/videoFile';
 import { repPhrase } from '../domain/vbt/voice';
@@ -56,10 +64,16 @@ export function VbtTracker({
   const [platePx, setPlatePx] = useState(72);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const samplesRef = useRef<VbtSample[]>([]);
+  const samplesRef = useRef<GateSample[]>([]);
+  const statusRef = useRef('waiting for plate');
+  const [statusText, setStatusText] = useState('waiting for plate');
   const pathRef = useRef<{ x: number; y: number }[]>([]);
   const lockRef = useRef<{ cx: number; cy: number; r: number } | null>(null);
   const originRef = useRef<number | null>(null);
+  const steadyRef = useRef(0);
+  const lastNowRef = useRef(0);
+  const everRef = useRef(false);
+  const reacquireRef = useRef(false);
   const spokenRef = useRef(0);
   const mutedRef = useRef(muted);
   const thresholdRef = useRef(threshold);
@@ -112,11 +126,17 @@ export function VbtTracker({
     pathRef.current = [];
     lockRef.current = null;
     originRef.current = null;
+    steadyRef.current = 0;
+    lastNowRef.current = 0;
+    everRef.current = false;
+    reacquireRef.current = false;
     spokenRef.current = 0;
     const trace = source === 'demo' ? demoTrace(kind) : [];
+    const rackY = trace[0]?.y_m ?? 0;
     const started = performance.now();
     let raf = 0;
     let lastHud = 0;
+    let previousLuma: Uint8ClampedArray | null = null;
 
     const tick = (now: number) => {
       const width = canvas.clientWidth || 390;
@@ -127,25 +147,48 @@ export function VbtTracker({
       }
       ctx.fillStyle = '#101218';
       ctx.fillRect(0, 0, width, height);
+      const dt = lastNowRef.current ? Math.min(80, now - lastNowRef.current) : 0;
+      lastNowRef.current = now;
       let point: { x: number; y: number } | null = null;
       if (source === 'demo') {
         const elapsed = now - started;
-        const yM = demoHeightAt(trace, Math.min(elapsed, demoDurationMs(trace)));
-        const radius = platePx / 2;
-        const pixelsPerMeter = platePx / 0.45;
-        const x = width * 0.62;
-        const y = height * 0.72 - yM * pixelsPerMeter;
+        const playing = Math.max(0, elapsed - PLATE_STEADY_MS);
+        const yM =
+          elapsed < PLATE_STEADY_MS ? rackY : demoHeightAt(trace, Math.min(playing, demoDurationMs(trace)));
+        const marker = markerRadiusPx(Math.min(width, height) * 0.5, width, height);
+        const pixelsPerMeter = (marker * 2) / 0.45;
+        const x = width * 0.58;
+        const y = height * 0.46 - (yM - rackY) * pixelsPerMeter;
         point = { x, y };
         drawGym(ctx, width, height);
-        drawPlate(ctx, x, y, radius);
-        samplesRef.current.push({ t_ms: elapsed, y_m: yM });
+        drawPlateBody(ctx, x, y, marker);
+        drawMarker(ctx, x, y, marker);
+        const barMoving = Math.abs(yM - rackY) >= 0.05;
+        statusRef.current = overlayStatus({
+          guidance: 'locked',
+          steadyMs: elapsed,
+          cameraMoved: false,
+          barMoving,
+        });
+        if (elapsed >= PLATE_STEADY_MS) {
+          samplesRef.current.push({
+            t_ms: playing,
+            y_m: yM,
+            radius_px: marker,
+            confidence: 0.95,
+            scene_shift: 0,
+            occluded: false,
+          });
+        }
       } else {
         const video = videoRef.current;
         if (video && video.readyState >= 2) {
           ctx.drawImage(video, 0, 0, width, height);
           const small = downscale(ctx, width, height);
+          const shift = sceneShift(previousLuma, small.frame.data);
+          previousLuma = small.frame.data;
           const hint = lockRef.current;
-          const found = findPlateCircle(
+          const acquired = acquirePlate(
             small.frame,
             hint
               ? {
@@ -156,18 +199,75 @@ export function VbtTracker({
                 }
               : undefined,
           );
-          if (found) {
-            const circle = {
-              cx: found.cx * small.scale,
-              cy: found.cy * small.scale,
-              r: hint?.r ?? found.r * small.scale,
-            };
+          const cameraMoved = shift >= CAMERA_MOVE_SHIFT;
+          const rawR = acquired.circle ? acquired.circle.r * small.scale : 0;
+          const marker = acquired.circle ? markerRadiusPx(rawR, width, height) : 0;
+          const circle = acquired.circle
+            ? {
+                cx: acquired.circle.cx * small.scale,
+                cy: acquired.circle.cy * small.scale,
+                r: marker,
+              }
+            : null;
+          const jumped =
+            hint != null &&
+            circle != null &&
+            Math.hypot(circle.cx - hint.cx, circle.cy - hint.cy) > Math.min(width, height) * 0.28;
+          const slipped = hint != null && marker > 0 && Math.abs(marker - hint.r) / hint.r > 0.3;
+          const good = acquired.guidance === 'locked' && circle != null && !cameraMoved && !jumped && !slipped;
+          if (!good) {
+            if (everRef.current) {
+              samplesRef.current.push({
+                t_ms: now - started,
+                y_m: null,
+                radius_px: slipped ? marker : null,
+                confidence: jumped || slipped ? 0.1 : 0,
+                scene_shift: shift,
+                occluded: jumped,
+              });
+              reacquireRef.current = true;
+              everRef.current = false;
+            }
+            steadyRef.current = 0;
+            lockRef.current = null;
+            originRef.current = null;
+          } else if (circle) {
+            steadyRef.current += dt;
             lockRef.current = circle;
             if (originRef.current == null) originRef.current = circle.cy;
-            const metres = barHeightM(circle.cy, originRef.current, platePx);
-            if (metres != null) samplesRef.current.push({ t_ms: now - started, y_m: metres });
+            const origin = originRef.current ?? circle.cy;
+            const metres = barHeightM(circle.cy, origin, marker * 2) ?? 0;
+            const ready = steadyRef.current >= PLATE_STEADY_MS;
+            if (reacquireRef.current || ready) {
+              samplesRef.current.push({
+                t_ms: now - started,
+                y_m: metres,
+                radius_px: marker,
+                confidence: Math.min(1, (acquired.circle?.score ?? 0) / 40),
+                scene_shift: shift,
+                occluded: false,
+              });
+            }
+            if (ready) {
+              everRef.current = true;
+              reacquireRef.current = false;
+            }
             point = { x: circle.cx, y: circle.cy };
-            drawPlate(ctx, circle.cx, circle.cy, circle.r);
+            drawMarker(ctx, circle.cx, circle.cy, marker);
+            statusRef.current = overlayStatus({
+              guidance: 'locked',
+              steadyMs: steadyRef.current,
+              cameraMoved: false,
+              barMoving: Math.abs(metres) >= 0.05,
+            });
+          }
+          if (!good) {
+            statusRef.current = overlayStatus({
+              guidance: acquired.guidance === 'move_back' ? 'move_back' : 'searching',
+              steadyMs: 0,
+              cameraMoved,
+              barMoving: false,
+            });
           }
         }
       }
@@ -176,11 +276,13 @@ export function VbtTracker({
         if (pathRef.current.length > 240) pathRef.current.shift();
       }
       if (isSideView(viewRef.current)) drawPath(ctx, pathRef.current);
+      drawBurnIn(ctx, statusRef.current, samplesRef.current, kind, source === 'demo' ? rackY : undefined);
       if (recordRef.current) startRecorder(canvas);
       if (now - lastHud > 120) {
         lastHud = now;
-        const reps = detectReps(samplesRef.current, { kind });
+        const reps = gateReps(samplesRef.current, kind, source === 'demo' ? rackY : undefined).reps;
         const next = summarizeSet(reps, thresholdRef.current);
+        setStatusText(statusRef.current);
         const side = isSideView(viewRef.current);
         const velocity = next.last_velocity_m_s;
         const warn = side && next.stopped_for_loss;
@@ -224,7 +326,7 @@ export function VbtTracker({
   }, [source, summary, kind, platePx, targetReps]);
 
   const finish = () => {
-    const reps = detectReps(samplesRef.current, { kind });
+    const reps = gateReps(samplesRef.current, kind, source === 'demo' ? demoTrace(kind)[0]?.y_m : undefined).reps;
     const next = summarizeSet(reps, threshold);
     const recorder = recorderRef.current;
     finishingRef.current = true;
@@ -326,7 +428,9 @@ export function VbtTracker({
           ) : (
             <p className="vbt-warn">Speed needs the side view. This {view} view counted reps only.</p>
           )}
-          {side ? <PathTrace samples={samplesRef.current} /> : null}
+          {side ? (
+            <PathTrace samples={samplesRef.current.filter((sample): sample is GateSample & { y_m: number } => sample.y_m != null)} />
+          ) : null}
           {side && correction && correction.detected.length > 0 ? (
             <ul className="vbt-rep-list">
               {correction.detected.map((rep) => {
@@ -411,6 +515,8 @@ export function VbtTracker({
           />
           <div className="vbt-hud">
             <p className="kicker">{liftName} · {view} view</p>
+            <p className="vbt-status" data-testid="vbt-status">{source === 'pick' ? 'waiting for plate' : statusText}</p>
+            <p className="muted">Straight side-on, level with the bar, about 2 m back.</p>
             <p className="vbt-reps" data-testid="vbt-reps">
               {hud.reps}
             </p>
@@ -522,28 +628,66 @@ function PathTrace({ samples }: { samples: readonly VbtSample[] }) {
 }
 
 function drawGym(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  ctx.fillStyle = '#1a1d25';
+  ctx.fillStyle = '#d7d3cb';
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = '#323744';
-  ctx.lineWidth = 2;
+  ctx.fillStyle = '#1c1e24';
+  ctx.fillRect(width * 0.08, height * 0.12, 18, height * 0.76);
+  ctx.strokeStyle = '#8a909c';
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(width * 0.62, height * 0.15);
-  ctx.lineTo(width * 0.62, height * 0.88);
+  ctx.moveTo(width * 0.1, height * 0.46);
+  ctx.lineTo(width * 0.7, height * 0.46);
   ctx.stroke();
 }
 
-function drawPlate(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+/** The iron plate itself. The tracker stroke is drawn on top, never as a fill. */
+function drawPlateBody(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.fillStyle = '#c45c26';
+  ctx.fillStyle = '#3c414c';
   ctx.fill();
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = '#e8a04a';
-  ctx.stroke();
   ctx.beginPath();
   ctx.arc(x, y, radius * 0.22, 0, Math.PI * 2);
-  ctx.strokeStyle = '#f4f0e6';
+  ctx.fillStyle = '#d7d3cb';
+  ctx.fill();
+}
+
+function drawMarker(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(4, radius - 1.5), 0, Math.PI * 2);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(232, 160, 74, 0.85)';
   ctx.stroke();
+}
+
+function drawBurnIn(
+  ctx: CanvasRenderingContext2D,
+  status: string,
+  samples: readonly GateSample[],
+  kind: VbtLiftKind,
+  rackY: number | undefined,
+) {
+  const count = gateReps(samples, kind, rackY).reps.length;
+  const box = Math.min(ctx.canvas.width - 24, 360);
+  const top = Math.max(12, ctx.canvas.height - 86);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillRect(12, top, box, 70);
+  ctx.fillStyle = '#f4f0e6';
+  ctx.font = '48px sans-serif';
+  ctx.fillText(String(count), 24, top + 50);
+  ctx.font = '18px sans-serif';
+  ctx.fillText(status, 84, top + 46);
+}
+
+function sceneShift(previous: Uint8ClampedArray | null, next: Uint8ClampedArray): number {
+  if (!previous || previous.length !== next.length) return 0;
+  let total = 0;
+  let count = 0;
+  for (let index = 0; index < next.length; index += 8) {
+    total += Math.abs((next[index] ?? 0) - (previous[index] ?? 0));
+    count += 1;
+  }
+  return count === 0 ? 0 : total / count / 255;
 }
 
 function drawPath(ctx: CanvasRenderingContext2D, points: { x: number; y: number }[]) {

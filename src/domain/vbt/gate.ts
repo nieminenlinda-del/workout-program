@@ -54,22 +54,18 @@ const RADIUS_JUMP = 0.3;
 /** A full plate must sit still about this long before it counts as found. */
 export const PLATE_STEADY_MS = 1000;
 
-export type OverlayStatus =
-  | 'waiting for plate'
-  | 'Plate found'
-  | 'tracking'
-  | 'camera moved'
-  | 'Move the phone back';
+export type OverlayStatus = 'waiting for plate' | 'Plate found' | 'tracking' | 'camera moved' | 'Tap the plate';
 
-/** Status burned into the preview and the saved clip. */
+/** Status burned into the preview and the saved clip. A close plate still counts. */
 export function overlayStatus(input: {
-  guidance: 'searching' | 'locked' | 'move_back';
+  guidance: 'searching' | 'locked';
   steadyMs: number;
   cameraMoved: boolean;
   barMoving: boolean;
+  tapPrompt?: boolean;
 }): OverlayStatus {
+  if (input.tapPrompt && input.guidance !== 'locked') return 'Tap the plate';
   if (input.cameraMoved) return 'camera moved';
-  if (input.guidance === 'move_back') return 'Move the phone back';
   if (input.guidance !== 'locked' || input.steadyMs < PLATE_STEADY_MS) return 'waiting for plate';
   return input.barMoving ? 'tracking' : 'Plate found';
 }
@@ -93,6 +89,7 @@ export function gateReps(
   let cleanSince: number | null = null;
   let lockRadius: number | null = null;
   let segment: VbtSample[] = [];
+  let recent: VbtSample[] = [];
   const reps: DetectedRep[] = [];
 
   const flush = () => {
@@ -116,10 +113,13 @@ export function gateReps(
       stillSince = null;
       cleanSince = null;
       lockRadius = null;
+      recent = [];
       continue;
     }
     const y = sample.y_m ?? 0;
     if (sample.radius_px != null) lockRadius = sample.radius_px;
+    recent.push({ t_ms: sample.t_ms, y_m: y });
+    if (recent.length > 90) recent.shift();
     if (phase === 'paused') {
       if (cleanSince == null) cleanSince = sample.t_ms;
       if (sample.t_ms - cleanSince < REACQUIRE_MS) continue;
@@ -127,6 +127,7 @@ export function gateReps(
       cleanSince = null;
     }
     const away = Math.abs(y - rackY) >= UNRACK_M;
+    let seeded = false;
     if (phase === 'racked') {
       if (!away) {
         awaySince = null;
@@ -135,10 +136,14 @@ export function gateReps(
       if (awaySince == null) awaySince = sample.t_ms;
       if (sample.t_ms - awaySince < UNRACK_HOLD_MS) continue;
       phase = 'lifting';
-      segment = [];
+      // Keep the lift-off itself. Deadlift's concentric is that first pull
+      // off the floor, so starting the segment late drops it under the minimum range.
+      const from = (awaySince ?? sample.t_ms) - 80;
+      segment = recent.filter((row) => row.t_ms >= from);
+      seeded = true;
     }
     if (phase !== 'lifting') continue;
-    segment.push({ t_ms: sample.t_ms, y_m: y });
+    if (!seeded) segment.push({ t_ms: sample.t_ms, y_m: y });
     const nearRack = Math.abs(y - rackY) <= RERACK_BAND_M;
     if (!nearRack) {
       stillSince = null;
@@ -176,9 +181,12 @@ function acceptReps(segment: readonly VbtSample[], kind: VbtLiftKind, already: n
     .map((rep, index) => ({ ...rep, rep: already + index + 1 }));
 }
 
-/** Thin overlay radius. Never a disc that covers most of the frame. */
+/**
+ * Overlay radius. A real close plate (about 1 m) is drawn at its size.
+ * Only a runaway estimate is capped, and it stays an outline.
+ */
 export function markerRadiusPx(radius: number, frameWidth: number, frameHeight: number): number {
-  const limit = Math.min(frameWidth, frameHeight) * 0.2;
+  const limit = Math.min(frameWidth, frameHeight) * 0.48;
   if (!Number.isFinite(radius) || radius <= 0) return 8;
   return Math.min(limit, Math.max(6, radius));
 }

@@ -6,13 +6,13 @@ import { eligibleEstimates } from './dashboard';
 import { testWeekRole } from './testWeek';
 
 describe('Block C week 1 return', () => {
-  it('replaces only C1 and leaves C2 on the frozen peak table', () => {
+  it('replaces only C1 and leaves the peak table empty for C2', () => {
     expect(isC1ReturnWeek('2026-11-02')).toBe(true);
     expect(isC1ReturnWeek('2026-11-08')).toBe(true);
     expect(isC1ReturnWeek('2026-11-01')).toBe(false);
     expect(isC1ReturnWeek('2026-11-09')).toBe(false);
     expect(t1PrescriptionFor('A', '2026-11-02')).toBeNull();
-    expect(t1PrescriptionFor('A', '2026-11-09')?.weight_kg).toBe(70);
+    expect(t1PrescriptionFor('A', '2026-11-09')).toBeNull();
 
     const thursday = dayTemplateForDate('C', '2026-11-05');
     expect(thursday.slots.map((slot) => slot.exercise_id)).toEqual([
@@ -24,7 +24,6 @@ describe('Block C week 1 return', () => {
     ]);
     expect(thursday.slots[1]?.optional).toBe(true);
     expect(thursday.slots[0]?.note).toMatch(/3 s up/);
-    expect(dayTemplateForDate('C', '2026-11-11').slots).toHaveLength(1);
     expect(dayTemplateForDate('A', '2026-11-16').title).toBe('Squat + bench');
   });
 
@@ -39,7 +38,7 @@ describe('Block C week 1 return', () => {
       }
     }
     expect(eligibleEstimates([draft], 'squat')).toEqual([]);
-    expect(createDraftSession('A', '2026-11-09').counts_toward_tm).toBeUndefined();
+    expect(createDraftSession('A', '2026-11-09').counts_toward_tm).toBe(false);
   });
 
   it('keeps the bench 1RM and excludes the technique singles', () => {
@@ -64,7 +63,7 @@ describe('Block C week 1 return', () => {
     expect(eligibleEstimates([draft], 'squat')).toEqual([]);
     expect(eligibleEstimates([draft], 'deadlift')).toEqual([]);
     expect(eligibleEstimates([draft], 'bench').length).toBeGreaterThan(0);
-    expect(dayTemplateForDate('A', '2026-11-20').focus).toMatch(/later date/);
+    expect(dayTemplateForDate('A', '2026-11-20').focus).toMatch(/mid-December/);
   });
 });
 

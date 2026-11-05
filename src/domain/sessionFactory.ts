@@ -8,10 +8,17 @@ import type {
   TemplateDay,
 } from '../types/session';
 import { DEFAULT_READINESS } from '../types/session';
-import { dayTemplateForDate, isC1ReturnWeek, isRecoveryWeek } from './programWeek';
+import { dayTemplateForDate, isC1ReturnWeek, isC2Week, isRecoveryWeek } from './programWeek';
+import { testWeekRole } from './testWeek';
 import { canonicalTemplateDay, todayIsoDate } from './templateDay';
 import { withComputedLight } from './readiness';
 import { attachWarmups, warmupKindFor } from './warmupLadder';
+
+/** Mon/Tue of test week. The Friday test day is not included, so the bench 1RM still counts. */
+function isTestWeekTrainingDay(date: string): boolean {
+  const role = testWeekRole(date);
+  return role === 'opener' || role === 'pull';
+}
 
 export function newSessionId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -70,7 +77,9 @@ export function createDraftSession(
     pain_flag: false,
     pain_note: '',
     notes: '',
-    ...(isRecoveryWeek(date) || isC1ReturnWeek(date) ? { counts_toward_tm: false as const } : {}),
+    ...(isRecoveryWeek(date) || isC1ReturnWeek(date) || isC2Week(date) || isTestWeekTrainingDay(date)
+      ? { counts_toward_tm: false as const }
+      : {}),
     status: 'draft',
     updated_at: new Date().toISOString(),
   };

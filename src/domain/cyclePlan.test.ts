@@ -100,17 +100,16 @@ describe('Block B and C planned T1s', () => {
     expect(getMesocycleContext('2026-11-02').freezeProgression).toBe(false);
   });
 
-  it('C2 week of 9 Nov is frozen, accessories stay dropped, and deadlift is Wednesday', () => {
+  it('C2 week of 9 Nov replaces the frozen peak and rests on Wednesday', () => {
     expect(getMesocycleContext('2026-11-09').freezeProgression).toBe(true);
-    expect(labels('2026-11-09', 'A')).toEqual(['70 kg × 1 then 60 kg × 2 × 2']);
-    expect(labels('2026-11-10', 'B')).toEqual(['50 kg × 1 then 42.5 kg × 2 × 2']);
-    expect(labels('2026-11-11', 'C')).toEqual(['90 kg × 1 then 77.5 kg × 1 × 2']);
-    expect(dayTemplateForDate('C', '2026-11-11').slots[0]?.note).toMatch(/early in the week/);
-    expect(labels('2026-11-13', 'D')).toEqual(['40 kg · 2 × 2']);
-    expect(dayTemplateForDate('A', '2026-11-09').slots).toHaveLength(1);
-    expect(calendarTemplateDay('2026-11-11')).toBe('C');
-    expect(calendarTemplateDay('2026-11-12')).toBe('rest');
-    expect(defaultTemplateDayForDate('2026-11-11')).toBe('C');
+    expect(labels('2026-11-09', 'A').slice(0, 2)).toEqual(['55 kg · 3 × 5', '47.5 kg × 1 then 42.5 kg × 3 × 4']);
+    expect(labels('2026-11-10', 'B')).toEqual(['50 kg × 1 then 45 kg × 3 × 3']);
+    expect(labels('2026-11-12', 'C').slice(0, 2)).toEqual(['55 kg · 3 × 5', '60 kg · 2 × 3']);
+    expect(labels('2026-11-13', 'D').slice(0, 2)).toEqual(['57.5 kg · 3 × 3', '42.5 kg · 3 × 3']);
+    expect(calendarTemplateDay('2026-11-11')).toBe('rest');
+    expect(calendarTemplateDay('2026-11-12')).toBe('C');
+    expect(defaultTemplateDayForDate('2026-11-11')).toBeNull();
+    expect(labels('2026-11-09', 'A').join(' ')).not.toContain('90');
   });
 });
 
@@ -161,16 +160,13 @@ describe('Block B hold rule', () => {
   it('ignores the hold on frozen C2 and test week', () => {
     const heavyC1 = loggedTop('A', '2026-11-02', 9);
     const c2 = plannedDayPreview(DAY_TEMPLATES.A, [heavyC1], '2026-11-09');
-    expect(c2[0]?.workLabel).toBe('70 kg × 1 then 60 kg × 2 × 2');
-    expect(c2[0]?.note).toBe('Frozen.');
+    expect(c2[0]?.workLabel).toBe('55 kg · 3 × 5');
+    expect(c2[0]?.note ?? '').not.toMatch(/Held/);
 
     const heavyOpener = loggedTop('A', '2026-11-16', 9);
     const testWeek = dayTemplateForDate('A', '2026-11-17', { logs: [heavyOpener], hold: true });
     expect(testWeek.title).toBe('Deadlift + bench');
-    expect(testWeek.slots.map((slot) => slot.sets.map((set) => set.weight_kg))).toEqual([
-      [65, 65],
-      [40, 40],
-    ]);
+    expect(testWeek.slots.map((slot) => slot.sets.map((set) => set.weight_kg))).toEqual([[60, 60], [42.5]]);
     expect(getMesocycleContext('2026-11-16').freezeProgression).toBe(true);
     expect(getMesocycleContext('2026-11-16').phase).toBe('peak_taper');
   });
@@ -269,13 +265,16 @@ describe('Block B volume rows', () => {
 
   it('leaves C2 and the test week without the extra rows', () => {
     const c2 = dayTemplateForDate('A', '2026-11-09');
-    expect(c2.slots).toHaveLength(1);
+    expect(c2.slots.map((slot) => slot.exercise_id)).toEqual(['squat_low_bar', 'bench_regular']);
     expect(c2.slots[0]?.volumeKind).toBeUndefined();
     const opener = dayTemplateForDate('A', '2026-11-16');
     expect(opener.slots.map((slot) => slot.exercise_id)).toEqual(['squat_low_bar', 'bench_regular']);
     expect(opener.slots.some((slot) => slot.volumeKind)).toBe(false);
     const pull = dayTemplateForDate('C', '2026-11-17');
-    expect(pull.slots.map((slot) => slot.displayName ?? slot.slot_id)).toEqual(['tw-dl', 'tw-bench-2']);
+    expect(pull.slots.map((slot) => slot.displayName ?? slot.slot_id)).toEqual([
+      'Deadlift from the floor',
+      'tw-bench-2',
+    ]);
   });
 });
 
@@ -290,12 +289,12 @@ describe('Fri 20 Nov test week', () => {
     expect(calendarTemplateDay('2026-11-17')).toBe('C');
     expect(calendarTemplateDay('2026-11-18')).toBe('rest');
     expect(defaultTemplateDayForDate('2026-11-16')).toBe('A');
-    expect(labels('2026-11-16', 'B')).toEqual(['52.5 kg · 2 × 2', '37.5 kg · 2 × 2']);
-    expect(labels('2026-11-17', 'A')).toEqual(['65 kg · 2 × 2', '40 kg · 2 × 1']);
+    expect(labels('2026-11-16', 'B')).toEqual(['55 kg · 2 × 3', '45 kg × 1 then 40 kg × 2 × 2']);
+    expect(labels('2026-11-17', 'A')).toEqual(['60 kg · 2 × 3', '42.5 kg × 1']);
     expect(dayTemplateForDate('A', '2026-11-20').slots.map((slot) => slot.plan_label)).toEqual([
-      'up to 65–67.5 kg · 1',
+      'up to 65 kg · 1',
       'Planned · 50 / 52.5 / 55–57.5 kg',
-      'up to 75–80 kg · 1',
+      'up to 70 kg · 1',
     ]);
     expect(dayTemplateForDate('A', '2026-11-20').slots[0]?.counts_toward_tm).toBe(false);
     expect(dayTemplateForDate('A', '2026-11-20').slots[1]?.counts_toward_tm).toBeUndefined();
@@ -307,10 +306,7 @@ describe('Fri 20 Nov test week', () => {
       '2026-11-17 Tue 17 Nov · Deadlift + bench',
       '2026-11-20 Fri 20 Nov · Bench 1RM',
     ]);
-    expect(week?.sessions[1]?.exercises.map((row) => row.workLabel)).toEqual([
-      '65 kg · 2 × 2',
-      '40 kg · 2 × 1',
-    ]);
+    expect(week?.sessions[1]?.exercises.map((row) => row.workLabel)).toEqual(['60 kg · 2 × 3', '42.5 kg × 1']);
     expect(week?.sessions[2]?.exercises[1]?.workLabel).toBe('Planned · 50 / 52.5 / 55–57.5 kg');
   });
 });
@@ -451,7 +447,10 @@ describe('Block B main-lift variations', () => {
       false,
     );
 
-    expect(dayTemplateForDate('A', '2026-11-09').slots.map((slot) => slot.exercise_id)).toEqual(['squat_low_bar']);
+    expect(dayTemplateForDate('A', '2026-11-09').slots.map((slot) => slot.exercise_id)).toEqual([
+      'squat_low_bar',
+      'bench_regular',
+    ]);
     expect(dayTemplateForDate('A', '2026-11-16').slots.map((slot) => slot.exercise_id)).toEqual([
       'squat_low_bar',
       'bench_regular',

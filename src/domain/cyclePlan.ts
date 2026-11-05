@@ -17,6 +17,7 @@ import {
 } from '../types/phase2';
 import { ACCESSORY_SEED_LOADS } from './accessoryProgression';
 import { calendarYmd, isLoggedWorkSet, topWorkSet } from './lastPerformance';
+import { C2_MEET_NOTE, C2_STOP_RULE } from './c2Week';
 import { addCalendarDays, testWeekRole } from './testWeek';
 
 export { addCalendarDays, mondayOnOrBefore, testWeekRole } from './testWeek';
@@ -72,7 +73,7 @@ export function isPlannedDeload(block: MesocycleBlock, weekIndex: number): boole
   return block === 'A' && weekIndex === 4;
 }
 
-/** C2 drops every non-T1 slot. C1 is the return template, not this table. No separate T2/T3 tag. */
+/** Legacy peak weeks dropped non-T1 slots. C1 and C2 replace the whole day instead. */
 export function dropAccessorySlots(block: MesocycleBlock, weekIndex: number): boolean {
   return block === 'C' && weekIndex === 2;
 }
@@ -203,14 +204,8 @@ const BLOCK_B_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Presc
   },
 };
 
-const BLOCK_C_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Prescription>>> = {
-  2: {
-    A: topBackoff(70, 1, 60, 2, 2, 'Frozen.'),
-    B: topBackoff(50, 1, 42.5, 2, 2, 'Frozen.'),
-    C: topBackoff(90, 1, 77.5, 1, 2, 'Deadlift early in the week. Frozen.'),
-    D: { ...uniform(40, 2, 2), note: 'Frozen.' },
-  },
-};
+/** C1 and C2 are full-day templates, not this table. */
+const BLOCK_C_T1: Partial<Record<BlockWeek, Record<CanonicalTemplateDay, T1Prescription>>> = {};
 
 const BACKOFF_RPE_VALUE = BACKOFF_RPE;
 const PAUSED_RPE_LABEL = '6–7';
@@ -559,34 +554,6 @@ function uniform(weight_kg: number, set_count: number, reps: number): T1Prescrip
   };
 }
 
-function topBackoff(
-  topKg: number,
-  topReps: number,
-  backKg: number,
-  backSets: number,
-  backReps: number,
-  note: string,
-): T1Prescription {
-  const waves: T1Wave[] = [
-    { weight_kg: topKg, set_count: 1, reps: topReps, rpe: [WORK_RPE], part: 'Top' },
-    {
-      weight_kg: backKg,
-      set_count: backSets,
-      reps: backReps,
-      rpe: Array.from({ length: backSets }, () => BACKOFF_RPE),
-      part: 'Backoff',
-    },
-  ];
-  return {
-    weight_kg: topKg,
-    set_count: 1 + backSets,
-    reps: topReps,
-    rpe: [WORK_RPE, ...Array.from({ length: backSets }, () => BACKOFF_RPE)],
-    note,
-    waves,
-  };
-}
-
 function partLabel(wave: T1Wave, index: number): string {
   if (!wave.part) return '';
   if (wave.part === 'Backoff') return wave.set_count === 1 ? 'Backoff' : `B${index + 1}`;
@@ -595,16 +562,22 @@ function partLabel(wave: T1Wave, index: number): string {
 }
 
 function openerTemplate(): DayTemplate {
-  return pairedTemplate('A', 'Mon', 'Squat + bench', 'Test week opener. Frozen.', [
-    lift('tw-squat', 'squat_low_bar', uniformSets(52.5, 2, 2)),
-    lift('tw-bench', 'bench_regular', uniformSets(37.5, 2, 2)),
+  return pairedTemplate('A', 'Mon', 'Squat + bench', C2_STOP_RULE, [
+    lift('tw-squat', 'squat_low_bar', uniformSets(55, 2, 3), ''),
+    lift('tw-bench', 'bench_regular', [singleSet(45), ...uniformSets(40, 2, 2)], ''),
   ]);
 }
 
 function pullTemplate(): DayTemplate {
-  return pairedTemplate('C', 'Wed', 'Deadlift + bench', 'Test week pull. Frozen.', [
-    lift('tw-dl', 'deadlift_conventional', uniformSets(65, 2, 2)),
-    lift('tw-bench-2', 'bench_regular', uniformSets(40, 2, 1)),
+  return pairedTemplate('C', 'Tue', 'Deadlift + bench', C2_STOP_RULE, [
+    namedLift(
+      'tw-dl',
+      'deadlift_conventional',
+      'Deadlift from the floor',
+      uniformSets(60, 2, 3),
+      '',
+    ),
+    { ...lift('tw-bench-2', 'bench_regular', [singleSet(42.5)], ''), plan_label: '42.5 kg × 1' },
   ]);
 }
 
@@ -615,8 +588,8 @@ export const PLANNED_ATTEMPT_LABELS = {
 
 /** Shown on the test day. The second sentence is the postponed three-lift meet. */
 export const TEST_DAY_NOTES = [
-  'Bench 1RM only. Squat and deadlift are technique singles, only if warm-ups are pain-free, and are not 1RM tests.',
-  'The full three-lift test moves to a later date, to be set when C2 is planned.',
+  'Bench 1RM only. Squat and deadlift are technique singles, not maxes.',
+  C2_MEET_NOTE,
 ] as const;
 
 function testAttemptTemplate(): DayTemplate {
@@ -625,10 +598,10 @@ function testAttemptTemplate(): DayTemplate {
       'test-squat',
       'squat_low_bar',
       'Squat technique single',
-      'Only if warm-ups are pain-free. Not a 1RM.',
-      'up to 65–67.5 kg · 1',
+      'Not a max.',
+      'up to 65 kg · 1',
       65,
-      '65–67.5',
+      '65',
     ),
     attemptLift('test-bench', 'bench_regular', PLANNED_ATTEMPT_LABELS.bench, [
       { weight_kg: 50 },
@@ -639,10 +612,10 @@ function testAttemptTemplate(): DayTemplate {
       'test-dl',
       'deadlift_conventional',
       'Deadlift technique single',
-      'Only if warm-ups are pain-free. Not a 1RM.',
-      'up to 75–80 kg · 1',
-      75,
-      '75–80',
+      'Capped about 70 kg, only if Tuesday’s 60 kg was fast and pain-free. Not a max.',
+      'up to 70 kg · 1',
+      70,
+      '70',
     ),
   ]);
 }
@@ -687,15 +660,29 @@ function pairedTemplate(
   return { id, weekday, title, focus, slots };
 }
 
-function lift(slotId: string, exerciseId: ExerciseId, sets: SeedSet[]): TemplateSlot {
+function lift(slotId: string, exerciseId: ExerciseId, sets: SeedSet[], note = 'Frozen.'): TemplateSlot {
   return {
     slot_id: slotId,
     role: 'T1',
     exercise_id: exerciseId,
     alternatives: [],
-    note: 'Frozen.',
+    ...(note ? { note } : {}),
     sets,
   };
+}
+
+function namedLift(
+  slotId: string,
+  exerciseId: ExerciseId,
+  displayName: string,
+  sets: SeedSet[],
+  note: string,
+): TemplateSlot {
+  return { ...lift(slotId, exerciseId, sets, note), displayName };
+}
+
+function singleSet(weight_kg: number): SeedSet {
+  return { weight_kg, reps: 1, rpe: WORK_RPE, rest_sec: 180, part_label: 'Top' };
 }
 
 function attemptLift(

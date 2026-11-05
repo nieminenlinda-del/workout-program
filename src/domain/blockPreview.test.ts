@@ -193,10 +193,13 @@ describe('block preview loads', () => {
     const opener = last?.sessions[0];
     expect(opener?.frozen).toBe(true);
     expect(opener?.phaseLabel).toBe('Peak');
-    expect(opener?.exercises.map((row) => row.workLabel)).toEqual(['52.5 kg · 2 × 2', '37.5 kg · 2 × 2']);
+    expect(opener?.exercises.map((row) => row.workLabel)).toEqual([
+      '55 kg · 2 × 3',
+      '45 kg × 1 then 40 kg × 2 × 2',
+    ]);
     const pull = last?.sessions[1];
     expect(pull?.frozen).toBe(true);
-    expect(pull?.exercises.map((row) => row.workLabel)).toEqual(['65 kg · 2 × 2', '40 kg · 2 × 1']);
+    expect(pull?.exercises.map((row) => row.workLabel)).toEqual(['60 kg · 2 × 3', '42.5 kg × 1']);
     const test = last?.sessions.find((session) => session.kind === 'test');
     expect(test).toMatchObject({
       date: '2026-11-20',
@@ -205,12 +208,13 @@ describe('block preview loads', () => {
       projected: true,
     });
     expect(test?.exercises.map((row) => row.workLabel)).toEqual([
-      'up to 65–67.5 kg · 1',
+      'up to 65 kg · 1',
       'Planned · 50 / 52.5 / 55–57.5 kg',
-      'up to 75–80 kg · 1',
+      'up to 70 kg · 1',
     ]);
     expect(test?.testNote).toMatch(/Bench is the only 1RM/);
-    expect(test?.notes.join(' ')).toMatch(/later date/);
+    expect(test?.notes.join(' ')).toMatch(/mid-December/);
+    expect(test?.notes[0]).toMatch(/Stop rule/);
     expect(test?.title).toBe('Bench 1RM');
   });
 });

@@ -180,8 +180,8 @@ describe('Block B week 4 recovery', () => {
     const counted = { ...recovery, counts_toward_tm: undefined };
     expect(eligibleEstimates([counted], 'deadlift')).toHaveLength(3);
 
-    const next = dayTemplateForDate('C', '2026-11-11', { logs: [recovery], hold: true });
-    expect(next.slots[0]?.sets.map((set) => set.weight_kg)).toEqual([90, 77.5]);
+    const next = dayTemplateForDate('C', '2026-11-12', { logs: [recovery], hold: true });
+    expect(next.slots[0]?.sets.map((set) => set.weight_kg)).toEqual([55, 55, 55]);
     expect(createDraftSession('B', '2026-10-06').counts_toward_tm).toBeUndefined();
 
     const draft = createDraftSession('D', '2026-10-30');

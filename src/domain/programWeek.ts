@@ -32,6 +32,7 @@ import {
   type VariationLog,
 } from './cyclePlan';
 import { c1ReturnTemplateFor } from './c1ReturnWeek';
+import { c2TemplateFor } from './c2Week';
 import { recoveryTemplateFor } from './recoveryWeek';
 import { calendarYmd } from './lastPerformance';
 import { isProgressionFrozen } from './testWeek';
@@ -173,10 +174,16 @@ export function isRecoveryWeek(asOf: string): boolean {
   return ctx?.block === 'B' && ctx.weekIndex === 4;
 }
 
-/** Block C week 1 only (Mon 2–Sun 8 Nov 2026). C2 stays on the peak table. */
+/** Block C week 1 only (Mon 2–Sun 8 Nov 2026). */
 export function isC1ReturnWeek(asOf: string): boolean {
   const ctx = blockWeekContext(asOf);
   return ctx?.block === 'C' && ctx.weekIndex === 1;
+}
+
+/** Block C week 2 only (Mon 9–Sun 15 Nov 2026). Not the test week. */
+export function isC2Week(asOf: string): boolean {
+  const ctx = blockWeekContext(asOf);
+  return ctx?.block === 'C' && ctx.weekIndex === 2;
 }
 
 export interface ProgramWeekOptions {
@@ -210,6 +217,7 @@ export function t1PrescriptionFor(
  * B2–B3 append a single-arm DB press on Day B and a single-arm DB row on Day D.
  * Block B week 4 replaces the whole day with the recovery template.
  * Block C week 1 replaces the whole day with the return template.
+ * Block C week 2 replaces the whole day with the C2 template.
  */
 export function applyProgramWeek(
   template: DayTemplate,
@@ -220,6 +228,7 @@ export function applyProgramWeek(
   if (override) return override;
   if (isRecoveryWeek(asOf)) return recoveryTemplateFor(template.id);
   if (isC1ReturnWeek(asOf)) return c1ReturnTemplateFor(template.id);
+  if (isC2Week(asOf)) return c2TemplateFor(template.id);
 
   const rx = t1PrescriptionFor(template.id, asOf);
   if (!rx) return template;

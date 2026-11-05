@@ -141,20 +141,25 @@ describe('plate acquisition', () => {
     expect(acquirePlate(frame).guidance).toBe('searching');
   });
 
-  it('asks for a step back when the plate is cropped and huge', () => {
+  it('keeps a cropped close plate and does not refuse it', () => {
     const frame: LumaFrame = { width: 120, height: 80, data: new Uint8ClampedArray(120 * 80) };
     frame.data.fill(20);
-    stampDisc(frame, 100, 40, 48, 210);
-    expect(acquirePlate(frame).guidance).toBe('move_back');
-    expect(acquirePlate(frame).circle).toBeNull();
+    stampDisc(frame, 108, 40, 36, 220);
+    const found = acquirePlate(frame);
+    expect(found.guidance).toBe('locked');
+    expect(found.circle).not.toBeNull();
+    expect(found.close).toBe(true);
+    expect(found.circle?.r).toBeGreaterThan(20);
   });
 });
 
 describe('marker size', () => {
-  it('clamps a blown-up radius to a thin ring, not most of the frame', () => {
+  it('draws a 1 m plate at its real size and still caps a runaway radius', () => {
+    const close = markerRadiusPx(80, 390, 520);
+    expect(close).toBe(80);
     const radius = markerRadiusPx(400, 390, 520);
-    expect(radius).toBeLessThanOrEqual(390 * 0.2);
-    expect(radius).toBeGreaterThan(6);
+    expect(radius).toBeLessThanOrEqual(390 * 0.48);
+    expect(radius).toBeGreaterThan(80);
   });
 });
 
@@ -174,12 +179,38 @@ describe('setup check', () => {
     ).toBe('tracking');
   });
 
-  it('names a camera move and a plate that fills the frame', () => {
+  it('names a camera move and still tracks when the plate is close', () => {
     expect(
       overlayStatus({ guidance: 'locked', steadyMs: 2000, cameraMoved: true, barMoving: true }),
     ).toBe('camera moved');
     expect(
-      overlayStatus({ guidance: 'move_back', steadyMs: 0, cameraMoved: false, barMoving: false }),
-    ).toBe('Move the phone back');
+      overlayStatus({ guidance: 'locked', steadyMs: 1200, cameraMoved: false, barMoving: true }),
+    ).toBe('tracking');
+    expect(
+      overlayStatus({ guidance: 'searching', steadyMs: 0, cameraMoved: false, barMoving: false, tapPrompt: true }),
+    ).toBe('Tap the plate');
   });
 });
+
+describe('deadlift from the floor', () => {
+  it('counts lift-off from a still floor with no rack', () => {
+    expect(gateReps(deadliftSet(1), 'deadlift').reps).toHaveLength(1);
+    expect(gateReps(deadliftSet(3), 'deadlift').reps).toHaveLength(3);
+  });
+});
+
+function deadliftSet(reps: number): GateSample[] {
+  const floor = 0.2;
+  const lockout = 0.7;
+  const rows = [...still(0, 700, floor)];
+  let cursor = 800;
+  for (let rep = 0; rep < reps; rep += 1) {
+    rows.push(...ramp(cursor, 900, floor, lockout));
+    cursor += 900;
+    rows.push(...ramp(cursor, 800, lockout, floor));
+    cursor += 800;
+    rows.push(...still(cursor, 1000, floor));
+    cursor += 1100;
+  }
+  return rows;
+}

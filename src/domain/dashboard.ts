@@ -2,7 +2,8 @@ import type { DayTemplate } from '../data/templates';
 import { EXERCISE_CATALOG, type ExerciseId } from '../types/exercises';
 import { isPlannedDeload, PLANNED_ATTEMPT_LABELS, TEST_DAY_NOTES } from './cyclePlan';
 import { C1_RETURN_RULE } from './c1ReturnWeek';
-import { dayTemplateForDate, isC1ReturnWeek, isRecoveryWeek } from './programWeek';
+import { C2_STOP_RULE } from './c2Week';
+import { dayTemplateForDate, isC1ReturnWeek, isC2Week, isRecoveryWeek } from './programWeek';
 import { plannedLiftSummary } from './workoutPreview';
 import { calendarYmd, isLoggedWorkSet } from './lastPerformance';
 import { isWarmupSet } from './sets';
@@ -489,8 +490,10 @@ export function thisWeekTargets(asOf: string): WeekTargetDay[] {
     const template = dayTemplateForDate(isTest ? 'A' : mapped === 'rest' ? 'A' : mapped, date);
     const recovery = isRecoveryWeek(date);
     const returning = isC1ReturnWeek(date);
+    const c2 = isC2Week(date);
+    const role = testWeekRole(date);
     const lines = template.slots
-      .filter((slot) => recovery || returning || slot.role === 'T1')
+      .filter((slot) => recovery || returning || slot.role === 'T1' || (c2 && slot.optional))
       .map((slot) => {
         const summary = plannedLiftSummary(slot);
         const work = slot.sets.filter((set) => !set.warmup);
@@ -508,9 +511,11 @@ export function thisWeekTargets(asOf: string): WeekTargetDay[] {
         ? { note: RECOVERY_RULE }
         : returning
           ? { note: C1_RETURN_RULE }
-          : isTest
-            ? { note: TEST_DAY_NOTES[1] }
-            : {}),
+          : c2 || role === 'opener' || role === 'pull'
+            ? { note: C2_STOP_RULE }
+            : isTest
+              ? { note: `${C2_STOP_RULE} ${TEST_DAY_NOTES[1]}` }
+              : {}),
     });
   }
   return days;
@@ -618,7 +623,7 @@ export function dashboardTimeline(asOf: string): TimelineWeek[] {
         note = C1_RETURN_RULE;
       }
       if (window.block === 'C' && index === 2) {
-        note = 'Progression is frozen. Non-T1 slots drop off.';
+        note = C2_STOP_RULE;
       }
       if (isTestWeek) {
         id = 'Test';

@@ -11,7 +11,9 @@ import { calendarYmd, isLoggedWorkSet } from './lastPerformance';
 import { getMesocycleContext } from './phase2Calendar';
 import { isPlannedDeload, templateOverrideForDate, TEST_DAY_NOTES } from './cyclePlan';
 import { C1_RETURN_RULE } from './c1ReturnWeek';
-import { blockWeekContext, dayTemplateForDate, isC1ReturnWeek, isRecoveryWeek } from './programWeek';
+import { C2_STOP_RULE } from './c2Week';
+import { blockWeekContext, dayTemplateForDate, isC1ReturnWeek, isC2Week, isRecoveryWeek } from './programWeek';
+import { testWeekRole } from './testWeek';
 import { RECOVERY_SKIPPED_DATE, recoveryNoteLines } from './recoveryWeek';
 import { workSets } from './sets';
 import { calendarTemplateDay, canonicalTemplateDay } from './templateDay';
@@ -265,6 +267,15 @@ function restSession(date: string, skipped: boolean): BlockPreviewSession {
   };
 }
 
+function sessionNotes(date: string, day: CanonicalTemplateDay): string[] {
+  if (isRecoveryWeek(date)) return recoveryNoteLines(day);
+  if (isC1ReturnWeek(date)) return [C1_RETURN_RULE];
+  if (isC2Week(date)) return [C2_STOP_RULE];
+  const role = testWeekRole(date);
+  if (role === 'opener' || role === 'pull') return [C2_STOP_RULE];
+  return [];
+}
+
 function trainSession(
   date: string,
   day: CanonicalTemplateDay,
@@ -287,7 +298,7 @@ function trainSession(
       ? `${weekdayShort(date)} ${formatDayMonth(date)} · ${template.title}`
       : `${weekdayShort(date)} ${formatDayMonth(date)} · Day ${day}`,
     title: template.title,
-    notes: isRecoveryWeek(date) ? recoveryNoteLines(day) : isC1ReturnWeek(date) ? [C1_RETURN_RULE] : [],
+    notes: sessionNotes(date, day),
     phaseLabel: previewPhaseLabel(meso.phase ?? 'accumulate'),
     projected,
     frozen: Boolean(meso.freezeProgression && !meso.isTestDay),
@@ -314,14 +325,14 @@ function testSession(
     templateDay: 'test',
     heading: `${weekdayShort(date)} ${formatDayMonth(date)} · Bench 1RM`,
     title: template?.title ?? 'Bench 1RM',
-    notes: [...TEST_DAY_NOTES],
+    notes: [C2_STOP_RULE, ...TEST_DAY_NOTES],
     phaseLabel: 'Test',
     projected: date > today,
     frozen: true,
     completed: log != null,
     exercises: summaries.map((summary) => exerciseFromSummary(summary, date > today)),
     testNote:
-      'Bench is the only 1RM. Squat and deadlift are technique singles up to about 65–67.5 kg and 75–80 kg, only if warm-ups are pain-free. They are not recorded as maxes. A bench range is the coach’s window for that attempt, not a single prescribed kilo.',
+      'Bench is the only 1RM. Squat is a technique single up to about 65 kg, not a max. Deadlift is a single capped about 70 kg, only if Tuesday’s 60 kg was fast and pain-free, and is not a max. A bench range is the coach’s window for that attempt, not a single prescribed kilo.',
     logged: log ? loggedLines(log) : [],
   };
 }

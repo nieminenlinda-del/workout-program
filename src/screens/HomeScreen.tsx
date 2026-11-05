@@ -4,8 +4,9 @@ import { WorkoutPreview } from '../components/WorkoutPreview';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { DAY_TEMPLATES } from '../data/templates';
 import { trainingMaxesForBlock } from '../domain/cyclePlan';
-import { blockWeekContext, dayTemplateForDate, isC1ReturnWeek, isDeloadWeek, isRecoveryWeek } from '../domain/programWeek';
+import { blockWeekContext, dayTemplateForDate, isC1ReturnWeek, isC2Week, isDeloadWeek, isRecoveryWeek } from '../domain/programWeek';
 import { C1_PICKER_NAMES } from '../domain/c1ReturnWeek';
+import { C2_PICKER_NAMES } from '../domain/c2Week';
 import { RECOVERY_PICKER_NAMES } from '../domain/recoveryWeek';
 import { RecoveryCallout } from '../components/RecoveryCallout';
 import { getMesocycleContext } from '../domain/phase2Calendar';
@@ -88,7 +89,8 @@ export function HomeScreen({
             {meso.weekIndex ? ` · week ${meso.weekIndex}` : ''}
             {isDeloadWeek(date) ? ' · deload' : ''}
             {isRecoveryWeek(date) ? ' · recovery' : ''}
-            {isC1ReturnWeek(date) ? ' · return' : ''} ·{' '}
+            {isC1ReturnWeek(date) ? ' · return' : ''}
+            {isC2Week(date) ? ' · C2' : ''} ·{' '}
             {meso.training_mode.replaceAll('_', ' ')}
             {meso.freezeProgression ? ' · frozen' : ''}
           </p>
@@ -130,7 +132,13 @@ export function HomeScreen({
           value={templateDay}
           onChange={onTemplateDay}
           names={
-            isRecoveryWeek(date) ? RECOVERY_PICKER_NAMES : isC1ReturnWeek(date) ? C1_PICKER_NAMES : undefined
+            isRecoveryWeek(date)
+              ? RECOVERY_PICKER_NAMES
+              : isC1ReturnWeek(date)
+                ? C1_PICKER_NAMES
+                : isC2Week(date)
+                  ? C2_PICKER_NAMES
+                  : undefined
           }
         />
         <h2 className="template-heading">{planned.title}</h2>

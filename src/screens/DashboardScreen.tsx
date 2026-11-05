@@ -474,7 +474,7 @@ function EstimateCard({ lift, sessions }: { lift: CompetitionLift; sessions: rea
       <p className="dash-note">
         {marks
           ? `Tested ${kg1(tested)} · opener ${kg1(marks.opener)} · goal ${kg1(marks.goalLow)}–${kg1(marks.goalHigh)}`
-          : `Tested ${kg1(tested)}. The full three-lift test moves to a later date, to be set when C2 is planned.`}
+          : `Tested ${kg1(tested)}. Full three-lift test planned for ~mid-December (date TBD).`}
       </p>
     </article>
   );

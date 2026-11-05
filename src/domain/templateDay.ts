@@ -29,9 +29,6 @@ export const TEMPLATE_DAY_DATE_OVERRIDE: Readonly<Record<string, CanonicalTempla
   // Block B week 4: Monday 26 Oct is walk-only after the 22 Oct back strain.
   // Rest, not a missed Day A. Tue/Thu/Fri stay the recovery sessions.
   '2026-10-26': 'rest',
-  // Block C week 2: deadlift moves to Wednesday so it is done early.
-  '2026-11-11': 'C',
-  '2026-11-12': 'rest',
 };
 
 const LETTER_BY_UTC_WEEKDAY: Record<number, CanonicalTemplateDay | undefined> = {

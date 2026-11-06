@@ -18,10 +18,11 @@ import {
   type RepCorrection,
 } from '../domain/vbt/correction';
 import { isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
-import { downloadFile, saveSetThenVideo } from '../domain/vbt/shareFile';
+import { anchorDownloadLikelyWorks, downloadFile, saveSetThenVideo } from '../domain/vbt/shareFile';
+import { followBarPoint } from '../domain/vbt/path';
 import { acquirePlate, analysisSize, containRect, diagnosticsLine, type LumaFrame } from '../domain/vbt/tracker';
 import { defaultVelocityLossPct, summarizeSet, velocityEstimate, type LoadVelocityPoint, type VbtSetSummary } from '../domain/vbt/velocity';
-import { videoExtForMime, vbtVideoFilename } from '../domain/vbt/videoFile';
+import { fileTypeForRecorderMime, mediaRecorderTimeslice, videoExtForMime, vbtVideoFilename } from '../domain/vbt/videoFile';
 import { repPhrase } from '../domain/vbt/voice';
 
 type Source = 'pick' | 'camera' | 'demo';
@@ -38,6 +39,7 @@ export function VbtTracker({
   onCancel,
   onSave,
   onVideoSkipped,
+  onVideoFailed,
 }: {
   kind: VbtLiftKind;
   liftName: string;
@@ -50,6 +52,7 @@ export function VbtTracker({
   onCancel: () => void;
   onSave: (summary: VbtSetSummary, view: CameraView, correction: RepCorrection) => void;
   onVideoSkipped?: () => void;
+  onVideoFailed?: () => void;
 }) {
   const [source, setSource] = useState<Source>('pick');
   const [denied, setDenied] = useState(false);
@@ -93,6 +96,8 @@ export function VbtTracker({
   const viewRef = useRef(view);
   const recordRef = useRef(recordVideo);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const captureTrackRef = useRef<MediaStreamTrack | null>(null);
+  const holdRef = useRef(0);
   const chunksRef = useRef<Blob[]>([]);
   const finishingRef = useRef(false);
   mutedRef.current = muted;
@@ -259,7 +264,28 @@ export function VbtTracker({
                   close: hint.r * 2 >= Math.min(width, height) * 0.32,
                 }
               : null;
-          const circle = fromTrack ?? manualCircle;
+          const held =
+            !fromTrack &&
+            !manualCircle &&
+            hint != null &&
+            !cameraMoved &&
+            holdRef.current < 8 &&
+            shift < CAMERA_MOVE_SHIFT;
+          const circle =
+            fromTrack ??
+            manualCircle ??
+            (held
+              ? {
+                  cx: hint.cx,
+                  cy: hint.cy,
+                  r: hint.r,
+                  confidence: 0.6,
+                  close: hint.r * 2 >= Math.min(width, height) * 0.32,
+                }
+              : null);
+          if (fromTrack || manualCircle) holdRef.current = 0;
+          else if (held) holdRef.current += 1;
+          else holdRef.current = 0;
           const jumped =
             hint != null &&
             fromTrack != null &&
@@ -325,8 +351,9 @@ export function VbtTracker({
         }
       }
       if (point) {
-        pathRef.current.push(point);
-        if (pathRef.current.length > 240) pathRef.current.shift();
+        const previous = pathRef.current[pathRef.current.length - 1] ?? null;
+        pathRef.current.push(followBarPoint(previous, point));
+        if (pathRef.current.length > 600) pathRef.current.shift();
       }
       if (isSideView(viewRef.current)) drawPath(ctx, pathRef.current);
       drawBurnIn(
@@ -338,6 +365,8 @@ export function VbtTracker({
         diagnosticsOnRef.current ? diagRef.current : '',
       );
       if (recordRef.current) startRecorder(canvas);
+      const captured = captureTrackRef.current as (MediaStreamTrack & { requestFrame?: () => void }) | null;
+      captured?.requestFrame?.();
       if (now - lastHud > 120) {
         lastHud = now;
         const reps = gateReps(samplesRef.current, kind, source === 'demo' ? rackY : undefined).reps;
@@ -361,17 +390,22 @@ export function VbtTracker({
     const startRecorder = (target: HTMLCanvasElement) => {
       if (recorderRef.current || typeof MediaRecorder === 'undefined') return;
       try {
-        const stream = target.captureStream(30);
+        const stream = openRecordingStream(target, videoRef.current);
+        if (!stream) return;
         const mime = preferredMime();
         const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
         chunksRef.current = [];
         recorder.ondataavailable = (event) => {
           if (event.data.size > 0) chunksRef.current.push(event.data);
         };
-        recorder.start(200);
+        const slice = mediaRecorderTimeslice(mime);
+        if (slice == null) recorder.start();
+        else recorder.start(slice);
         recorderRef.current = recorder;
+        captureTrackRef.current = stream.getVideoTracks()[0] ?? null;
       } catch {
         recorderRef.current = null;
+        captureTrackRef.current = null;
       }
     };
     raf = window.requestAnimationFrame(tick);
@@ -382,6 +416,7 @@ export function VbtTracker({
         recorder.onstop = null;
         recorder.stop();
         recorderRef.current = null;
+        captureTrackRef.current = null;
         chunksRef.current = [];
       }
     };
@@ -399,12 +434,13 @@ export function VbtTracker({
     };
     if (recordVideo && recorder && recorder.state !== 'inactive') {
       recorder.onstop = () => {
-        const mime = recorder.mimeType || 'video/webm';
-        const blob = new Blob(chunksRef.current, { type: mime });
+        const mime = recorder.mimeType || preferredMime() || 'video/webm';
+        const type = fileTypeForRecorderMime(mime);
+        const blob = new Blob(chunksRef.current, { type });
         const file = new File(
           [blob],
-          vbtVideoFilename(date, liftName, loadKg, setNumber, videoExtForMime(mime)),
-          { type: mime },
+          vbtVideoFilename(date, liftName, loadKg, setNumber, videoExtForMime(type)),
+          { type },
         );
         publish(blob.size > 0 ? file : null);
       };
@@ -541,14 +577,20 @@ export function VbtTracker({
               void saveSetThenVideo({
                 saveSet: () => onSave(summary, view, correction),
                 file: videoFile,
-                canShare: (clip) => typeof nav.share === 'function' && Boolean(nav.canShare?.({ files: [clip] })),
+                canShare: () => typeof nav.share === 'function',
                 share: (clip) => {
                   if (!nav.share) return Promise.reject(new Error('share unavailable'));
                   return nav.share({ files: [clip], title: clip.name });
                 },
                 download: downloadFile,
+                downloadWorks: anchorDownloadLikelyWorks(
+                  navigator.userAgent,
+                  navigator.maxTouchPoints,
+                  navigator.platform,
+                ),
               }).then((result) => {
                 if (result.video === 'cancelled') onVideoSkipped?.();
+                if (result.video === 'failed') onVideoFailed?.();
               });
             }}
           >
@@ -844,6 +886,19 @@ function firstDropped(means: number[], threshold: number, rep: number): boolean 
     return ((best - mean) / best) * 100 >= threshold;
   }
   return false;
+}
+
+function openRecordingStream(canvas: HTMLCanvasElement, video: HTMLVideoElement | null): MediaStream | null {
+  const capture = canvas.captureStream?.bind(canvas);
+  if (capture) {
+    try {
+      return capture(0);
+    } catch {
+      /* The camera stream is the fallback when the canvas cannot be recorded. */
+    }
+  }
+  const source = video?.srcObject;
+  return source instanceof MediaStream ? source : null;
 }
 
 function preferredMime(): string {

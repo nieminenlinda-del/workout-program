@@ -1,7 +1,17 @@
 export type SaveSetVideoResult = {
   setSaved: true;
-  video: 'shared' | 'downloaded' | 'cancelled' | 'none';
+  video: 'shared' | 'downloaded' | 'cancelled' | 'none' | 'failed';
 };
+
+/** iPhone Safari ignores `<a download>`, so a failed share must not claim the clip was saved. */
+export function anchorDownloadLikelyWorks(
+  userAgent: string,
+  maxTouchPoints = 0,
+  platform = '',
+): boolean {
+  const ios = /iPad|iPhone|iPod/i.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1);
+  return !ios;
+}
 
 /**
  * Writes the set first, then offers the clip in the same turn.
@@ -14,29 +24,37 @@ export function saveSetThenVideo(input: {
   canShare: (file: File) => boolean;
   share: (file: File) => Promise<void>;
   download: (file: File) => void;
+  /** False on iPhone, where a download link does not save the clip. */
+  downloadWorks?: boolean;
 }): Promise<SaveSetVideoResult> {
   input.saveSet();
   const file = input.file;
   if (!file) return Promise.resolve({ setSaved: true, video: 'none' });
+  const fallback = (): SaveSetVideoResult => {
+    if (input.downloadWorks === false) return { setSaved: true, video: 'failed' };
+    try {
+      input.download(file);
+      return { setSaved: true, video: 'downloaded' };
+    } catch {
+      return { setSaved: true, video: 'failed' };
+    }
+  };
   let pending: Promise<void> | null = null;
   if (input.canShare(file)) {
     try {
       pending = input.share(file);
     } catch (error) {
       if (isShareCancel(error)) return Promise.resolve({ setSaved: true, video: 'cancelled' });
-      input.download(file);
-      return Promise.resolve({ setSaved: true, video: 'downloaded' });
+      return Promise.resolve(fallback());
     }
   } else {
-    input.download(file);
-    return Promise.resolve({ setSaved: true, video: 'downloaded' });
+    return Promise.resolve(fallback());
   }
   return Promise.resolve(pending).then(
     () => ({ setSaved: true, video: 'shared' as const }),
     (error: unknown) => {
       if (isShareCancel(error)) return { setSaved: true, video: 'cancelled' as const };
-      input.download(file);
-      return { setSaved: true, video: 'downloaded' as const };
+      return fallback();
     },
   );
 }

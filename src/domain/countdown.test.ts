@@ -8,9 +8,18 @@ import {
   progressRatio,
   resumeCountdown,
   skipCountdown,
+  restOverlayTapReady,
   startCountdown,
   syncCountdown,
 } from './countdown';
+
+describe('rest overlay', () => {
+  it('ignores the tap that opened the timer, including a share-sheet ghost click', () => {
+    expect(restOverlayTapReady(1_000, 1_300)).toBe(false);
+    expect(restOverlayTapReady(1_000, 1_699)).toBe(false);
+    expect(restOverlayTapReady(1_000, 1_700)).toBe(true);
+  });
+});
 
 describe('countdown', () => {
   it('counts down from wall-clock endsAt, not tick count', () => {

@@ -4,7 +4,7 @@ import { ramp } from './reps';
 import { toVbtSetLog } from './log';
 import { summarizeSet } from './velocity';
 import { detectReps } from './reps';
-import { videoExtForMime, vbtVideoFilename } from './videoFile';
+import { fileTypeForRecorderMime, mediaRecorderTimeslice, videoExtForMime, vbtVideoFilename } from './videoFile';
 
 describe('front and back rep count', () => {
   it('counts the rises in a synthetic front-view signal and stores no speed', () => {
@@ -38,5 +38,8 @@ describe('video filename', () => {
     );
     expect(videoExtForMime('video/mp4')).toBe('mp4');
     expect(videoExtForMime('video/webm;codecs=vp8')).toBe('webm');
+    expect(mediaRecorderTimeslice('video/mp4')).toBeNull();
+    expect(mediaRecorderTimeslice('video/webm;codecs=vp8')).toBe(200);
+    expect(fileTypeForRecorderMime('video/mp4;codecs=avc1')).toBe('video/mp4');
   });
 });

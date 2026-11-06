@@ -349,6 +349,10 @@ export function WorkoutScreen({
             setVideoToast('Set saved, video not saved');
             window.setTimeout(() => setVideoToast(null), 2800);
           }}
+          onVideoFailed={() => {
+            setVideoToast('Set saved. This phone could not store the video.');
+            window.setTimeout(() => setVideoToast(null), 3200);
+          }}
         />
       ) : null}
 

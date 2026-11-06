@@ -824,6 +824,7 @@ button {
 
 .rest-overlay {
   align-items: flex-end;
+  z-index: 80;
 }
 
 .sheet,

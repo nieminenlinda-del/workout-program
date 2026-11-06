@@ -6,6 +6,11 @@ export interface CountdownState {
   finished: boolean;
 }
 
+/** Ignore the tap that opened the rest sheet, including the click iOS fires after a share sheet. */
+export function restOverlayTapReady(openedAtMs: number, nowMs: number): boolean {
+  return nowMs - openedAtMs >= 700;
+}
+
 export function startCountdown(durationSec: number, nowMs: number): CountdownState {
   const sec = Math.max(0, durationSec);
   const remainingMs = Math.round(sec * 1000);

@@ -81,6 +81,20 @@ describe('phone distance', () => {
   });
 });
 
+describe('dark plate', () => {
+  it('locks a black plate at close range and still ignores a rack hole', () => {
+    const frame: LumaFrame = { width: 160, height: 220, data: new Uint8ClampedArray(160 * 220) };
+    frame.data.fill(78);
+    stampDisc(frame, 28, 40, 4, 220);
+    stampDisc(frame, 100, 120, 28, 32);
+    const found = acquirePlate(frame);
+    expect(found.guidance).toBe('locked');
+    expect(found.circle?.cx).toBeGreaterThan(80);
+    expect(found.circle?.r).toBeGreaterThan(18);
+    expect(found.circle?.r).toBeLessThan(40);
+  });
+});
+
 describe('diagnostics line', () => {
   it('reports plate width, track shape, and confidence', () => {
     const line = diagnosticsLine({

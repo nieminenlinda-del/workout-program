@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { saveSetThenVideo } from './shareFile';
+import { anchorDownloadLikelyWorks, saveSetThenVideo } from './shareFile';
 
 function clip(): File {
   return new File(['frames'], 'linda-lift_2026-11-03_bench-press_40kg_set1.webm', { type: 'video/webm' });
@@ -65,6 +65,30 @@ describe('save set and video together', () => {
     });
     expect(downloaded).toBe(true);
     expect(failed).toEqual({ setSaved: true, video: 'downloaded' });
+  });
+
+  it('keeps the set when iPhone share fails and does not pretend the video was downloaded', async () => {
+    let saved = false;
+    let downloaded = false;
+    const denied = new Error('share not allowed');
+    denied.name = 'NotAllowedError';
+    const result = await saveSetThenVideo({
+      saveSet: () => {
+        saved = true;
+      },
+      file: clip(),
+      canShare: () => true,
+      share: () => Promise.reject(denied),
+      download: () => {
+        downloaded = true;
+      },
+      downloadWorks: false,
+    });
+    expect(saved).toBe(true);
+    expect(downloaded).toBe(false);
+    expect(result).toEqual({ setSaved: true, video: 'failed' });
+    expect(anchorDownloadLikelyWorks('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')).toBe(false);
+    expect(anchorDownloadLikelyWorks('Mozilla/5.0 (Windows NT 10.0)')).toBe(true);
   });
 
   it('saves the set when there is no clip', async () => {

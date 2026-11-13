@@ -160,9 +160,9 @@ function searchPlate(
       const rStart = hint ? Math.max(low, Math.round(hint.r * (hint.wide ? 0.45 : 0.7))) : low;
       const rEnd = hint ? Math.min(high, Math.round(hint.r * (hint.wide ? 2.2 : 1.35))) : high;
       for (let r = rStart; r <= rEnd; r += rStep) {
-        const score = rimScore(frame, cx, cy, r);
-        if (score < 18 || !filledEnough(frame, cx, cy, r)) continue;
-        if (!best || score > best.score) best = { cx, cy, r, score };
+        const rim = rimDetail(frame, cx, cy, r);
+        if (rim.score < 18 || !plateFace(frame, cx, cy, r, rim)) continue;
+        if (!best || rim.score > best.score) best = { cx, cy, r, score: rim.score };
       }
     }
   }
@@ -170,43 +170,66 @@ function searchPlate(
   return best;
 }
 
+interface RimDetail {
+  score: number;
+  /** Samples whose edge is actually stronger than noise. */
+  strong: number;
+  count: number;
+}
+
 /** Visible rim arc. A full circle scores higher than the same contrast on a short arc. */
-function rimScore(frame: LumaFrame, cx: number, cy: number, r: number): number {
+function rimDetail(frame: LumaFrame, cx: number, cy: number, r: number): RimDetail {
   let total = 0;
   let count = 0;
+  let strong = 0;
   const samples = 16;
   for (let index = 0; index < samples; index += 1) {
     const angle = (index / samples) * Math.PI * 2;
-    const inner = luma(frame, cx + Math.cos(angle) * r * 0.72, cy + Math.sin(angle) * r * 0.72);
-    const outer = luma(frame, cx + Math.cos(angle) * r * 1.18, cy + Math.sin(angle) * r * 1.18);
+    const inner = luma(frame, cx + Math.cos(angle) * r * 0.9, cy + Math.sin(angle) * r * 0.9);
+    const outer = luma(frame, cx + Math.cos(angle) * r * 1.1, cy + Math.sin(angle) * r * 1.1);
     if (inner == null || outer == null) continue;
-    total += Math.abs(inner - outer);
+    const delta = Math.abs(inner - outer);
+    total += delta;
     count += 1;
+    if (delta >= 22) strong += 1;
   }
-  if (count < 6) return 0;
+  if (count < 6) return { score: 0, strong: 0, count };
   const completeness = count / samples;
-  return (total / count) * (0.55 + 0.45 * completeness);
+  return { score: (total / count) * (0.55 + 0.45 * completeness), strong, count };
 }
 
-function filledEnough(frame: LumaFrame, cx: number, cy: number, r: number): boolean {
-  const ratio = fillRatio(frame, cx, cy, r);
-  if (ratio == null) return true;
-  return ratio >= 0.45;
+/**
+ * A light plate is a bright face. A black plate is a uniform face whose rim
+ * is strong all the way around, not one bright hole inside a large circle.
+ */
+function plateFace(frame: LumaFrame, cx: number, cy: number, r: number, rim: RimDetail): boolean {
+  const stats = interiorStats(frame, cx, cy, r);
+  if (stats.total < 6) return true;
+  if (stats.bright / stats.total >= 0.45) return true;
+  const consistent = rim.count >= 10 && rim.strong / rim.count >= 0.7;
+  return stats.spread <= 28 && consistent;
 }
 
-/** Null when too little of the interior is inside the frame to judge. */
-function fillRatio(frame: LumaFrame, cx: number, cy: number, r: number): number | null {
+function interiorStats(
+  frame: LumaFrame,
+  cx: number,
+  cy: number,
+  r: number,
+): { bright: number; total: number; spread: number } {
   let bright = 0;
   let total = 0;
+  let min = 255;
+  let max = 0;
   for (let index = 0; index < 20; index += 1) {
     const angle = (index / 20) * Math.PI * 2;
     const sample = luma(frame, cx + Math.cos(angle) * r * 0.45, cy + Math.sin(angle) * r * 0.45);
     if (sample == null) continue;
     total += 1;
     if (sample >= 100) bright += 1;
+    if (sample < min) min = sample;
+    if (sample > max) max = sample;
   }
-  if (total < 6) return null;
-  return bright / total;
+  return { bright, total, spread: total === 0 ? 0 : max - min };
 }
 
 function luma(frame: LumaFrame, x: number, y: number): number | null {

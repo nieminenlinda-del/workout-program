@@ -1,5 +1,6 @@
-import { displaySeconds, formatClock, progressRatio } from '../domain/countdown';
+import { displaySeconds, formatClock, progressRatio, restOverlayTapReady } from '../domain/countdown';
 import { unlockTimerAudio } from '../domain/timerCue';
+import { useRef } from 'react';
 import { useCountdown } from '../hooks/useCountdown';
 import { useTimerVoicePref } from '../hooks/useTimerVoicePref';
 import { VoiceToggle } from './VoiceToggle';
@@ -21,10 +22,17 @@ export function RestTimer({
   const done = state.finished;
   const pct = progressRatio(state);
   const circumference = 2 * Math.PI * 52;
+  const openedAtRef = useRef(Date.now());
 
   const finish = () => {
     unlockTimerAudio();
     onDone();
+  };
+
+  const dismissFromBackdrop = () => {
+    if (!restOverlayTapReady(openedAtRef.current, Date.now())) return;
+    skip();
+    finish();
   };
 
   return (
@@ -32,10 +40,7 @@ export function RestTimer({
       className="rest-overlay"
       role="dialog"
       aria-label="Rest timer"
-      onClick={() => {
-        skip();
-        finish();
-      }}
+      onClick={dismissFromBackdrop}
     >
       <div
         className="rest-card"

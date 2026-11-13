@@ -21,3 +21,19 @@ export function vbtVideoFilename(
 export function videoExtForMime(mime: string): VideoExt {
   return mime.includes('mp4') ? 'mp4' : 'webm';
 }
+
+/**
+ * iOS Photos rejects a fragmented MP4. Recording without a timeslice writes
+ * one complete file when the recorder stops. WebM can still chunk.
+ */
+export function mediaRecorderTimeslice(mime: string): number | null {
+  if (!mime || mime.includes('mp4')) return null;
+  return 200;
+}
+
+/** Photos wants `video/mp4`, not a codec suffix. */
+export function fileTypeForRecorderMime(mime: string): string {
+  if (mime.includes('mp4')) return 'video/mp4';
+  if (mime.includes('webm')) return 'video/webm';
+  return mime || 'video/webm';
+}

@@ -116,7 +116,9 @@ describe('session factory', () => {
   });
 
   it('swaps an alternative without dropping set slots', () => {
-    const draft = createDraftSession('B');
+    // Day B on 13 Nov 2026 is C2 bench only, so the row is not there. Pin a Tuesday that still has it.
+    const draft = createDraftSession('B', '2026-09-08');
+    expect(draft.lifts[1]?.exercise_id).toBe('row_barbell');
     const swapped = swapLiftExercise(draft, 1, 'row_db');
     expect(swapped.lifts[1]?.exercise_id).toBe('row_db');
     expect(swapped.lifts[1]?.sets).toHaveLength(draft.lifts[1].sets.length);

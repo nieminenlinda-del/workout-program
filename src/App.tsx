@@ -100,6 +100,7 @@ export default function App() {
           onSeedWeek1={() => flow.seedWeek1()}
           onSeedMon14={() => flow.seedMon14()}
           onSeedNov23={() => flow.seedNov23()}
+          onCopyNov23={() => flow.copyNov23Diagnostics()}
           onSaveDraft={() => flow.saveDraftToLog()}
         />
       ) : null}
@@ -168,7 +169,12 @@ export default function App() {
       ) : null}
 
       {flow.view === 'detail' && flow.detail ? (
-        <DetailScreen session={flow.detail} onBack={() => flow.setView('history')} />
+        <DetailScreen
+          session={flow.detail}
+          onBack={() => flow.setView('history')}
+          onRepairNov23={() => flow.repairOpenNov23()}
+          onCopyNov23={() => flow.copyNov23Diagnostics()}
+        />
       ) : null}
 
       {flow.view === 'interval' ? (

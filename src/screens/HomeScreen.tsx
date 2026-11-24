@@ -11,7 +11,7 @@ import { RECOVERY_PICKER_NAMES } from '../domain/recoveryWeek';
 import { RecoveryCallout } from '../components/RecoveryCallout';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
-import { nov23FixPending } from '../domain/nov23Session';
+import { helsinkiCalendarDay, nov23FixPending, NOV23_DATE } from '../domain/nov23Session';
 import { APP_BUILD_LABEL } from '../pwaCache';
 import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
@@ -37,6 +37,7 @@ export function HomeScreen({
   onSeedWeek1,
   onSeedMon14,
   onSeedNov23 = async () => undefined,
+  onCopyNov23 = async () => '',
   onSaveDraft = async () => undefined,
 }: {
   date: string;
@@ -56,6 +57,7 @@ export function HomeScreen({
   onSeedWeek1: () => Promise<number>;
   onSeedMon14: () => Promise<number>;
   onSeedNov23?: () => Promise<unknown>;
+  onCopyNov23?: () => Promise<string>;
   onSaveDraft?: () => Promise<void>;
 }) {
   const template = DAY_TEMPLATES[templateDay];
@@ -169,8 +171,8 @@ export function HomeScreen({
             data-testid="seed-nov23"
             onClick={() => void onSeedNov23()}
           >
-            {history.some((row) => row.date.slice(0, 10) === '2026-11-23')
-              ? 'Fix Mon 23 Nov in the log'
+            {history.some((row) => helsinkiCalendarDay(row.date) === NOV23_DATE)
+              ? 'Repair Mon 23 Nov'
               : 'Add Mon 23 Nov to the log'}
           </button>
         ) : null}
@@ -192,6 +194,14 @@ export function HomeScreen({
 
       <button type="button" className="btn btn-ghost btn-block" onClick={onHistory}>
         Session log ({historyCount})
+      </button>
+      <button
+        type="button"
+        className="btn btn-ghost btn-block"
+        data-testid="copy-nov23"
+        onClick={() => void onCopyNov23()}
+      >
+        Copy diagnostics
       </button>
       <button type="button" className="btn btn-ghost btn-block" onClick={onInterval}>
         Interval timer

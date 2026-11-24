@@ -4,9 +4,10 @@ import { LightBadge } from '../components/LightBadge';
 import { effectiveBarPosition, isBarbellSquat } from '../domain/dashboard';
 import { SessionBackupCard } from '../components/SessionBackupCard';
 import { TEMPLATE_DAY_LABELS, canonicalTemplateDay, formatDisplayDate } from '../domain/templateDay';
+import { isNov23StoredSession } from '../domain/nov23Session';
 import { completedSetCount } from '../domain/sessionFactory';
 import { setDisplayLabel } from '../domain/sets';
-import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isAssistedLoad, isTimedHold } from '../types/exercises';
+import { EQUIPMENT_LABELS, EXERCISE_CATALOG, isAssistedLoad, isExerciseId, isTimedHold, type Equipment } from '../types/exercises';
 import { liftEquipment } from '../domain/equipment';
 import { isReconstructedReferenceSession, type ImportMode } from '../domain/sessionBackup';
 import { formatLoad } from '../domain/formatLoad';
@@ -135,24 +136,76 @@ export function HistoryScreen({
   );
 }
 
+function sessionTitle(day: string | undefined): string {
+  if (
+    day === 'A' ||
+    day === 'B' ||
+    day === 'C' ||
+    day === 'D' ||
+    day === 'Mon' ||
+    day === 'Tue' ||
+    day === 'Thu' ||
+    day === 'Fri'
+  ) {
+    return TEMPLATE_DAY_LABELS[canonicalTemplateDay(day)];
+  }
+  return day?.trim() || 'Session';
+}
+
 export function DetailScreen({
   session,
   onBack,
+  onRepairNov23,
+  onCopyNov23,
 }: {
   session: SessionDraft;
   onBack: () => void;
+  onRepairNov23?: () => Promise<unknown>;
+  onCopyNov23?: () => Promise<string>;
 }) {
-  const day = canonicalTemplateDay(session.template_day);
+  const [copyNote, setCopyNote] = useState<string | null>(null);
+  const showNov23 = isNov23StoredSession(session);
   return (
     <main className="screen">
       <header className="topbar">
         <button type="button" className="btn btn-ghost" onClick={onBack}>
           Log
         </button>
-        <h1>{TEMPLATE_DAY_LABELS[day]}</h1>
+        <h1>{sessionTitle(session.template_day)}</h1>
         <span />
       </header>
       <p className="muted">{formatDisplayDate(session.date)}</p>
+      {showNov23 ? (
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            data-testid="repair-nov23"
+            onClick={() => void onRepairNov23?.()}
+          >
+            Repair Mon 23 Nov
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            data-testid="copy-nov23-detail"
+            onClick={() => {
+              void (async () => {
+                const text = (await onCopyNov23?.()) ?? '';
+                try {
+                  await navigator.clipboard.writeText(text);
+                  setCopyNote('Copied. Paste it to Kraft.');
+                } catch {
+                  setCopyNote(text ? 'Copy failed. The diagnostics are in the note below.' : 'Nothing stored for 23 Nov.');
+                }
+              })();
+            }}
+          >
+            Copy diagnostics
+          </button>
+        </div>
+      ) : null}
+      {copyNote ? <p className="muted" data-testid="nov23-copy-note">{copyNote}</p> : null}
       <SessionBarSpeedExport session={session} testId="vbt-export" primary />
       <LightBadge light={session.readiness.light} large />
       {session.pain_flag ? <p className="pain-note">Pain flag on</p> : null}
@@ -167,12 +220,20 @@ export function DetailScreen({
         <section key={lift.exercise_id + lift.name} className="card">
           <h2>{lift.name}</h2>
           {(() => {
-            const eq = liftEquipment(lift);
+            const known = isExerciseId(lift.exercise_id);
+            let eq: Equipment | null = lift.equipment ?? null;
+            if (!eq && known) {
+              try {
+                eq = liftEquipment(lift);
+              } catch {
+                eq = null;
+              }
+            }
             const bits = [
-              EXERCISE_CATALOG[lift.exercise_id]?.role !== 'primary' ? EQUIPMENT_LABELS[eq] : null,
+              eq && (!known || EXERCISE_CATALOG[lift.exercise_id]?.role !== 'primary') ? EQUIPMENT_LABELS[eq] : null,
               eq === 'barbell' && lift.bar_kg ? `${lift.bar_kg} kg bar` : null,
             ].filter(Boolean);
-            if (isBarbellSquat(lift.exercise_id)) {
+            if (known && isBarbellSquat(lift.exercise_id)) {
               bits.unshift(effectiveBarPosition(lift) === 'high_bar' ? 'High-bar' : 'Low-bar');
             }
             return bits.length ? <p className="muted">{bits.join(' · ')}</p> : null;

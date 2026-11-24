@@ -90,7 +90,7 @@ describe('Mon 23 Nov session', () => {
       'bench_regular',
       'ab_rollout',
     ]);
-    expect(merged.lifts[0]?.sets.map((set) => set.rpe)).toEqual([undefined, undefined, 8.5]);
+    expect(merged.lifts[0]?.sets.map((set) => set.rpe)).toEqual([8, 8, 8.5]);
     expect(merged.lifts[0]?.sets[2]?.part_label).toBe('Belt');
     expect(merged.lifts[1]?.name).toMatch(/2 s/);
     expect(merged.lifts[1]?.sets.map((set) => set.weight_kg)).toEqual([45, 45]);
@@ -107,7 +107,7 @@ describe('Mon 23 Nov session', () => {
 
     const repo = createMemoryRepository();
     await repo.saveDraft(partial as SessionDraft);
-    expect(await seedNov23Session(repo)).toBe('merged');
+    expect(await seedNov23Session(repo)).toBe('repaired');
     expect(await seedNov23Session(repo)).toBe('already');
     const rows = await repo.listAllComplete();
     expect(rows).toHaveLength(1);
@@ -115,7 +115,7 @@ describe('Mon 23 Nov session', () => {
     expect(nov23SessionIsComplete(rows[0])).toBe(true);
     expect(await repo.getDraft()).toBeUndefined();
     expect(sessionsInWeek(rows, '2026-11-23')).toHaveLength(1);
-    expect(hardSetsInWeek(rows, '2026-11-23').squat).toBe(1);
+    expect(hardSetsInWeek(rows, '2026-11-23').squat).toBe(3);
     expect(hardSetsInWeek(rows, '2026-11-23').bench).toBe(0);
     expect(nov23FixPending([])).toBe(true);
     expect(nov23FixPending(rows)).toBe(false);

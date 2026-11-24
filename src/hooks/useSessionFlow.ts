@@ -12,7 +12,7 @@ import {
   seedWeek1LastReference,
   type ImportMode,
 } from '../domain/sessionBackup';
-import { seedNov23Session } from '../domain/nov23Session';
+import { nov23DiagnosticsJson, nov23SessionIsComplete, repairNov23Session, seedNov23Session } from '../domain/nov23Session';
 
 export type AppView =
   | 'home'
@@ -156,10 +156,25 @@ export function useSessionFlow(repo: SessionRepository) {
   const seedNov23 = useCallback(async () => {
     const result = await seedNov23Session(repo);
     const existing = await repo.getDraft();
-    if (!existing) setDraft(null);
+    setDraft(existing ?? null);
     await refreshHistory();
     return result;
   }, [repo, refreshHistory]);
+
+  const repairOpenNov23 = useCallback(async () => {
+    const result = await repairNov23Session(repo, { include: detail });
+    const existing = await repo.getDraft();
+    setDraft(existing ?? null);
+    await refreshHistory();
+    const rows = await repo.listAllComplete();
+    const fixed = rows.find((row) => nov23SessionIsComplete(row));
+    if (fixed) setDetail(fixed);
+    return result;
+  }, [detail, repo, refreshHistory]);
+
+  const copyNov23Diagnostics = useCallback(async () => {
+    return nov23DiagnosticsJson(repo, detail);
+  }, [detail, repo]);
 
   const saveDraftToLog = useCallback(async () => {
     if (!draft) return;
@@ -194,6 +209,8 @@ export function useSessionFlow(repo: SessionRepository) {
     seedWeek1,
     seedMon14,
     seedNov23,
+    repairOpenNov23,
+    copyNov23Diagnostics,
     saveDraftToLog,
   };
 }

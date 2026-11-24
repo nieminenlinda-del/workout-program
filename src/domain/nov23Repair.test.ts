@@ -7,6 +7,7 @@ import {
   NOV23_SESSION_ID,
   helsinkiCalendarDay,
   isNov23DayA,
+  mergeNov23Session,
   nov23DayASession,
   nov23DiagnosticsJson,
   nov23RepairMarkerValue,
@@ -78,12 +79,13 @@ describe('Mon 23 Nov repair', () => {
       [45, 4, undefined],
     ]);
     expect(rows[0]?.lifts[3]?.sets.every((set) => set.weight_kg === 0 && set.reps === 8 && set.rpe == null)).toBe(true);
-    expect(rows[0]?.notes).toMatch(/felt heavy/);
-    expect(rows[0]?.notes).toMatch(/knee sleeves/i);
+    expect(rows[0]?.notes).toBe('felt heavy. Knee sleeves. Low-bar squat. Belt on set 3 only.');
     expect(await repo.getDraft()).toBeUndefined();
 
     expect(await seedNov23Session(repo)).toBe('already');
-    expect(await repo.listAllComplete()).toHaveLength(1);
+    expect((await repo.listAllComplete())[0]?.notes).toBe(
+      'felt heavy. Knee sleeves. Low-bar squat. Belt on set 3 only.',
+    );
 
     const dumped = JSON.parse(await nov23DiagnosticsJson(repo));
     expect(JSON.stringify(dumped.seenBeforeRepair)).toMatch(/Back squat/);
@@ -102,5 +104,16 @@ describe('Mon 23 Nov repair', () => {
     expect(rows[0]?.lifts).toHaveLength(1);
     expect(rows[0]?.lifts[0]?.name).toBe('Back squat');
     expect(rows[0]?.notes).toBe('felt heavy');
+  });
+
+  it('joins an existing note with a sentence break and does not repeat the knee-sleeves line', () => {
+    const line = 'Knee sleeves. Low-bar squat. Belt on set 3 only.';
+    const already = phoneSession();
+    already.notes = `felt heavy. ${line}`;
+    expect(mergeNov23Session(already, null).notes).toBe(`felt heavy. ${line}`);
+
+    const ended = phoneSession();
+    ended.notes = 'felt heavy.';
+    expect(mergeNov23Session(ended, null).notes).toBe(`felt heavy. ${line}`);
   });
 });

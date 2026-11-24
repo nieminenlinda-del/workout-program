@@ -198,8 +198,24 @@ export function nov23FixPending(
 
 function withKneeNote(existing: string | undefined): string {
   const text = (existing ?? '').trim();
-  if (/knee sleeves/i.test(text)) return text;
-  return text ? `${text} ${KNEE_NOTE}` : KNEE_NOTE;
+  if (!text) return KNEE_NOTE;
+  if (text.toLowerCase().includes(KNEE_NOTE.toLowerCase())) return text;
+  const separator = /[.!?]\s*$/.test(text) ? ' ' : '. ';
+  return `${text}${separator}${KNEE_NOTE}`;
+}
+
+function combineNotes(parts: readonly string[]): string {
+  const unique = [...new Set(parts.map((part) => part.trim()).filter(Boolean))];
+  const personal = unique.filter((note) => note.toLowerCase() !== KNEE_NOTE.toLowerCase());
+  const joined = personal.reduce((acc, part) => {
+    if (!acc) return part;
+    const longer = part.length > acc.length ? part : acc;
+    const shorter = longer === part ? acc : part;
+    if (longer.toLowerCase().includes(shorter.toLowerCase())) return longer;
+    const separator = /[.!?]\s*$/.test(acc) ? ' ' : '. ';
+    return `${acc}${separator}${part}`;
+  }, '');
+  return withKneeNote(joined);
 }
 
 /**
@@ -221,8 +237,7 @@ export function mergeNov23Session(
     ?? sources[0]?.session_id
     ?? NOV23_SESSION_ID;
   const next = nov23DayASession(sessionId, [storedRpe(squat[0]), storedRpe(squat[1])]);
-  const noteParts = [...new Set(sources.map((row) => row.notes?.trim() ?? '').filter((note) => note && note !== KNEE_NOTE))];
-  next.notes = withKneeNote(noteParts.join(' '));
+  next.notes = combineNotes(sources.map((row) => row.notes ?? ''));
   const readiness = sources.find((row) => row.readiness)?.readiness;
   if (readiness) next.readiness = readiness;
   next.updated_at = new Date().toISOString();

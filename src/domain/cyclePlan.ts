@@ -178,7 +178,7 @@ export function topSetRpeInWeek(
     .sort((a, b) => (calendarYmd(b.date) ?? '').localeCompare(calendarYmd(a.date) ?? ''));
   const latest = rows[0];
   const top = latest ? topWorkSet(latest.lifts[0]?.sets ?? []) : null;
-  return top ? top.rpe : null;
+  return top && typeof top.rpe === 'number' ? top.rpe : null;
 }
 
 type BlockWeek = 1 | 2 | 3 | 4;
@@ -386,7 +386,9 @@ export function variationLogInWeek(
   end: string,
 ): VariationLog {
   const lift = latestSlotLift(logs, day, exerciseId, slotId, start, end);
-  const rpes = (lift?.sets ?? []).filter((set) => isLoggedWorkSet(set)).map((set) => set.rpe);
+  const rpes = (lift?.sets ?? [])
+    .filter((set) => isLoggedWorkSet(set) && typeof set.rpe === 'number')
+    .map((set) => set.rpe as number);
   return { rpes, lastRpe: rpes.length > 0 ? rpes[rpes.length - 1] : null };
 }
 
@@ -400,7 +402,9 @@ export function accessorySetsInWeek(
   end: string,
 ): { reps: number; rpe: number }[] {
   const lift = latestSlotLift(logs, day, exerciseId, slotId, start, end);
-  return (lift?.sets ?? []).filter((set) => isLoggedWorkSet(set)).map((set) => ({ reps: set.reps, rpe: set.rpe }));
+  return (lift?.sets ?? [])
+    .filter((set) => isLoggedWorkSet(set) && typeof set.rpe === 'number')
+    .map((set) => ({ reps: set.reps, rpe: set.rpe as number }));
 }
 
 function latestSlotLift(

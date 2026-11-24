@@ -4,6 +4,7 @@ import type { SessionLog } from '../types/session';
 import { formatClock } from '../domain/countdown';
 import { formatShownRpe } from '../domain/setPrescription';
 import { formatLoad, plannedDayPreview } from '../domain/workoutPreview';
+import { LOADS_FROM_KRAFT, localizePlanLabel } from '../domain/uiLang';
 import { historyVisibilityLine, lastLogGapLine } from '../domain/sessionBackup';
 import { LastPerformanceHint } from './LastPerformanceHint';
 
@@ -52,7 +53,8 @@ export function WorkoutPreview({
                   ) : null}
                   {lift.optional ? <em className="alt"> (optional)</em> : null}
                   <span className="preview-scheme">
-                    {lift.workLabel || lift.scheme}
+                    {localizePlanLabel(lift.workLabel) || lift.scheme}
+                    {lift.workLabel === LOADS_FROM_KRAFT && lift.scheme ? ` · ${lift.scheme}` : ''}
                     {lift.warmupLabel ? ` · ${lift.warmupLabel}` : ''}
                     {lift.restLabel ? ` · ${lift.restLabel}` : ''}
                   </span>
@@ -77,7 +79,7 @@ export function WorkoutPreview({
                             {set.amrap ? '+' : ''}
                           </>
                         )}
-                        <em> @ {formatShownRpe(set)} RPE</em>
+                        {formatShownRpe(set) ? <em> @ {formatShownRpe(set)} RPE</em> : null}
                       </span>
                       <span className="preview-rest">{formatClock(set.rest_sec)}</span>
                     </li>

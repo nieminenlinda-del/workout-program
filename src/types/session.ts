@@ -39,7 +39,8 @@ export interface Readiness {
 export interface LoggedSet {
   weight_kg: number;
   reps: number;
-  rpe: number;
+  /** Missing when the set was logged without an RPE. Do not invent one. */
+  rpe?: number;
   completed: boolean;
   amrap?: boolean;
   /** True for seeded warmup sets. Must not count as a work set for last-week / Phase 2. */

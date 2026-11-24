@@ -149,7 +149,9 @@ export function WorkoutScreen({
               lift.exercise_id,
               workingKg,
               unloggedWork[0]?.reps ?? work[work.length - 1]?.reps ?? 0,
-              work.filter((set) => set.completed).map((set) => set.rpe),
+              work
+                .filter((set) => set.completed && typeof set.rpe === 'number')
+                .map((set) => set.rpe as number),
               unloggedWork.length,
             )
           : null;
@@ -283,7 +285,8 @@ export function WorkoutScreen({
                         <>
                           <span>
                             {formatLoggedLoad(set, timed, assisted)}
-                            <em> @ {set.rpe} RPE</em>
+                            {typeof set.rpe === 'number' ? <em> @ {set.rpe} RPE</em> : null}
+                            {set.part_label?.toLowerCase() === 'belt' ? ' belt' : ''}
                           </span>
                           {loggedDiffersFromPlan(set) ? (
                             <span className="set-plan">plan {formatPlanLoad(set, timed, assisted)}</span>

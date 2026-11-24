@@ -12,6 +12,7 @@ import {
   seedWeek1LastReference,
   type ImportMode,
 } from '../domain/sessionBackup';
+import { seedNov23Session } from '../domain/nov23Session';
 
 export type AppView =
   | 'home'
@@ -149,6 +150,27 @@ export function useSessionFlow(repo: SessionRepository) {
     return count;
   }, [repo, refreshHistory]);
 
+  const seedNov23 = useCallback(async () => {
+    const result = await seedNov23Session(repo);
+    const existing = await repo.getDraft();
+    if (!existing) setDraft(null);
+    await refreshHistory();
+    return result;
+  }, [repo, refreshHistory]);
+
+  const saveDraftToLog = useCallback(async () => {
+    if (!draft) return;
+    const complete: SessionDraft = {
+      ...draft,
+      status: 'complete',
+      updated_at: new Date().toISOString(),
+    };
+    await repo.save(complete);
+    await repo.clearDraft();
+    setDraft(null);
+    await refreshHistory();
+  }, [draft, repo, refreshHistory]);
+
   return {
     view,
     setView,
@@ -168,5 +190,7 @@ export function useSessionFlow(repo: SessionRepository) {
     importSessions,
     seedWeek1,
     seedMon14,
+    seedNov23,
+    saveDraftToLog,
   };
 }

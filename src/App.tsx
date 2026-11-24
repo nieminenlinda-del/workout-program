@@ -95,6 +95,8 @@ export default function App() {
           onImportSessions={(text, mode) => flow.importSessions(text, mode)}
           onSeedWeek1={() => flow.seedWeek1()}
           onSeedMon14={() => flow.seedMon14()}
+          onSeedNov23={() => flow.seedNov23()}
+          onSaveDraft={() => flow.saveDraftToLog()}
         />
       ) : null}
 

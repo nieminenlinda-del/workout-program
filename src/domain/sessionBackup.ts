@@ -114,9 +114,9 @@ function asSet(value: unknown, label: string): LoggedSet {
   const set: LoggedSet = {
     weight_kg: row.weight_kg,
     reps: row.reps,
-    rpe: typeof row.rpe === 'number' ? row.rpe : 7,
     completed: row.completed !== false,
   };
+  if (typeof row.rpe === 'number' && !Number.isNaN(row.rpe)) set.rpe = row.rpe;
   if (typeof row.amrap === 'boolean') set.amrap = row.amrap;
   if (typeof row.warmup === 'boolean') set.warmup = row.warmup;
   if (typeof row.target_weight_kg === 'number') set.target_weight_kg = row.target_weight_kg;

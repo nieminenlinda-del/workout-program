@@ -57,6 +57,7 @@ const REQUIRED_ACCESSORIES = [
   'plank',
   'side_plank',
   'dead_bug',
+  'ab_rollout',
   'curl_db',
   'tricep_pushdown_band',
   'cable_rope_pushdown',

@@ -34,6 +34,7 @@ import {
 import { c1ReturnTemplateFor } from './c1ReturnWeek';
 import { c2TemplateFor } from './c2Week';
 import { recoveryTemplateFor } from './recoveryWeek';
+import { blankTransitionTemplate, isTransitionLoadDay } from './transitionWeek';
 import { calendarYmd } from './lastPerformance';
 import { isProgressionFrozen } from './testWeek';
 
@@ -229,6 +230,7 @@ export function applyProgramWeek(
   if (isRecoveryWeek(asOf)) return recoveryTemplateFor(template.id);
   if (isC1ReturnWeek(asOf)) return c1ReturnTemplateFor(template.id);
   if (isC2Week(asOf)) return c2TemplateFor(template.id);
+  if (isTransitionLoadDay(asOf, template.id)) return blankTransitionTemplate(template);
 
   const rx = t1PrescriptionFor(template.id, asOf);
   if (!rx) return template;

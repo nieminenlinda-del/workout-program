@@ -27,10 +27,11 @@ export const BLOCK_B_TRAINING_MAXES: TrainingMaxes = {
 /**
  * Last tested competition 1RMs (kg). Not a training max — Block B/C TMs stay
  * 75 / 52.5 / 92.5 and the Block A seed stays 72.5 / 52.5 / 90.
+ * Bench is the 20 Nov 2026 test result, 57.5 kg.
  */
 export const TESTED_1RM: TrainingMaxes = {
   squat_kg: 75,
-  bench_kg: 55,
+  bench_kg: 57.5,
   deadlift_kg: 95,
 };
 

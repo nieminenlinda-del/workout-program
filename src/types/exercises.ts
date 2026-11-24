@@ -44,6 +44,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'plank',
   'side_plank',
   'dead_bug',
+  'ab_rollout',
   'curl_db',
   'tricep_pushdown_band',
   'cable_rope_pushdown',
@@ -324,6 +325,13 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
     equipment: 'bodyweight',
   },
   dead_bug: { id: 'dead_bug', name: 'Dead bug', role: 'accessory', pattern: 'core', equipment: 'bodyweight' },
+  ab_rollout: {
+    id: 'ab_rollout',
+    name: 'Ab rollout from knees',
+    role: 'accessory',
+    pattern: 'core',
+    equipment: 'bodyweight',
+  },
   curl_db: { id: 'curl_db', name: 'DB curl', role: 'accessory', pattern: 'arm', equipment: 'dumbbells' },
   tricep_pushdown_band: {
     id: 'tricep_pushdown_band',

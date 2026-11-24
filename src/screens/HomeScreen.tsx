@@ -11,8 +11,10 @@ import { RECOVERY_PICKER_NAMES } from '../domain/recoveryWeek';
 import { RecoveryCallout } from '../components/RecoveryCallout';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
+import { isNov23DayA } from '../domain/nov23Session';
 import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
+import { localizePlanLabel } from '../domain/uiLang';
 import type { CanonicalTemplateDay, SessionDraft, SessionLog } from '../types/session';
 import { SEED_TRAINING_MAXES } from '../types/phase2';
 
@@ -33,6 +35,8 @@ export function HomeScreen({
   onImportSessions,
   onSeedWeek1,
   onSeedMon14,
+  onSeedNov23 = async () => undefined,
+  onSaveDraft = async () => undefined,
 }: {
   date: string;
   templateDay: CanonicalTemplateDay;
@@ -50,6 +54,8 @@ export function HomeScreen({
   onImportSessions: (text: string, mode: ImportMode) => Promise<number>;
   onSeedWeek1: () => Promise<number>;
   onSeedMon14: () => Promise<number>;
+  onSeedNov23?: () => Promise<unknown>;
+  onSaveDraft?: () => Promise<void>;
 }) {
   const template = DAY_TEMPLATES[templateDay];
   const planned = dayTemplateForDate(templateDay, date, { logs: history, hold: true });
@@ -112,10 +118,15 @@ export function HomeScreen({
           <h2>
             {TEMPLATE_DAY_LABELS[templateDayForDraft(draft)]}
           </h2>
-          <p className="muted">Draft saved on this phone. Resume or start over.</p>
+          <p className="muted">
+            Sets already logged are stored on this phone until you save or replace this draft.
+          </p>
           <div className="row-actions">
             <button type="button" className="btn btn-primary" onClick={onResume}>
               Resume
+            </button>
+            <button type="button" className="btn btn-ghost" data-testid="save-draft" onClick={() => void onSaveDraft()}>
+              Save to log
             </button>
             {planned.slots.length > 0 ? (
               <button type="button" className="btn btn-ghost" onClick={onStart}>
@@ -142,7 +153,7 @@ export function HomeScreen({
           }
         />
         <h2 className="template-heading">{planned.title}</h2>
-        <p className="muted">{planned.focus}</p>
+        <p className="muted">{localizePlanLabel(planned.focus)}</p>
         <RecoveryCallout date={date} day={templateDay} />
         {planned.slots.length > 0 ? (
           <WorkoutPreview key={template.id} template={template} history={history} asOf={date} />
@@ -150,6 +161,16 @@ export function HomeScreen({
           <p className="muted">Nothing to log. Walk only.</p>
         )}
         {recoveryCard}
+        {!history.some((row) => isNov23DayA(row)) ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            data-testid="seed-nov23"
+            onClick={() => void onSeedNov23()}
+          >
+            Add Mon 23 Nov to the log
+          </button>
+        ) : null}
         {planned.slots.length > 0 ? (
           <button type="button" className="btn btn-primary btn-block" onClick={onStart}>
             {draft ? 'Replace draft & start' : 'Start session'}

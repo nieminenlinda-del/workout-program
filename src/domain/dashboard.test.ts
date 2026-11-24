@@ -221,10 +221,10 @@ describe('same-load RPE', () => {
 
 describe('tested maxes, goals, and the dashboard calendar', () => {
   it('keeps tested 1RMs apart from training maxes', () => {
-    expect(TESTED_1RM).toEqual({ squat_kg: 75, bench_kg: 55, deadlift_kg: 95 });
+    expect(TESTED_1RM).toEqual({ squat_kg: 75, bench_kg: 57.5, deadlift_kg: 95 });
     expect(BLOCK_B_TRAINING_MAXES.bench_kg).toBe(52.5);
     expect(trainingMaxesAreSeparate()).toBe(true);
-    expect(testedKg('bench')).toBe(55);
+    expect(testedKg('bench')).toBe(57.5);
   });
 
   it('reads the bench attempt band and leaves squat and deadlift off the 1RM goals', () => {

@@ -10,6 +10,8 @@ import { HealthScreen } from './screens/HealthScreen';
 import { BlockPreviewScreen } from './screens/BlockPreviewScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { TimerCueFlash } from './components/TimerCueFlash';
+import { UpdateBanner } from './components/UpdateBanner';
+import { APP_BUILD_LABEL } from './pwaCache';
 import { useRepository, useSessionFlow, type AppView } from './hooks/useSessionFlow';
 import { DEFAULT_TEMPLATE_DAY } from './data/templates';
 import { canonicalTemplateDay, defaultTemplateDayForDate, todayIsoDate } from './domain/templateDay';
@@ -64,6 +66,7 @@ export default function App() {
         <main className="screen">
           <p className="brand">Linda Lift</p>
           <p className="muted">Loading local log…</p>
+          <p className="build-stamp">{APP_BUILD_LABEL}</p>
         </main>
       </div>
     );
@@ -71,6 +74,7 @@ export default function App() {
 
   return (
     <div className="shell">
+      <UpdateBanner />
       <TimerCueFlash />
       {view === 'home' ? (
         <HomeScreen

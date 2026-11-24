@@ -39,7 +39,7 @@ export function formatLoadReps(
 
 /** Planned RPE: a band label when the week prescribes one, otherwise the number. */
 export function formatShownRpe(set: { rpe?: number; rpe_label?: string }): string {
-  if (set.rpe_label) return set.rpe_label;
+  if (set.rpe_label != null) return set.rpe_label;
   return typeof set.rpe === 'number' ? String(set.rpe) : '';
 }
 

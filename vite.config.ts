@@ -2,7 +2,12 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
-import { PWA_CACHE_ID } from './src/pwaCache';
+import {
+  PWA_CACHE_ID,
+  PWA_CLIENTS_CLAIM,
+  PWA_HTML_STRATEGY,
+  PWA_SKIP_WAITING,
+} from './src/pwaCache';
 
 const BASE = '/workout-program/';
 
@@ -12,7 +17,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // The app registers the worker itself so it can show a reload banner.
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
         name: 'Linda Lift',
@@ -41,8 +47,23 @@ export default defineConfig({
         // previous cache when this build's service worker activates.
         cacheId: PWA_CACHE_ID,
         cleanupOutdatedCaches: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: `${BASE}index.html`,
+        skipWaiting: PWA_SKIP_WAITING,
+        clientsClaim: PWA_CLIENTS_CLAIM,
+        // Leave index.html out of the precache. A cache-first shell is what
+        // kept the previous Home Screen bundle on screen after a deploy.
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff2,webmanifest}'],
+        navigateFallback: null,
+        runtimeCaching: [
+          {
+            urlPattern: /\/workout-program\/(?:index\.html)?(?:\?.*)?$/,
+            handler: PWA_HTML_STRATEGY,
+            options: {
+              cacheName: `${PWA_CACHE_ID}-pages`,
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 4, maxAgeSeconds: 24 * 60 * 60 },
+            },
+          },
+        ],
       },
     }),
   ],

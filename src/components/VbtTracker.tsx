@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { barHeightM } from '../domain/vbt/calibration';
+import { barHeightM, metersPerPixel } from '../domain/vbt/calibration';
 import { demoDurationMs, demoHeightAt, demoTrace } from '../domain/vbt/demo';
 import {
   CAMERA_MOVE_SHIFT,
@@ -20,7 +20,17 @@ import {
 import { isSideView, type CameraView, type VbtLiftKind, type VbtSample } from '../domain/vbt/reps';
 import { anchorDownloadLikelyWorks, downloadFile, saveSetThenVideo } from '../domain/vbt/shareFile';
 import { followBarPoint } from '../domain/vbt/path';
-import { acquirePlate, analysisSize, containRect, diagnosticsLine, type LumaFrame } from '../domain/vbt/tracker';
+import {
+  acquirePlate,
+  analysisSize,
+  containRect,
+  diagnosticsLine,
+  plateStepPlausible,
+  readPlateAppearance,
+  reacquirePlate,
+  type LumaFrame,
+  type PlateAppearance,
+} from '../domain/vbt/tracker';
 import { defaultVelocityLossPct, summarizeSet, velocityEstimate, type LoadVelocityPoint, type VbtSetSummary } from '../domain/vbt/velocity';
 import { fileTypeForRecorderMime, mediaRecorderTimeslice, videoExtForMime, vbtVideoFilename } from '../domain/vbt/videoFile';
 import { repPhrase } from '../domain/vbt/voice';
@@ -76,6 +86,10 @@ export function VbtTracker({
   const [statusText, setStatusText] = useState('waiting for plate');
   const pathRef = useRef<{ x: number; y: number }[]>([]);
   const lockRef = useRef<{ cx: number; cy: number; r: number } | null>(null);
+  const appearanceRef = useRef<PlateAppearance | null>(null);
+  const lostRef = useRef(false);
+  const countFrozenRef = useRef(false);
+  const originXRef = useRef<number | null>(null);
   const originRef = useRef<number | null>(null);
   const steadyRef = useRef(0);
   const lastNowRef = useRef(0);
@@ -97,7 +111,6 @@ export function VbtTracker({
   const recordRef = useRef(recordVideo);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const captureTrackRef = useRef<MediaStreamTrack | null>(null);
-  const holdRef = useRef(0);
   const chunksRef = useRef<Blob[]>([]);
   const finishingRef = useRef(false);
   mutedRef.current = muted;
@@ -143,7 +156,10 @@ export function VbtTracker({
     samplesRef.current = [];
     pathRef.current = [];
     lockRef.current = null;
+    appearanceRef.current = null;
+    lostRef.current = false;
     originRef.current = null;
+    originXRef.current = null;
     steadyRef.current = 0;
     lastNowRef.current = 0;
     everRef.current = false;
@@ -158,14 +174,15 @@ export function VbtTracker({
     let lastHud = 0;
     let previousLuma: Uint8ClampedArray | null = null;
 
-    const liveStatus = (ready: boolean, barMoving: boolean, now: number, cameraMoved = false) => {
-      if (tapArmedRef.current && !manualRef.current) return 'Tap the plate';
-      if (tappedAtRef.current != null && now - tappedAtRef.current < 1200) return 'Plate found';
+    const liveStatus = (ready: boolean, barMoving: boolean, now: number, cameraMoved = false, plateLost = false) => {
+      if (tapArmedRef.current && !manualRef.current && !plateLost) return 'Tap the plate';
+      if (!plateLost && tappedAtRef.current != null && now - tappedAtRef.current < 1200) return 'Plate found';
       return overlayStatus({
-        guidance: ready ? 'locked' : 'searching',
+        guidance: ready && !plateLost ? 'locked' : 'searching',
         steadyMs: ready ? PLATE_STEADY_MS : 0,
         cameraMoved,
         barMoving,
+        plateLost,
       });
     };
     const tick = (now: number) => {
@@ -207,7 +224,7 @@ export function VbtTracker({
         }
         closeRef.current = marker * 2 >= Math.min(width, height) * 0.32;
         statusRef.current = liveStatus(elapsed >= PLATE_STEADY_MS, barMoving, now);
-        if (elapsed >= PLATE_STEADY_MS) {
+        if (elapsed >= PLATE_STEADY_MS && !countFrozenRef.current) {
           samplesRef.current.push({
             t_ms: playing,
             y_m: yM,
@@ -229,70 +246,50 @@ export function VbtTracker({
           if (small) previousLuma = small.frame.data;
           const hint = lockRef.current;
           const wide = manualRef.current && tappedAtRef.current != null && now - tappedAtRef.current < 800;
-          const acquired = small
-            ? acquirePlate(
-                small.frame,
-                hint
-                  ? {
-                      cx: ((hint.cx - fit.x) / Math.max(1, fit.width)) * small.frame.width,
-                      cy: ((hint.cy - fit.y) / Math.max(1, fit.height)) * small.frame.height,
-                      r: (hint.r / Math.max(1, fit.width)) * small.frame.width,
-                      windowPx: wide ? 48 : 22,
-                      wide,
-                    }
-                  : undefined,
-              )
-            : { circle: null, guidance: 'searching' as const, close: false };
+          const frameHint = hint
+            ? {
+                cx: ((hint.cx - fit.x) / Math.max(1, fit.width)) * (small?.frame.width ?? 1),
+                cy: ((hint.cy - fit.y) / Math.max(1, fit.height)) * (small?.frame.height ?? 1),
+                r: (hint.r / Math.max(1, fit.width)) * (small?.frame.width ?? 1),
+              }
+            : null;
+          const appearance = appearanceRef.current;
+          const found =
+            small && appearance && frameHint && !wide
+              ? reacquirePlate(small.frame, appearance, frameHint, Math.max(18, frameHint.r * 1.8))
+              : small
+                ? acquirePlate(
+                    small.frame,
+                    frameHint
+                      ? { ...frameHint, windowPx: wide ? 48 : 22, wide }
+                      : undefined,
+                  ).circle
+                : null;
           const cameraMoved = shift >= CAMERA_MOVE_SHIFT;
           const fromTrack =
-            acquired.circle && small
+            found && small
               ? {
-                  cx: fit.x + (acquired.circle.cx / small.frame.width) * fit.width,
-                  cy: fit.y + (acquired.circle.cy / small.frame.height) * fit.height,
-                  r: markerRadiusPx((acquired.circle.r / small.frame.width) * fit.width, width, height),
-                  confidence: Math.min(1, acquired.circle.score / 40),
-                  close: acquired.close,
+                  cx: fit.x + (found.cx / small.frame.width) * fit.width,
+                  cy: fit.y + (found.cy / small.frame.height) * fit.height,
+                  r: markerRadiusPx((found.r / small.frame.width) * fit.width, width, height),
+                  confidence: Math.min(1, found.score / 40),
+                  close: found.r * 2 >= Math.min(small.frame.width, small.frame.height) * 0.32,
+                  frame: found,
                 }
               : null;
-          const manualCircle =
-            !fromTrack && manualRef.current && hint && !cameraMoved
-              ? {
-                  cx: hint.cx,
-                  cy: hint.cy,
-                  r: markerRadiusPx(hint.r, width, height),
-                  confidence: 0.8,
-                  close: hint.r * 2 >= Math.min(width, height) * 0.32,
-                }
-              : null;
-          const held =
-            !fromTrack &&
-            !manualCircle &&
-            hint != null &&
-            !cameraMoved &&
-            holdRef.current < 8 &&
-            shift < CAMERA_MOVE_SHIFT;
-          const circle =
-            fromTrack ??
-            manualCircle ??
-            (held
-              ? {
-                  cx: hint.cx,
-                  cy: hint.cy,
-                  r: hint.r,
-                  confidence: 0.6,
-                  close: hint.r * 2 >= Math.min(width, height) * 0.32,
-                }
-              : null);
-          if (fromTrack || manualCircle) holdRef.current = 0;
-          else if (held) holdRef.current += 1;
-          else holdRef.current = 0;
           const jumped =
             hint != null &&
             fromTrack != null &&
             !wide &&
-            Math.hypot(fromTrack.cx - hint.cx, fromTrack.cy - hint.cy) > Math.min(width, height) * 0.28;
-          const slipped = hint != null && fromTrack != null && !wide && hint.r > 0 && Math.abs(fromTrack.r - hint.r) / hint.r > 0.3;
-          const good = circle != null && !cameraMoved && !jumped && !slipped;
+            !plateStepPlausible(
+              { x: hint.cx, y: hint.cy, r: hint.r },
+              { x: fromTrack.cx, y: fromTrack.cy, r: fromTrack.r },
+              Math.max(16, dt),
+            );
+          const weak = fromTrack != null && appearance != null && fromTrack.confidence < 0.45;
+          const lost = Boolean(hint) && everRef.current && (cameraMoved || !fromTrack || jumped || weak);
+          if (lost) lostRef.current = true;
+          const circle = !lost ? fromTrack : null;
           closeRef.current = Boolean(circle?.close);
           diagRef.current = diagnosticsOnRef.current
             ? diagnosticsLine({
@@ -303,37 +300,45 @@ export function VbtTracker({
                 confidence: circle?.confidence ?? null,
               })
             : '';
-          if (!good) {
-            if (everRef.current) {
+          if (!circle || countFrozenRef.current) {
+            if (everRef.current && !countFrozenRef.current) {
               samplesRef.current.push({
                 t_ms: now - started,
                 y_m: null,
-                radius_px: slipped && circle ? circle.r : null,
-                confidence: jumped || slipped ? 0.1 : 0,
+                radius_px: null,
+                confidence: jumped || weak ? 0.1 : 0,
                 scene_shift: shift,
-                occluded: jumped,
+                occluded: Boolean(jumped || weak || !fromTrack),
               });
-              reacquireRef.current = true;
-              everRef.current = false;
             }
-            if (!manualRef.current || cameraMoved) {
-              steadyRef.current = 0;
+            if (cameraMoved) {
+              manualRef.current = false;
+              appearanceRef.current = null;
               lockRef.current = null;
               originRef.current = null;
-              if (cameraMoved) manualRef.current = false;
+              originXRef.current = null;
             }
-            statusRef.current = liveStatus(false, false, now, cameraMoved);
-          } else if (circle) {
+            statusRef.current = liveStatus(false, false, now, cameraMoved, lostRef.current && everRef.current);
+          } else {
+            lostRef.current = false;
             steadyRef.current += dt;
             lockRef.current = { cx: circle.cx, cy: circle.cy, r: circle.r };
+            if (small && frameHint && appearanceRef.current == null) {
+              const seen = readPlateAppearance(small.frame, circle.frame.cx, circle.frame.cy, circle.frame.r);
+              if (seen) appearanceRef.current = seen;
+            }
             if (originRef.current == null) originRef.current = circle.cy;
+            if (originXRef.current == null) originXRef.current = circle.cx;
             const origin = originRef.current ?? circle.cy;
             const metres = barHeightM(circle.cy, origin, circle.r * 2) ?? 0;
+            const scale = metersPerPixel(circle.r * 2);
+            const xMetres = scale ? (circle.cx - (originXRef.current ?? circle.cx)) * scale : 0;
             const ready = steadyRef.current >= PLATE_STEADY_MS || manualRef.current;
-            if (reacquireRef.current || ready) {
+            if ((reacquireRef.current || ready) && !countFrozenRef.current) {
               samplesRef.current.push({
                 t_ms: now - started,
                 y_m: metres,
+                x_m: xMetres,
                 radius_px: circle.r,
                 confidence: circle.confidence,
                 scene_shift: shift,
@@ -346,11 +351,17 @@ export function VbtTracker({
             }
             point = { x: circle.cx, y: circle.cy };
             drawMarker(ctx, circle.cx, circle.cy, circle.r);
-            statusRef.current = liveStatus(ready, Math.abs(metres) >= 0.05, now);
+            statusRef.current = liveStatus(ready, Math.abs(metres) >= 0.05, now, false, false);
           }
         }
       }
-      if (point) {
+      const previewLost = (window as Window & { __LINDA_PLATE_LOST__?: boolean }).__LINDA_PLATE_LOST__ === true;
+      if (previewLost) {
+        countFrozenRef.current = true;
+        statusRef.current = 'Plate lost';
+        point = null;
+      }
+      if (point && !countFrozenRef.current) {
         const previous = pathRef.current[pathRef.current.length - 1] ?? null;
         pathRef.current.push(followBarPoint(previous, point));
         if (pathRef.current.length > 600) pathRef.current.shift();
@@ -423,6 +434,7 @@ export function VbtTracker({
   }, [source, summary, kind, platePx, targetReps]);
 
   const finish = () => {
+    countFrozenRef.current = true;
     const reps = gateReps(samplesRef.current, kind, source === 'demo' ? demoTrace(kind)[0]?.y_m : undefined).reps;
     const next = summarizeSet(reps, threshold);
     const recorder = recorderRef.current;
@@ -571,6 +583,7 @@ export function VbtTracker({
             className="btn btn-primary btn-block"
             data-testid="vbt-save"
             onClick={() => {
+              countFrozenRef.current = true;
               if (!correction) return;
               const summary = correctedSummary(correction, threshold);
               const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };

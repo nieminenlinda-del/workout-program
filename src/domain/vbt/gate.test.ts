@@ -189,6 +189,9 @@ describe('setup check', () => {
     expect(
       overlayStatus({ guidance: 'searching', steadyMs: 0, cameraMoved: false, barMoving: false, tapPrompt: true }),
     ).toBe('Tap the plate');
+    expect(
+      overlayStatus({ guidance: 'locked', steadyMs: 2000, cameraMoved: false, barMoving: true, plateLost: true }),
+    ).toBe('Plate lost');
   });
 });
 

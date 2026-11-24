@@ -34,6 +34,13 @@ export interface RepDetectOptions {
   minRomM?: number;
   /** Travel that confirms a turn, in metres. */
   hysteresisM?: number;
+  /**
+   * How close the bar must come to the height it left before the rep counts.
+   * Credit happens at that return, not on the way up.
+   */
+  lockoutToleranceM?: number;
+  /** Per-sample speed above this splits the trace. A tracker jump is not a rep. */
+  maxSpeedMps?: number;
 }
 
 const MIN_ROM_M: Record<VbtLiftKind, number> = {
@@ -41,6 +48,48 @@ const MIN_ROM_M: Record<VbtLiftKind, number> = {
   bench: 0.15,
   deadlift: 0.3,
 };
+
+/** Return to within this of the pre-rep height. Bench is tighter than a squat. */
+const LOCKOUT_TOLERANCE_M: Record<VbtLiftKind, number> = {
+  squat: 0.08,
+  bench: 0.05,
+  deadlift: 0.08,
+};
+
+/** Faster than a real bar. Used to cut a tracker jump out of the trace. */
+const MAX_BAR_SPEED_M_S: Record<VbtLiftKind, number> = {
+  squat: 3,
+  bench: 2.5,
+  deadlift: 3.2,
+};
+
+/** Split the trace where the bar could not have moved that far between samples. */
+export function splitImplausibleJumps(samples: readonly VbtSample[], maxSpeedMps: number): VbtSample[][] {
+  const pieces: VbtSample[][] = [];
+  let current: VbtSample[] = [];
+  for (const sample of samples) {
+    const previous = current[current.length - 1];
+    if (previous) {
+      const seconds = (sample.t_ms - previous.t_ms) / 1000;
+      if (!(seconds > 0)) {
+        if (Math.abs(sample.y_m - previous.y_m) > 0.01) {
+          if (current.length > 0) pieces.push(current);
+          current = [sample];
+        }
+        continue;
+      }
+      const speed = Math.abs(sample.y_m - previous.y_m) / seconds;
+      if (speed > maxSpeedMps) {
+        if (current.length > 0) pieces.push(current);
+        current = [sample];
+        continue;
+      }
+    }
+    current.push(sample);
+  }
+  if (current.length > 0) pieces.push(current);
+  return pieces;
+}
 
 export function smoothSamples(samples: readonly VbtSample[], window = 5): VbtSample[] {
   if (window <= 1 || samples.length === 0) return samples.slice();
@@ -71,13 +120,113 @@ interface Turn {
  * from the low point to lockout and skips the lowering.
  */
 export function detectReps(raw: readonly VbtSample[], options: RepDetectOptions): DetectedRep[] {
-  const samples = smoothSamples(
-    raw.filter((sample) => Number.isFinite(sample.t_ms) && Number.isFinite(sample.y_m)),
-    5,
-  );
-  if (samples.length < 3) return [];
+  const finite = raw.filter((sample) => Number.isFinite(sample.t_ms) && Number.isFinite(sample.y_m));
   const minRom = options.minRomM ?? MIN_ROM_M[options.kind];
   const hysteresis = options.hysteresisM ?? Math.min(0.05, minRom * 0.2);
+  const tolerance = options.lockoutToleranceM ?? LOCKOUT_TOLERANCE_M[options.kind];
+  const maxSpeed = options.maxSpeedMps ?? MAX_BAR_SPEED_M_S[options.kind];
+  const reps: DetectedRep[] = [];
+  for (const piece of splitImplausibleJumps(finite, maxSpeed)) {
+    const samples = smoothSamples(piece, 5);
+    const found =
+      options.kind === 'deadlift'
+        ? detectTurnReps(samples, minRom, hysteresis)
+        : detectLockoutReps(samples, minRom, hysteresis, tolerance);
+    for (const rep of found) reps.push({ ...rep, rep: reps.length + 1 });
+  }
+  return reps;
+}
+
+/**
+ * Squat and bench: the bar must go down past the minimum range, turn around,
+ * and come back to the height it left. The rep is credited at that return.
+ * An unfinished press, a rerack that stays low, and a tracker jump do not count.
+ */
+function detectLockoutReps(
+  samples: readonly VbtSample[],
+  minRom: number,
+  hysteresis: number,
+  tolerance: number,
+): DetectedRep[] {
+  const first = samples[0];
+  if (!first || samples.length < 3) return [];
+  let lockoutY = first.y_m;
+  let phase: 'high' | 'down' | 'up' = 'high';
+  let bottomY = first.y_m;
+  let bottomIndex = 0;
+  let peakY = first.y_m;
+  let peakIndex = 0;
+  const reps: DetectedRep[] = [];
+
+  for (let index = 1; index < samples.length; index += 1) {
+    const sample = samples[index];
+    if (!sample) continue;
+    if (phase === 'high') {
+      if (sample.y_m >= lockoutY) {
+        lockoutY = sample.y_m;
+        bottomY = sample.y_m;
+        bottomIndex = index;
+      } else if (lockoutY - sample.y_m >= hysteresis) {
+        phase = 'down';
+        bottomY = sample.y_m;
+        bottomIndex = index;
+      }
+      continue;
+    }
+    if (phase === 'down') {
+      if (sample.y_m <= bottomY) {
+        bottomY = sample.y_m;
+        bottomIndex = index;
+      }
+      const dropped = lockoutY - bottomY;
+      if (dropped >= minRom && sample.y_m - bottomY >= hysteresis) {
+        phase = 'up';
+        peakY = sample.y_m;
+        peakIndex = index;
+      } else if (dropped < minRom && sample.y_m >= lockoutY - hysteresis) {
+        phase = 'high';
+        lockoutY = Math.max(lockoutY, sample.y_m);
+        bottomY = lockoutY;
+        bottomIndex = index;
+      }
+      continue;
+    }
+    if (sample.y_m <= bottomY + hysteresis * 0.5) {
+      phase = 'down';
+      peakY = bottomY;
+      peakIndex = bottomIndex;
+      if (sample.y_m < bottomY) {
+        bottomY = sample.y_m;
+        bottomIndex = index;
+      }
+      continue;
+    }
+    const rom = lockoutY - bottomY;
+    if (rom < minRom || sample.y_m < lockoutY - tolerance) continue;
+    if (sample.y_m >= peakY) {
+      peakY = sample.y_m;
+      peakIndex = index;
+      const previous = samples[index - 1];
+      const atLockout = sample.y_m >= lockoutY - 0.005;
+      if (!atLockout && previous && sample.y_m > previous.y_m + 0.002) continue;
+    }
+    const measured = measureConcentric(samples.slice(bottomIndex, peakIndex + 1), reps.length + 1);
+    if (measured && measured.rom_m >= minRom) reps.push(measured);
+    lockoutY = Math.max(lockoutY, peakY);
+    phase = 'high';
+    bottomY = lockoutY;
+    bottomIndex = peakIndex;
+    peakY = lockoutY;
+  }
+  if (phase === 'up' && lockoutY - bottomY >= minRom && peakY >= lockoutY - tolerance) {
+    const measured = measureConcentric(samples.slice(bottomIndex, peakIndex + 1), reps.length + 1);
+    if (measured && measured.rom_m >= minRom) reps.push(measured);
+  }
+  return reps;
+}
+
+function detectTurnReps(samples: readonly VbtSample[], minRom: number, hysteresis: number): DetectedRep[] {
+  if (samples.length < 3) return [];
   const turns = findTurns(samples, hysteresis);
   const reps: DetectedRep[] = [];
   for (let index = 0; index < turns.length - 1; index += 1) {
@@ -86,8 +235,7 @@ export function detectReps(raw: readonly VbtSample[], options: RepDetectOptions)
     if (!start || !end || start.kind !== 'bottom' || end.kind !== 'top') continue;
     const rom = end.y_m - start.y_m;
     if (rom < minRom) continue;
-    const slice = samples.slice(start.index, end.index + 1);
-    const measured = measureConcentric(slice, reps.length + 1);
+    const measured = measureConcentric(samples.slice(start.index, end.index + 1), reps.length + 1);
     if (measured) reps.push(measured);
   }
   return reps;

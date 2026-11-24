@@ -63,6 +63,35 @@ describe('rep detection', () => {
     expect(detectReps(samples, { kind: 'squat' })).toHaveLength(0);
   });
 
+  it('counts four bench reps and ignores a half press, a rerack, and a tracker jump', () => {
+    const lockout = 1;
+    const chest = 0.68;
+    const samples: VbtSample[] = [
+      ...ramp(0, 2000, 0.84, lockout),
+      ...ramp(2000, 400, lockout, lockout),
+    ];
+    let cursor = 2500;
+    for (let rep = 0; rep < 4; rep += 1) {
+      samples.push(...ramp(cursor, cursor + 900, lockout, chest));
+      cursor += 900;
+      samples.push(...ramp(cursor, cursor + 800, chest, lockout));
+      cursor += 800;
+      samples.push(...ramp(cursor, cursor + 200, lockout, lockout));
+      cursor += 250;
+    }
+    const finished = samples.slice();
+    samples.push(...ramp(cursor, cursor + 700, lockout, chest));
+    samples.push(...ramp(cursor + 700, cursor + 1100, chest, 0.86));
+    expect(detectReps(samples, { kind: 'bench' })).toHaveLength(4);
+
+    finished.push(...ramp(cursor, cursor + 700, lockout, 0.78));
+    const parked = cursor + 700;
+    finished.push(...ramp(parked, parked + 800, 0.78, 0.78));
+    finished.push({ t_ms: parked + 833, y_m: 0.2 });
+    finished.push(...ramp(parked + 866, parked + 1466, 0.2, 0.2));
+    expect(detectReps(finished, { kind: 'bench' })).toHaveLength(4);
+  });
+
   it('counts deadlift pulls and skips the return to the floor', () => {
     let cursor = 0;
     const samples: VbtSample[] = [];

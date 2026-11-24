@@ -136,6 +136,76 @@ export function findPlateCircle(frame: LumaFrame, hint?: PlateSearch): PlateCirc
   return acquirePlate(frame, hint).circle;
 }
 
+/** Appearance of the plate Linda tapped. Re-acquire has to look like this. */
+export interface PlateAppearance {
+  r: number;
+  faceLuma: number;
+}
+
+export function readPlateAppearance(frame: LumaFrame, cx: number, cy: number, r: number): PlateAppearance | null {
+  const faceLuma = meanFaceLuma(frame, cx, cy, r);
+  if (faceLuma == null || !(r > 1)) return null;
+  return { r, faceLuma };
+}
+
+/**
+ * Find the same plate again. The search stays near the last good centre and
+ * the radius has to match. A dark shirt or a rack upright elsewhere is ignored.
+ */
+export function reacquirePlate(
+  frame: LumaFrame,
+  appearance: PlateAppearance,
+  around: { cx: number; cy: number },
+  windowPx: number,
+): PlateCircle | null {
+  const found = acquirePlate(frame, {
+    cx: around.cx,
+    cy: around.cy,
+    r: appearance.r,
+    windowPx,
+    wide: false,
+  }).circle;
+  if (!found) return null;
+  if (Math.abs(found.r - appearance.r) / appearance.r > 0.18) return null;
+  const face = meanFaceLuma(frame, found.cx, found.cy, found.r);
+  if (face == null || Math.abs(face - appearance.faceLuma) > 28) return null;
+  if (found.score < 18) return null;
+  return found;
+}
+
+/** True when the plate could have moved this far. A leap onto a person is not the bar. */
+export function plateStepPlausible(
+  previous: { x: number; y: number; r: number },
+  next: { x: number; y: number; r: number },
+  dtMs: number,
+  maxSpeedMps = 2.5,
+): boolean {
+  if (!(dtMs > 0) || !(previous.r > 1)) return false;
+  if (Math.abs(next.r - previous.r) / previous.r > 0.28) return false;
+  const metresPerPx = 0.45 / (previous.r * 2);
+  const distM = Math.hypot(next.x - previous.x, next.y - previous.y) * metresPerPx;
+  return distM / (dtMs / 1000) <= maxSpeedMps;
+}
+
+function meanFaceLuma(frame: LumaFrame, cx: number, cy: number, r: number): number | null {
+  let sum = 0;
+  let total = 0;
+  const center = luma(frame, cx, cy);
+  if (center != null) {
+    sum += center;
+    total += 1;
+  }
+  for (let index = 0; index < 12; index += 1) {
+    const angle = (index / 12) * Math.PI * 2;
+    const sample = luma(frame, cx + Math.cos(angle) * r * 0.4, cy + Math.sin(angle) * r * 0.4);
+    if (sample == null) continue;
+    sum += sample;
+    total += 1;
+  }
+  if (total < 4) return null;
+  return sum / total;
+}
+
 function searchPlate(
   frame: LumaFrame,
   hint: PlateSearch | undefined,

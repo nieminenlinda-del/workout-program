@@ -31,6 +31,8 @@ export interface GateSample {
   /** 0–1 whole-frame shift. High means the phone moved. */
   scene_shift: number;
   occluded: boolean;
+  /** Horizontal position in metres. Absent on older traces. */
+  x_m?: number | null;
 }
 
 export interface GatedSet {
@@ -54,7 +56,13 @@ const RADIUS_JUMP = 0.3;
 /** A full plate must sit still about this long before it counts as found. */
 export const PLATE_STEADY_MS = 1000;
 
-export type OverlayStatus = 'waiting for plate' | 'Plate found' | 'tracking' | 'camera moved' | 'Tap the plate';
+export type OverlayStatus =
+  | 'waiting for plate'
+  | 'Plate found'
+  | 'tracking'
+  | 'camera moved'
+  | 'Tap the plate'
+  | 'Plate lost';
 
 /** Status burned into the preview and the saved clip. A close plate still counts. */
 export function overlayStatus(input: {
@@ -63,7 +71,9 @@ export function overlayStatus(input: {
   cameraMoved: boolean;
   barMoving: boolean;
   tapPrompt?: boolean;
+  plateLost?: boolean;
 }): OverlayStatus {
+  if (input.plateLost) return 'Plate lost';
   if (input.tapPrompt && input.guidance !== 'locked') return 'Tap the plate';
   if (input.cameraMoved) return 'camera moved';
   if (input.guidance !== 'locked' || input.steadyMs < PLATE_STEADY_MS) return 'waiting for plate';
@@ -90,6 +100,10 @@ export function gateReps(
   let lockRadius: number | null = null;
   let segment: VbtSample[] = [];
   let recent: VbtSample[] = [];
+  let lockX: number | null = null;
+  let rerackSince: number | null = null;
+  let returned = false;
+  let ended = false;
   const reps: DetectedRep[] = [];
 
   const flush = () => {
@@ -98,6 +112,7 @@ export function gateReps(
   };
 
   for (const sample of samples) {
+    if (ended) continue;
     const bad =
       sample.occluded ||
       sample.scene_shift >= CAMERA_MOVE_SHIFT ||
@@ -144,6 +159,27 @@ export function gateReps(
     }
     if (phase !== 'lifting') continue;
     if (!seeded) segment.push({ t_ms: sample.t_ms, y_m: y });
+    if (sample.x_m != null && Math.abs(y - rackY) <= RERACK_BAND_M) {
+      lockX = sample.x_m;
+      returned = true;
+    }
+    if (
+      returned &&
+      sample.x_m != null &&
+      lockX != null &&
+      Math.abs(sample.x_m - lockX) >= 0.2 &&
+      y < rackY - 0.08
+    ) {
+      if (rerackSince == null) rerackSince = sample.t_ms;
+      if (sample.t_ms - rerackSince >= 500) {
+        flush();
+        ended = true;
+        phase = 'paused';
+        continue;
+      }
+    } else {
+      rerackSince = null;
+    }
     const nearRack = Math.abs(y - rackY) <= RERACK_BAND_M;
     if (!nearRack) {
       stillSince = null;

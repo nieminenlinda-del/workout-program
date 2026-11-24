@@ -11,7 +11,8 @@ import { RECOVERY_PICKER_NAMES } from '../domain/recoveryWeek';
 import { RecoveryCallout } from '../components/RecoveryCallout';
 import { getMesocycleContext } from '../domain/phase2Calendar';
 import { historyVisibilityLine, lastLogGapLine, type ImportMode } from '../domain/sessionBackup';
-import { isNov23DayA } from '../domain/nov23Session';
+import { nov23FixPending } from '../domain/nov23Session';
+import { APP_BUILD_LABEL } from '../pwaCache';
 import { plannedDayPreview, shouldOfferHomeWeek1Restore } from '../domain/workoutPreview';
 import { formatDisplayDate, TEMPLATE_DAY_LABELS } from '../domain/templateDay';
 import { localizePlanLabel } from '../domain/uiLang';
@@ -161,14 +162,16 @@ export function HomeScreen({
           <p className="muted">Nothing to log. Walk only.</p>
         )}
         {recoveryCard}
-        {!history.some((row) => isNov23DayA(row)) ? (
+        {nov23FixPending(history) ? (
           <button
             type="button"
             className="btn btn-primary btn-block"
             data-testid="seed-nov23"
             onClick={() => void onSeedNov23()}
           >
-            Add Mon 23 Nov to the log
+            {history.some((row) => row.date.slice(0, 10) === '2026-11-23')
+              ? 'Fix Mon 23 Nov in the log'
+              : 'Add Mon 23 Nov to the log'}
           </button>
         ) : null}
         {planned.slots.length > 0 ? (
@@ -196,6 +199,9 @@ export function HomeScreen({
       <button type="button" className="btn btn-ghost btn-block" onClick={onHealth}>
         Apple Health
       </button>
+      <p className="build-stamp" data-testid="build-stamp">
+        {APP_BUILD_LABEL}
+      </p>
     </main>
   );
 }

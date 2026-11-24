@@ -62,6 +62,8 @@ const REQUIRED_ACCESSORIES = [
   'tricep_pushdown_band',
   'cable_rope_pushdown',
   'bench_close_grip',
+  'bench_paused',
+  'bench_pin',
   'bench_db_single',
   'press_db_seated_single',
   'row_db_chest_single',

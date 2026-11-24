@@ -219,6 +219,7 @@ export function t1PrescriptionFor(
  * Block B week 4 replaces the whole day with the recovery template.
  * Block C week 1 replaces the whole day with the return template.
  * Block C week 2 replaces the whole day with the C2 template.
+ * 24, 26, and 27 Nov 2026 use the transition-week template. Tue 24 replaces Day B.
  */
 export function applyProgramWeek(
   template: DayTemplate,

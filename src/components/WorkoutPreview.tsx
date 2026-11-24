@@ -70,7 +70,11 @@ export function WorkoutPreview({
                       <span className={`set-num ${set.warmup ? 'warmup-num' : ''}`}>{set.part_label ?? set.label}</span>
                       <span className="set-main">
                         {set.open_load && !(set.weight_kg > 0) ? (
-                          <>enter kg × {set.reps}</>
+                          lift.timed && set.reps === 0 ? (
+                            <>each side</>
+                          ) : (
+                            <>enter kg × {set.reps}{lift.timed ? 's' : ''}</>
+                          )
                         ) : (
                           <>
                             {set.weight_label ? `${set.weight_label} kg` : formatLoad(set.weight_kg, lift.assisted)} ×{' '}

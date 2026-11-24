@@ -38,7 +38,8 @@ export function liftsFromTemplate(
     const sets = slot.sets.map((s) => ({
       weight_kg: s.weight_kg,
       reps: s.reps,
-      rpe: s.rpe,
+      // An empty band means this set has no prescribed RPE.
+      ...(s.rpe_label === '' ? {} : { rpe: s.rpe }),
       completed: false,
       amrap: s.amrap,
       warmup: s.warmup,

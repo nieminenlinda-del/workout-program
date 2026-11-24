@@ -46,6 +46,7 @@ export function useSessionFlow(repo: SessionRepository) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      await seedNov23Session(repo);
       const existing = await repo.getDraft();
       if (!cancelled && existing) {
         const next = { ...existing, lifts: refreshDraftWarmups(existing.lifts) };
@@ -53,6 +54,8 @@ export function useSessionFlow(repo: SessionRepository) {
         if (JSON.stringify(next.lifts) !== JSON.stringify(existing.lifts)) {
           void repo.saveDraft(next);
         }
+      } else if (!cancelled) {
+        setDraft(null);
       }
       await refreshHistory();
       if (!cancelled) setBooted(true);

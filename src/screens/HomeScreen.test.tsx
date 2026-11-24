@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { RESTORE_MON14_BUTTON, RESTORE_WEEK1_BUTTON, RESTORE_WEEK1_TITLE_EMPTY, RESTORE_WEEK1_TITLE_MISSING_LAST, IMPORT_SESSION_JSON_BUTTON } from '../components/SessionBackupCard';
 import { A2HS_EMPTY_STORE_LINE, mon14DayAReferenceSession, week1LastReferenceSessions } from '../domain/sessionBackup';
 import { createDraftSession } from '../domain/sessionFactory';
+import { nov23DayASession } from '../domain/nov23Session';
 import { isWarmupSet } from '../domain/sets';
 import { HomeScreen } from './HomeScreen';
 
@@ -268,5 +269,60 @@ describe('HomeScreen Block A week chip and T1 preview', () => {
     nodes.push({ container, root });
     expect(container.textContent).toMatch(/week 3/i);
     expect(container.textContent).toContain('42.5 kg · 2 × 4');
+  });
+});
+
+describe('HomeScreen Mon 23 Nov fix', () => {
+  const nodes: { root: Root; container: HTMLDivElement }[] = [];
+
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
+
+  afterEach(() => {
+    while (nodes.length) {
+      const node = nodes.pop();
+      if (node) unmount(node.root, node.container);
+    }
+  });
+
+  it('offers the Monday fix on Tuesday until the full session is stored', () => {
+    const today = mount(<HomeScreen {...homeProps({ date: '2026-11-24', templateDay: 'B' })} />);
+    nodes.push(today);
+    expect(today.container.textContent).toContain('47.5 kg · 3 × 4');
+    expect(today.container.textContent).toContain('Paused bench (2 s pause)');
+    expect(today.container.textContent).toContain('Pin press');
+    expect(today.container.textContent).toContain('3 × 10 each side @ 7 RPE');
+    expect(today.container.textContent).toContain('One-arm DB press');
+    expect(today.container.textContent).toContain('2–3 sets each side');
+    expect(today.container.textContent).toContain('Build v9 · 24 Nov');
+    expect(today.container.querySelector('[data-testid="seed-nov23"]')?.textContent).toBe(
+      'Add Mon 23 Nov to the log',
+    );
+
+    const partial = nov23DayASession();
+    partial.lifts = partial.lifts.slice(0, 1);
+    const pending = mount(
+      <HomeScreen
+        {...homeProps({ date: '2026-11-24', templateDay: 'B', history: [partial], historyCount: 1 })}
+      />,
+    );
+    nodes.push(pending);
+    expect(pending.container.querySelector('[data-testid="seed-nov23"]')?.textContent).toBe(
+      'Fix Mon 23 Nov in the log',
+    );
+
+    const done = mount(
+      <HomeScreen
+        {...homeProps({
+          date: '2026-11-24',
+          templateDay: 'B',
+          history: [nov23DayASession()],
+          historyCount: 1,
+        })}
+      />,
+    );
+    nodes.push(done);
+    expect(done.container.querySelector('[data-testid="seed-nov23"]')).toBeNull();
   });
 });

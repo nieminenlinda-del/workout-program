@@ -295,7 +295,7 @@ describe('HomeScreen Mon 23 Nov fix', () => {
     expect(today.container.textContent).toContain('3 × 10 each side @ 7 RPE');
     expect(today.container.textContent).toContain('One-arm DB press');
     expect(today.container.textContent).toContain('2–3 sets each side');
-    expect(today.container.textContent).toContain('Build v9 · 24 Nov');
+    expect(today.container.textContent).toContain('Build v10 · 24 Nov');
     expect(today.container.querySelector('[data-testid="seed-nov23"]')?.textContent).toBe(
       'Add Mon 23 Nov to the log',
     );
@@ -309,7 +309,7 @@ describe('HomeScreen Mon 23 Nov fix', () => {
     );
     nodes.push(pending);
     expect(pending.container.querySelector('[data-testid="seed-nov23"]')?.textContent).toBe(
-      'Fix Mon 23 Nov in the log',
+      'Repair Mon 23 Nov',
     );
 
     const done = mount(

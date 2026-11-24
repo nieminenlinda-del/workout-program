@@ -53,6 +53,11 @@ describe('Mon 23 Nov session', () => {
     expect(await repo.getDraft()).toBeUndefined();
     expect(sessionsInWeek(rows, '2026-11-23')).toHaveLength(1);
     expect(hardSetsInWeek(rows, '2026-11-23').squat).toBe(3);
-    expect(hardSetsInWeek(rows, '2026-11-23').bench).toBe(3);
+    expect(hardSetsInWeek(rows, '2026-11-23').bench).toBe(0);
+    const fresh = nov23DayASession();
+    expect(fresh.lifts[0]?.sets.map((set) => set.rpe)).toEqual([undefined, undefined, 8.5]);
+    expect(fresh.lifts[0]?.sets[2]?.part_label).toBe('Belt');
+    expect(fresh.lifts.slice(1).every((row) => row.sets.every((set) => set.rpe == null))).toBe(true);
+    expect(fresh.notes).toMatch(/knee sleeves/i);
   });
 });

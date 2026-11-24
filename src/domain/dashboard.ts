@@ -382,6 +382,7 @@ function topSetsBySession(logs: readonly SessionLog[]): TopSetSample[] {
       }
     }
     for (const [lift, set] of best) {
+      if (typeof set.rpe !== 'number') continue;
       samples.push({ date, lift, weight_kg: set.weight_kg, reps: set.reps, rpe: set.rpe });
     }
   }

@@ -183,7 +183,9 @@ export function DetailScreen({
                 {setDisplayLabel(lift.sets, i)}.{' '}
                 {formatLoad(set.weight_kg, isAssistedLoad(lift.exercise_id))} × {set.reps}
                 {isTimedHold(lift.exercise_id) ? 's' : ''}
-                {set.amrap ? ' AMRAP' : ''} @ {set.rpe} RPE
+                {set.amrap ? ' AMRAP' : ''}
+                {typeof set.rpe === 'number' ? ` @ ${set.rpe} RPE` : ''}
+                {set.part_label?.toLowerCase() === 'belt' ? ' belt' : ''}
                 {set.completed ? '' : ' (not logged)'}
               </li>
             ))}

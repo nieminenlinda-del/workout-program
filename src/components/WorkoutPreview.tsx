@@ -79,7 +79,7 @@ export function WorkoutPreview({
                             {set.amrap ? '+' : ''}
                           </>
                         )}
-                        <em> @ {formatShownRpe(set)} RPE</em>
+                        {formatShownRpe(set) ? <em> @ {formatShownRpe(set)} RPE</em> : null}
                       </span>
                       <span className="preview-rest">{formatClock(set.rest_sec)}</span>
                     </li>

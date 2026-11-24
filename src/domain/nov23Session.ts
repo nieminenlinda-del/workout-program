@@ -15,11 +15,11 @@ import { withComputedLight } from './readiness';
 export const NOV23_DATE = '2026-11-23';
 export const NOV23_SESSION_ID = 'linda-lift-2026-11-23-A';
 
-function work(weight_kg: number, reps: number, rpe: number, extra: Partial<LoggedSet> = {}): LoggedSet {
+function work(weight_kg: number, reps: number, rpe?: number, extra: Partial<LoggedSet> = {}): LoggedSet {
   return {
     weight_kg,
     reps,
-    rpe,
+    ...(rpe != null ? { rpe } : {}),
     completed: true,
     amrap: false,
     target_weight_kg: weight_kg,
@@ -53,26 +53,26 @@ export function nov23DayASession(sessionId = NOV23_SESSION_ID): SessionDraft {
     readiness: withComputedLight(DEFAULT_READINESS),
     pain_flag: false,
     pain_note: '',
-    notes: 'Mon 23 Nov Day A. Low-bar squat, knee sleeves. Belt on set 3 only.',
+    notes: 'Knee sleeves. Low-bar squat. Belt on set 3 only.',
     status: 'complete',
     updated_at: '2026-11-23T18:00:00.000Z',
     lifts: [
       lift(
         'squat_low_bar',
         [
-          work(55, 5, 8),
-          work(55, 5, 8),
+          work(55, 5),
+          work(55, 5),
           work(55, 5, 8.5, { part_label: 'Belt' }),
         ],
         { bar_position: 'low_bar', bar_kg: 20 },
       ),
       lift(
         'squat_low_bar_paused',
-        [work(45, 3, 7), work(45, 3, 7)],
+        [work(45, 3), work(45, 3)],
         { name: 'Paused squat', bar_position: 'low_bar', bar_kg: 20 },
       ),
-      lift('bench_regular', [work(45, 4, 7), work(45, 4, 7), work(45, 4, 7)], { bar_kg: 20 }),
-      lift('ab_rollout', [work(0, 8, 6), work(0, 8, 6), work(0, 8, 6)], {
+      lift('bench_regular', [work(45, 4), work(45, 4), work(45, 4)], { bar_kg: 20 }),
+      lift('ab_rollout', [work(0, 8), work(0, 8), work(0, 8)], {
         name: 'Ab rollout from knees',
       }),
     ],
@@ -99,7 +99,14 @@ export function mergeNov23Session(
     const fromSaved = completedWork(saved, row.exercise_id);
     const fromDraft = completedWork(draft, row.exercise_id);
     const kept = fromSaved ?? fromDraft;
-    if (kept) row.sets = kept;
+    if (kept) {
+      row.sets =
+        row.exercise_id === 'squat_low_bar'
+          ? kept.map((set, index) =>
+              index === 2 ? { ...set, part_label: set.part_label ?? 'Belt' } : set,
+            )
+          : kept;
+    }
   }
   if (saved?.readiness) next.readiness = saved.readiness;
   else if (draft?.readiness) next.readiness = draft.readiness;

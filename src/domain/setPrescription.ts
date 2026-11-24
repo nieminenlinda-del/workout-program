@@ -38,8 +38,9 @@ export function formatLoadReps(
 }
 
 /** Planned RPE: a band label when the week prescribes one, otherwise the number. */
-export function formatShownRpe(set: { rpe: number; rpe_label?: string }): string {
-  return set.rpe_label ?? String(set.rpe);
+export function formatShownRpe(set: { rpe?: number; rpe_label?: string }): string {
+  if (set.rpe_label) return set.rpe_label;
+  return typeof set.rpe === 'number' ? String(set.rpe) : '';
 }
 
 /** Visible plan for an unfinished row (or the original plan on a logged row). */

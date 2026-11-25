@@ -3,10 +3,10 @@
  * previous cache — iOS often keeps a stale service worker until the cache
  * name changes. File hashes alone are not enough on an installed PWA.
  */
-export const PWA_CACHE_ID = 'linda-lift-v10';
+export const PWA_CACHE_ID = 'linda-lift-v11';
 
 /** Visible on every screen so a Home Screen install can be told from the last one. */
-export const APP_BUILD_LABEL = 'Build v10 · 24 Nov';
+export const APP_BUILD_LABEL = 'Build v11 · 24 Nov';
 
 /**
  * index.html is not precached. Navigations use NetworkFirst so an installed

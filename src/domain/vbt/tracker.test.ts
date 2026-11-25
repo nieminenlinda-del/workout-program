@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   acquirePlate,
+  plateStepPlausible,
+  readPlateAppearance,
+  reacquirePlate,
   analysisSize,
   containRect,
   diagnosticsLine,
@@ -107,6 +110,25 @@ describe('diagnostics line', () => {
     expect(line).toContain('13%');
     expect(line).toContain('1080×1920 portrait');
     expect(line).toContain('0.82');
+  });
+});
+
+describe('plate re-acquire', () => {
+  it('finds the tapped plate nearby and ignores a dark blob and a far upright', () => {
+    const frame: LumaFrame = { width: 160, height: 120, data: new Uint8ClampedArray(160 * 120) };
+    frame.data.fill(40);
+    stampDisc(frame, 90, 60, 14, 210);
+    const appearance = readPlateAppearance(frame, 90, 60, 14);
+    expect(appearance).not.toBeNull();
+    frame.data.fill(40);
+    stampDisc(frame, 96, 64, 14, 210);
+    stampDisc(frame, 20, 70, 14, 15);
+    stampDisc(frame, 150, 30, 6, 20);
+    const found = reacquirePlate(frame, appearance!, { cx: 90, cy: 60 }, 24);
+    expect(found?.cx).toBeGreaterThan(85);
+    expect(found?.cx).toBeLessThan(110);
+    expect(plateStepPlausible({ x: 90, y: 60, r: 14 }, { x: 96, y: 64, r: 14 }, 120)).toBe(true);
+    expect(plateStepPlausible({ x: 90, y: 60, r: 14 }, { x: 20, y: 70, r: 14 }, 33)).toBe(false);
   });
 });
 

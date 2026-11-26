@@ -219,6 +219,7 @@ export function DetailScreen({
       {session.lifts.map((lift) => (
         <section key={lift.exercise_id + lift.name} className="card">
           <h2>{lift.name}</h2>
+          {lift.each_side ? <p className="muted">Each side</p> : null}
           {(() => {
             const known = isExerciseId(lift.exercise_id);
             let eq: Equipment | null = lift.equipment ?? null;
@@ -247,6 +248,7 @@ export function DetailScreen({
                 {set.amrap ? ' AMRAP' : ''}
                 {typeof set.rpe === 'number' ? ` @ ${set.rpe} RPE` : ''}
                 {set.part_label?.toLowerCase() === 'belt' ? ' belt' : ''}
+                {lift.each_side ? ' each side' : ''}
                 {set.completed ? '' : ' (not logged)'}
               </li>
             ))}

@@ -91,6 +91,10 @@ export interface LoggedLift {
    * Stored beside the sets. It does not change training-max rules.
    */
   vbt?: VbtLiftLog;
+  /** This lift was added on the phone for this session only. */
+  manual?: boolean;
+  /** Reps are per side. Missing means both sides together, or not applicable. */
+  each_side?: boolean;
   sets: LoggedSet[];
 }
 

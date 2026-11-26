@@ -68,6 +68,7 @@ const REQUIRED_ACCESSORIES = [
   'press_db_seated_single',
   'row_db_chest_single',
   'bird_dog',
+  'custom',
 ];
 
 describe('exercise catalog', () => {

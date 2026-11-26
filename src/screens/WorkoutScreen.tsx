@@ -18,6 +18,15 @@ import {
 } from '../domain/setPrescription';
 import { logSetOnDraft, overrideUnloggedLiftWeight } from '../domain/weightOverride';
 import {
+  addManualExercise,
+  addWorkSet,
+  canRemoveSet,
+  removeLastUnloggedSet,
+  removeManualExercise,
+  restSecondsForSet,
+  type ManualExerciseInput,
+} from '../domain/sessionEdits';
+import {
   equipmentOptionsForSlot,
   exerciseForEquipment,
   liftEquipment,
@@ -65,6 +74,7 @@ export function WorkoutScreen({
   const [videoToast, setVideoToast] = useState<string | null>(null);
   const [rest, setRest] = useState<{ seconds: number; name: string } | null>(null);
   const [openLift, setOpenLift] = useState(0);
+  const [addingExercise, setAddingExercise] = useState(false);
 
   const day = canonicalTemplateDay(draft.template_day);
   const template = dayTemplateForDate(day, draft.date, { logs: history, hold: true });
@@ -87,8 +97,10 @@ export function WorkoutScreen({
     onChange(next);
     setActive(null);
     unlockTimerAudio();
-    const restSec =
-      slotForLift(template, draft.lifts[liftIndex], liftIndex)?.sets[setIndex]?.rest_sec ?? 90;
+    const restSec = restSecondsForSet(
+      slotForLift(template, draft.lifts[liftIndex], liftIndex)?.sets,
+      setIndex,
+    );
     setRest({ seconds: restSec, name: draft.lifts[liftIndex]?.name ?? 'Lift' });
   };
 
@@ -287,6 +299,7 @@ export function WorkoutScreen({
                             {formatLoggedLoad(set, timed, assisted)}
                             {typeof set.rpe === 'number' ? <em> @ {set.rpe} RPE</em> : null}
                             {set.part_label?.toLowerCase() === 'belt' ? ' belt' : ''}
+                            {lift.each_side ? ' each side' : ''}
                           </span>
                           {loggedDiffersFromPlan(set) ? (
                             <span className="set-plan">plan {formatPlanLoad(set, timed, assisted)}</span>
@@ -299,6 +312,7 @@ export function WorkoutScreen({
                             ? `${set.weight_label} kg × ${set.reps}${set.amrap ? '+' : ''}`
                             : formatPlanLoad(set, timed, assisted)}
                           <em> @ {formatShownRpe(set)} RPE</em>
+                          {lift.each_side ? ' each side' : ''}
                         </span>
                       )}
                     </span>
@@ -308,9 +322,70 @@ export function WorkoutScreen({
                   </button>
                 ))
               : null}
+            {expanded ? (
+              <div className="set-edit-row">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  data-testid="add-set"
+                  onClick={() => onChange(addWorkSet(draft, liftIndex))}
+                >
+                  Add set
+                </button>
+                {canRemoveSet(lift) ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    data-testid="remove-set"
+                    onClick={() => {
+                      onChange(removeLastUnloggedSet(draft, liftIndex));
+                      if (active?.liftIndex === liftIndex) setActive(null);
+                      if (vbt?.liftIndex === liftIndex) setVbt(null);
+                    }}
+                  >
+                    Remove set
+                  </button>
+                ) : null}
+                {lift.manual && !lift.sets.some((set) => set.completed) ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    data-testid="remove-exercise"
+                    onClick={() => {
+                      onChange(removeManualExercise(draft, liftIndex));
+                      setOpenLift(0);
+                      if (active?.liftIndex === liftIndex) setActive(null);
+                    }}
+                  >
+                    Remove exercise
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </section>
         );
       })}
+      {addingExercise ? (
+        <ManualExerciseForm
+          onCancel={() => setAddingExercise(false)}
+          onAdd={(input) => {
+            const next = addManualExercise(draft, input);
+            if (next === draft) return;
+            onChange(next);
+            setOpenLift(next.lifts.length - 1);
+            setAddingExercise(false);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          data-testid="add-exercise"
+          onClick={() => setAddingExercise(true)}
+        >
+          Add exercise
+        </button>
+      )}
       </div>
 
       <div className="workout-footer">
@@ -343,7 +418,10 @@ export function WorkoutScreen({
           onSave={(summary, view, correction) => {
             const load = draft.lifts[vbt.liftIndex]?.sets[vbt.setIndex]?.weight_kg ?? 0;
             onChange(attachVbtSet(draft, vbt.liftIndex, vbt.setIndex, summary, load, view, correction));
-            const restSec = slotForLift(template, draft.lifts[vbt.liftIndex], vbt.liftIndex)?.sets[vbt.setIndex]?.rest_sec ?? 90;
+            const restSec = restSecondsForSet(
+              slotForLift(template, draft.lifts[vbt.liftIndex], vbt.liftIndex)?.sets,
+              vbt.setIndex,
+            );
             unlockTimerAudio();
             setRest({ seconds: restSec, name: draft.lifts[vbt.liftIndex]?.name ?? 'Lift' });
             setVbt(null);
@@ -401,6 +479,89 @@ export function WorkoutScreen({
         <RestTimer seconds={rest.seconds} exerciseName={rest.name} onDone={() => setRest(null)} />
       ) : null}
     </main>
+  );
+}
+
+function ManualExerciseForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (input: ManualExerciseInput) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [setCount, setSetCount] = useState(3);
+  const [reps, setReps] = useState(10);
+  const [bodyweight, setBodyweight] = useState(true);
+  const [weightKg, setWeightKg] = useState(5);
+  const [eachSide, setEachSide] = useState(false);
+  return (
+    <section className="card add-exercise" data-testid="add-exercise-form">
+      <p className="kicker">Extra exercise</p>
+      <h2>Add to today</h2>
+      <label className="add-exercise-name">
+        Name
+        <input
+          className="pain-note-input"
+          data-testid="exercise-name"
+          value={name}
+          placeholder="Dead bug, face pull, rehab"
+          maxLength={48}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
+      <NumberStepper label="Sets" value={setCount} onChange={setSetCount} step={1} min={1} max={8} suffix="" />
+      <NumberStepper label="Reps" value={reps} onChange={setReps} step={1} min={1} max={50} suffix="" />
+      <div className="alt-row" role="group" aria-label="Load">
+        <button
+          type="button"
+          className={`chip ${bodyweight ? 'selected' : ''}`}
+          onClick={() => setBodyweight(true)}
+        >
+          Bodyweight
+        </button>
+        <button
+          type="button"
+          className={`chip ${bodyweight ? '' : 'selected'}`}
+          onClick={() => setBodyweight(false)}
+        >
+          Weight
+        </button>
+      </div>
+      {bodyweight ? null : (
+        <NumberStepper label="Weight" value={weightKg} onChange={setWeightKg} step={2.5} min={0} max={200} suffix="kg" />
+      )}
+      <button
+        type="button"
+        className={`chip ${eachSide ? 'selected' : ''}`}
+        data-testid="each-side"
+        onClick={() => setEachSide((value) => !value)}
+      >
+        Each side
+      </button>
+      <div className="set-edit-row">
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          data-testid="confirm-exercise"
+          onClick={() =>
+            onAdd({
+              name,
+              setCount,
+              reps,
+              bodyweight,
+              weightKg,
+              eachSide,
+            })
+          }
+        >
+          Add to today
+        </button>
+      </div>
+    </section>
   );
 }
 

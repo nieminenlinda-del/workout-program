@@ -295,7 +295,7 @@ describe('HomeScreen Mon 23 Nov fix', () => {
     expect(today.container.textContent).toContain('3 × 10 each side @ 7 RPE');
     expect(today.container.textContent).toContain('One-arm DB press');
     expect(today.container.textContent).toContain('2–3 sets each side');
-    expect(today.container.textContent).toContain('Build v11 · 24 Nov');
+    expect(today.container.textContent).toContain('Build v12 · 26 Nov');
     expect(today.container.querySelector('[data-testid="seed-nov23"]')?.textContent).toBe(
       'Add Mon 23 Nov to the log',
     );

@@ -174,6 +174,8 @@ function asLift(value: unknown, label: string): LoggedLift {
   if (typeof row.bar_kg === 'number') lift.bar_kg = row.bar_kg;
   if (isBarPosition(row.bar_position)) lift.bar_position = row.bar_position;
   if (row.counts_toward_tm === false) lift.counts_toward_tm = false;
+  if (row.manual === true) lift.manual = true;
+  if (row.each_side === true) lift.each_side = true;
   const vbt = asVbt(row.vbt);
   if (vbt) lift.vbt = vbt;
   return lift;

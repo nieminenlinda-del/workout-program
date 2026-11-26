@@ -55,4 +55,50 @@ describe('in-session jump hint', () => {
     );
     expect(view.container.textContent).not.toContain('Under RPE 6');
   });
+
+  it('adds a set and a named exercise on this session only', () => {
+    const draft = createDraftSession('B', '2026-11-24');
+    const benchSets = draft.lifts[0]?.sets.length ?? 0;
+    let next = draft;
+    view = mount(
+      <WorkoutScreen
+        draft={draft}
+        onChange={(value) => {
+          next = value;
+        }}
+        onBack={() => undefined}
+        onInterval={() => undefined}
+        onFinish={() => undefined}
+      />,
+    );
+    const addSet = view.container.querySelector('[data-testid="add-set"]');
+    expect(addSet).toBeTruthy();
+    expect(view.container.querySelector('[data-testid="remove-set"]')).toBeTruthy();
+    act(() => {
+      addSet?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(next.lifts[0]?.sets.length).toBe(benchSets + 1);
+
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('[data-testid="add-exercise"]')?.click();
+    });
+    const name = view.container.querySelector<HTMLInputElement>('[data-testid="exercise-name"]');
+    expect(name).toBeTruthy();
+    act(() => {
+      if (!name) return;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(name, 'Dead bug');
+      name.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('[data-testid="each-side"]')?.click();
+    });
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('[data-testid="confirm-exercise"]')?.click();
+    });
+    expect(next.lifts.at(-1)?.name).toBe('Dead bug');
+    expect(next.lifts.at(-1)?.each_side).toBe(true);
+    expect(next.lifts.at(-1)?.manual).toBe(true);
+    expect(draft.lifts.some((lift) => lift.manual)).toBe(false);
+  });
 });

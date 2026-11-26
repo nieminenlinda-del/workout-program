@@ -55,6 +55,7 @@ export const ACCESSORY_EXERCISE_IDS = [
   'press_db_seated_single',
   'row_db_chest_single',
   'bird_dog',
+  'custom',
 ] as const;
 
 export const EXERCISE_IDS = [
@@ -402,6 +403,13 @@ export const EXERCISE_CATALOG: Record<ExerciseId, ExerciseMeta> = {
   bird_dog: {
     id: 'bird_dog',
     name: 'Bird dog',
+    role: 'accessory',
+    pattern: 'core',
+    equipment: 'bodyweight',
+  },
+  custom: {
+    id: 'custom',
+    name: 'Custom',
     role: 'accessory',
     pattern: 'core',
     equipment: 'bodyweight',
